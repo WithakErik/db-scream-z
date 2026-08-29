@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>DBscreamZ</title>
+<style>
+  :root{
+    --bg:#0b0e14; --panel:#141922; --panel2:#1a212c; --line:#26303f;
+    --fg:#e6edf3; --dim:#8b98a8; --blue:#2f7fe0; --orange:#ff7a18;
+    --enclosure:#e9e6df; --enclosure2:#cfcabf; --ink:#2a2724;
+    --scrim:.55;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;background:var(--bg);color:var(--fg);
+    font:14px/1.45 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+    display:flex;flex-direction:column;overflow:hidden;
+    padding-top:env(safe-area-inset-top);
+    padding-bottom:env(safe-area-inset-bottom);
+  }
+
+  /* ---------- top bar: audio source and transport ---------- */
+  header{
+    flex:0 0 auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap;
+    padding:8px 12px;border-bottom:1px solid var(--line);background:var(--panel);
+  }
+  button,select{
+    background:var(--panel2);color:var(--fg);border:1px solid var(--line);
+    border-radius:7px;padding:7px 12px;font-size:13px;cursor:pointer;
+    font-family:inherit;
+  }
+  button:hover:not(:disabled),select:hover{border-color:#3d4b60}
+  button:disabled{opacity:.45;cursor:default}
+  button.primary{background:var(--orange);color:#241300;border-color:var(--orange);font-weight:650}
+  button.on{background:var(--blue);border-color:var(--blue);color:#fff}
+  .spacer{flex:1 1 auto}
+  .status{color:var(--dim);font:12px ui-monospace,SFMono-Regular,Menlo,monospace;
+          white-space:nowrap}
+  .status b{color:var(--fg);font-weight:600}
+
+  /* ---------- centred pedal ---------- */
+  main{
+    flex:1 1 auto;min-height:0;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:10px;padding:10px;
+  }
+  .stage{flex:1 1 auto;min-height:0;display:flex;align-items:center;justify-content:center;width:100%}
+  svg.pedal{height:100%;width:auto;max-width:100%;max-height:100%;display:block;
+            filter:drop-shadow(0 10px 30px rgba(0,0,0,.55))}
+
+  /* ---------- the pedal itself ---------- */
+  /* The panel is a photo of the painted faceplate. --scrim is how much of
+     the flat colour is washed back over it: 0 is the bare photograph, 1
+     hides it entirely. The labels are small dark text on busy multicoloured
+     ink, so this is the knob to turn if they stop being readable. */
+  .enclosure-base{fill:var(--enclosure)}
+  .enclosure-scrim{fill:var(--enclosure);opacity:var(--scrim)}
+  .enclosure{fill:none;stroke:#0c0f14;stroke-width:.5}
+  .knob-body{fill:#20242b;stroke:#0c0f14;stroke-width:.35}
+  .knob-ptr{stroke:#f4f1ea;stroke-width:.55;stroke-linecap:round}
+  .knob-dot{fill:#4a5260}
+  .knob{cursor:ns-resize;touch-action:none;outline:none}
+  .knob:focus-visible .knob-body{stroke:var(--blue);stroke-width:.7}
+  .knob.inert .knob-ptr{stroke:#9aa2ad}
+  .knob-label{font-size:2.3px;text-anchor:middle;fill:var(--ink);
+              font-family:inherit;font-weight:600;pointer-events:none}
+  .knob-value{font-size:2.1px;text-anchor:middle;fill:#6c6a66;
+              font-family:ui-monospace,monospace;pointer-events:none}
+  .knob-value.inert{fill:#a5a29c;font-style:italic}
+  .toggle{cursor:pointer;touch-action:none;outline:none}
+  .toggle-slot{fill:#dcd8d0;stroke:#0c0f14;stroke-width:.3}
+  .toggle-lever{fill:#20242b;stroke:#0c0f14;stroke-width:.2}
+  .toggle:focus-visible .toggle-slot{stroke:var(--blue);stroke-width:.6}
+  /* A latched menu owns the toggles, and says so in that menu's own LED
+     colour: menu 3 is the LEFT stomp (blue), menu 2 the RIGHT (orange). */
+  .toggle.charge-left .toggle-lever{fill:var(--blue)}
+  .toggle.charge-right .toggle-lever{fill:var(--orange)}
+  .toggle-label{font-size:2.2px;text-anchor:middle;fill:var(--ink);
+                font-family:inherit;font-weight:600;pointer-events:none}
+  .toggle-value{font-size:2.0px;text-anchor:middle;fill:#6c6a66;
+                font-family:ui-monospace,monospace;pointer-events:none}
+  .led-bezel{fill:#1b1e24}
+  .led{fill:#3a3f47;transition:fill 40ms linear}
+  .led.on{filter:drop-shadow(0 0 1.6px currentColor)}
+  .stomp{cursor:pointer;touch-action:none;outline:none}
+  .stomp-ring{fill:#b9b5ac;stroke:#0c0f14;stroke-width:.4}
+  .stomp-cap{fill:#8e8a82;stroke:#0c0f14;stroke-width:.25}
+  .stomp.down .stomp-cap{fill:#6d6a63}
+  .stomp:focus-visible .stomp-ring{stroke:var(--blue);stroke-width:.8}
+  .stomp-label{font-size:3.4px;text-anchor:middle;fill:#2a2724;
+               font-family:inherit;font-weight:700;pointer-events:none}
+  /* Every label sits directly on the photograph, where a dark glyph can
+     land on a dark passage of ink. A halo in the panel colour, painted
+     behind the glyph, keeps the text legible wherever it falls. */
+  .knob-label,.knob-value,.toggle-label,.toggle-value{
+    paint-order:stroke;stroke:var(--enclosure);stroke-width:.5;
+    stroke-linejoin:round;
+  }
+
+  /* ---------- controls that the real pedal does not have ---------- */
+  .offboard{
+    flex:0 0 auto;display:flex;gap:8px;align-items:stretch;
+    width:min(460px,100%);
+  }
+  #charge{
+    flex:2 1 auto;padding:13px 10px;font-size:14px;font-weight:700;
+    letter-spacing:.08em;background:#241300;color:var(--orange);
+    border:1px solid #55321a;touch-action:none;
+  }
+  #charge.armed:active,#charge.held{
+    background:var(--orange);color:#241300;border-color:var(--orange);
+  }
+  .saves{flex:1 1 auto;display:flex;gap:6px}
+  .saves button{flex:1 1 0;padding:13px 4px;font-size:12px}
+  .note{
+    flex:0 0 auto;min-height:1.2em;color:var(--dim);font-size:12px;
+    text-align:center;width:min(560px,100%);
+  }
+  .note.warn{color:var(--orange)}
+
+  @media (max-width:560px){
+    header{padding:6px 8px;gap:6px}
+    button,select{padding:6px 9px;font-size:12px}
+    .status{width:100%;order:9}
+    main{padding:6px;gap:8px}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <button id="start" class="primary">Start Audio</button>
+  <select id="source" disabled>
+    <option value="clip:audio/guitar_short.wav">Clip: short riff</option>
+    <option value="clip:audio/guitar_long.wav">Clip: long take</option>
+    <option value="clip:audio/guitar_intro.wav">Clip: intro</option>
+    <option value="live">Live input</option>
+    <option value="file">Upload a track…</option>
+  </select>
+  <select id="device" hidden></select>
+  <button id="play" disabled>Play</button>
+  <button id="render" disabled title="Render the loaded file with the current settings">Render WAV</button>
+  <span class="spacer"></span>
+  <span class="status" id="status">idle</span>
+  <button id="reset" title="Restore the four factory voices and the factory charge settings">Factory reset</button>
+</header>
+
+<main>
+  <div class="stage" id="stage"></div>
+  <div class="offboard">
+    <button id="charge">CHARGE</button>
+    <div class="saves">
+      <button id="saveL">SAVE&nbsp;→&nbsp;L</button>
+      <button id="saveR">SAVE&nbsp;→&nbsp;R</button>
+    </div>
+  </div>
+  <div class="note" id="note">
+    Hold a stomp about a second to latch its menu. Both at once is CHARGE,
+    which is the button below because one pointer cannot press two switches.
+  </div>
+</main>
+
+<input type="file" id="file" accept="audio/*" hidden>
+<script type="module" src="app.js"></script>
+</body>
+</html>

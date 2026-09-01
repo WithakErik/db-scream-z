@@ -28,11 +28,11 @@ MENU2 = [("F1 Hz", "f1", 200, 1400), ("F1 bandwidth", "bw1", 5, 300),
          ("F1 amount", "a1", 0, 2), ("F2 Hz", "f2", 500, 2600),
          ("F2 bandwidth", "bw2", 5, 400), ("F2 amount", "a2", 0, 2)]
 MENU3 = [("F3 Hz", "f3", 1500, 4500), ("F3 bandwidth", "bw3", 5, 500),
-         ("F3 amount", "a3", 0, 2), ("Vibrato rate Hz", "vib_rate", 0, 14),
-         ("Vibrato depth st", "vib_depth", 0, 4),
-         ("Vibrato jitter", "vib_jitter", 0, 0.6)]
+         ("F3 amount", "a3", 0, 2), ("Voices", "unison", 1, 8),
+         ("Detune cents", "detune_cents", 0, 60),
+         ("Aspiration", "aspiration", 0, 1)]
 V12 = {"bw1": 32.5, "bw2": 47.5, "bw3": 62.5,
-       "a1": 1.0, "a2": 1.0, "a3": 1.0, "vib_jitter": 0.10}
+       "a1": 1.0, "a2": 1.0, "a3": 1.0}
 # Menu 1 + toggle factory values (firmware/hothouse/voice_params.hpp
 # factory_voice(): every character ships with these unless its card
 # overrides them).
@@ -63,26 +63,35 @@ SLOTS = {"Wukong": "Set 1, RIGHT", "Prince": "Set 1, LEFT",
          "Rice": "Set 2, RIGHT", "Piccolo": "Set 2, LEFT"}
 
 # Booklet-only characters: not factory slots, dial by hand and save
-# wherever you like. Same keys as a parsed preset (f1/f2/f3/vib_rate/
-# vib_depth) plus an optional "note" line shown on the card.
+# wherever you like. Same keys as a parsed preset (f1/f2/f3/unison/
+# detune_cents/aspiration) plus an optional "note" line shown on the card.
+#
+# The unison stack replaced the vibrato these characters used to be voiced
+# with, so the bottom row of menu 3 carries them now: thick and rough voices
+# take more stacked voices, wider detune and audible breath; thin and
+# piercing ones take fewer, tighter, drier. All eight are designed on paper
+# from the character's vocal quality, not measured, and are meant to be
+# re-tuned by ear on hardware.
 EXTRA = {
     # Ear-picked 2026-08-27 (candidate B of three LPC-derived options)
     # from the Sparking! ZERO Fat Boo voice clips (Josh Martin):
-    # F1/F2/F3 medians pushed bright, slow bubbery vibrato.
+    # F1/F2/F3 medians pushed bright. Thick and breathy: a big soft body.
     "Boo": {"f1": 900.0, "f2": 1750.0, "f3": 2900.0,
-            "vib_rate": 4.5, "vib_depth": 0.6},
+            "unison": 5, "detune_cents": 24.0, "aspiration": 0.35},
     # Designed by ear 2026-08-28 (no reference clips in the repo, unlike
     # Boo): values chosen from the character's vocal quality, tunable in
-    # the lab. Fling = the brash blonde persona: hard bright female,
-    # shallow fast wobble.
+    # the lab. Fling = the brash blonde persona: hard bright female, a
+    # modest stack so the edge stays on the formants.
     "Fling": {"f1": 880.0, "f2": 1600.0, "f3": 3050.0,
-              "vib_rate": 6.8, "vib_depth": 0.35},
-    # Ki-Ki: shrill piercing female, everything pushed high and fast.
+              "unison": 3, "detune_cents": 14.0, "aspiration": 0.12},
+    # Ki-Ki: shrill piercing female, everything pushed high. Thinnest
+    # stack in the booklet so nothing blunts the point of it.
     "Ki-Ki": {"f1": 950.0, "f2": 1800.0, "f3": 3350.0,
-              "vib_rate": 7.8, "vib_depth": 0.5},
-    # Master: old raspy male, small dark tract, slow wide elderly tremor.
+              "unison": 2, "detune_cents": 8.0, "aspiration": 0.10},
+    # Master: old raspy male, small dark tract. The most breath of the
+    # eight, wide detune for the frayed edge of an elderly voice.
     "Master": {"f1": 640.0, "f2": 1080.0, "f3": 2400.0,
-               "vib_rate": 5.2, "vib_depth": 0.9},
+               "unison": 4, "detune_cents": 30.0, "aspiration": 0.45},
 }
 
 # Hand-maintained usage section. MUST mirror firmware/MILESTONE5.md
@@ -119,13 +128,26 @@ Normally the six knobs are the DEFAULT layer:
 Hold the RIGHT stomp: about 1 second in, MENU 2 latches under your foot
 (right LED blinks) and the knobs edit formants F1/F2. It does not wait
 for the release, and letting go changes nothing. Hold LEFT the same way
-for MENU 3 (F3 + vibrato). While a menu is latched ONLY the blinking
+for MENU 3 (F3 + the voice stack). While a menu is latched ONLY the blinking
 LED is lit: the other goes dark even if that was the engaged side. The
 sound keeps playing, its LED just steps aside so one blinking light is
 never mistaken for two lit ones. Tap the OTHER stomp to jump straight
 to the other menu; tap the blinking side's own stomp to exit. After
 any menu change a knob is inert until you move it, so nothing ever
 jumps.
+
+Menu 3's bottom row is the VOICE STACK: how many copies of the voice
+sing at once (knob 4, one to eight), how far apart they are tuned
+(knob 5, up to 60 cents) and how much breath rides on top (knob 6).
+More voices and wider detune thicken the scream; one voice with no
+detune is the bare, focused version of the same character.
+
+Knob 4 steps: the travel is eight equal bands, one per voice count, so
+it lands on a whole number wherever you leave it. Turning knob 6 fully
+counter-clockwise switches the aspiration OFF: the last sliver of
+travel before 7:00 is a detent that reads as a hard zero, so the voice
+path goes back to having no breath in it at all rather than a residual
+trickle.
 
 ### Toggles (left to right)
 
@@ -159,7 +181,8 @@ update gesture instead, and it will take the pedal off-line mid-song.
 
 With a voice engaged, then, stomp BOTH switches together and hold: the
 sound charges up like a power-up scream, gain swelling, pitch sweeping,
-vibrato deepening, while the LEDs alternate faster and faster. Release
+breath tearing into the voice, while the LEDs alternate faster and
+faster. Release
 to let it wind down. Configure it with the toggles while a menu is
 latched:
 
@@ -167,7 +190,7 @@ latched:
 |---|---|---|
 | 1 | Gain: Above 9000! / on / off | Pitch: rise / fall / off |
 | 2 | Charge time: Birit Spomb ~6 s / Hamekameka ~2.5 s / punch ~0.75 s | Tone: brighter / darker / off |
-| 3 | Decay: fast / slow / off (instant) | Vibrato: high / low / off |
+| 3 | Decay: fast / slow / off (instant) | Aspiration: high / low / off |
 
 The config is global, remembered across power cycles, and never touches
 your saved voices.
@@ -214,12 +237,13 @@ def clock(frac):
 def parse_presets():
     text = PRESETS.read_text()
     rx = re.compile(r'\{"(\w+)",\s*\{([\d.]+)f,\s*([\d.]+)f,\s*([\d.]+)f\},'
-                    r'\s*([\d.]+)f,\s*([\d.]+)f\}')
+                    r'\s*([\d.]+)f,\s*([\d.]+)f,\s*([\d.]+)f\}')
     out = {}
     for m in rx.finditer(text):
-        name, f1, f2, f3, vr, vd = m.groups()
+        name, f1, f2, f3, un, dt, asp = m.groups()
         out[name] = {"f1": float(f1), "f2": float(f2), "f3": float(f3),
-                     "vib_rate": float(vr), "vib_depth": float(vd)}
+                     "unison": float(un), "detune_cents": float(dt),
+                     "aspiration": float(asp)}
     assert len(out) == 4, f"expected 4 presets, parsed {len(out)}"
     return out
 
@@ -232,6 +256,25 @@ def frow(label, value, frac):
 
 def row(label, value, lo, hi):
     return frow(label, value, (value - lo) / (hi - lo))
+
+
+# Aspiration has a detent at the BOTTOM of the travel that maps to exactly 0
+# (map_lin_off() in param_map.hpp), so the breath can be switched off on a pot
+# that never reads exactly 0 at full counter-clockwise. Every non-zero value
+# therefore sits OFF_DZ further up the knob than a plain linear range would
+# put it.
+OFF_DZ = 0.05
+
+
+def off_frac(v, hi):
+    return 0.0 if v <= 0 else OFF_DZ + (1.0 - OFF_DZ) * (v / hi)
+
+
+# The voice count is eight equal bands over 1..8 (map_voices() in
+# param_map.hpp), not a linear range: aim for the CENTRE of the band so a
+# knob set by eye lands on the right count with the most margin either side.
+def voices_frac(n):
+    return (min(8, max(1, int(round(n)))) - 0.5) / 8
 
 
 def card(name, p):
@@ -258,7 +301,12 @@ def card(name, p):
     lines += ["", "### Menu 3 (hold LEFT stomp): knobs 1-6",
               "", "| Param | Value | Travel | Clock |", "|---|---|---|---|"]
     for label, key, lo, hi in MENU3:
-        lines.append(row(label, vals[key], lo, hi))
+        if key == "aspiration":
+            lines.append(frow(label, vals[key], off_frac(vals[key], hi)))
+        elif key == "unison":
+            lines.append(frow(label, vals[key], voices_frac(vals[key])))
+        else:
+            lines.append(row(label, vals[key], lo, hi))
     lines += ["",
               f"Toggles: 1 Octave = {OCTAVE_POS[vals['octave']]}, "
               f"3 Gate = {GATE_POS[vals['gate']]} ({vals['gate']}).", ""]

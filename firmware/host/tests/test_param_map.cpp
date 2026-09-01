@@ -2,6 +2,7 @@
 #include <cassert>
 #include <cmath>
 #include <cstdio>
+#include "knob_pickup.hpp"
 #include "param_map.hpp"
 #include "voice_params.hpp"
 
@@ -19,7 +20,13 @@ int main() {
   assert(near(s.slots[3].f1, 697.6f));    // Piccolo
   assert(near(s.slots[0].bw1, 32.5f) && near(s.slots[0].bw2, 47.5f) &&
          near(s.slots[0].bw3, 62.5f));    // v12 defaults
-  assert(near(s.slots[0].a1, 1.f) && near(s.slots[0].vib_jitter, 0.10f));
+  assert(near(s.slots[0].a1, 1.f));
+  // Per-character unison stack (gen_presets.py STACK): Wukong keeps the v12
+  // reference 3 / 11 / 0, Piccolo is the thick end of the range.
+  assert(near(s.slots[0].unison, 3.f) && near(s.slots[0].detune_cents, 11.f) &&
+         s.slots[0].aspiration == 0.0f);
+  assert(near(s.slots[3].unison, 5.f) && near(s.slots[3].detune_cents, 26.f) &&
+         near(s.slots[3].aspiration, 0.30f));
   assert(near(s.slots[0].mix, 1.0f));     // factory full wet (plan: resolved items)
   assert(near(s.slots[0].master_vol, 1.0f) && near(s.slots[0].vocal_vol, 1.0f));
   assert(near(s.slots[0].drive, 0.f) && near(s.slots[0].tone, 0.f));
@@ -70,9 +77,38 @@ int main() {
   apply_knob(MenuLayer::Menu3, 0, 1.0f, v);  assert(near(v.f3, 4500.f));
   apply_knob(MenuLayer::Menu3, 1, 1.0f, v);  assert(near(v.bw3, 500.f));
   apply_knob(MenuLayer::Menu3, 2, 0.0f, v);  assert(near(v.a3, 0.0f));
-  apply_knob(MenuLayer::Menu3, 3, 0.5f, v);  assert(near(v.vib_rate, 7.0f));
-  apply_knob(MenuLayer::Menu3, 4, 0.5f, v);  assert(near(v.vib_depth, 2.0f));
-  apply_knob(MenuLayer::Menu3, 5, 0.5f, v);  assert(near(v.vib_jitter, 0.3f));
+  apply_knob(MenuLayer::Menu3, 4, 0.5f, v);  assert(near(v.detune_cents, 30.0f));
+  // Aspiration: bottom detent, so half travel sits 5% up the range.
+  apply_knob(MenuLayer::Menu3, 5, 0.5f, v);  assert(near(v.aspiration, 0.45f / 0.95f));
+
+  // ---- voices: eight equal bands over 1..8, both stops legal, monotonic
+  apply_knob(MenuLayer::Menu3, 3, 0.0f, v);    assert(v.unison == 1.0f);
+  apply_knob(MenuLayer::Menu3, 3, 1.0f, v);    assert(v.unison == 8.0f);
+  apply_knob(MenuLayer::Menu3, 3, 0.124f, v);  assert(v.unison == 1.0f);
+  apply_knob(MenuLayer::Menu3, 3, 0.126f, v);  assert(v.unison == 2.0f);
+  apply_knob(MenuLayer::Menu3, 3, 0.5f, v);    assert(v.unison == 5.0f);
+  {
+    float prev = 0.0f;
+    for (int i = 0; i <= 100; ++i) {
+      apply_knob(MenuLayer::Menu3, 3, i / 100.0f, v);
+      assert(v.unison >= prev && v.unison >= 1.0f && v.unison <= 8.0f);
+      prev = v.unison;
+    }
+  }
+
+  // ---- aspiration must switch fully OFF at the bottom of the travel: the
+  // voice path has no noise sources unless you dial them in. A real pot
+  // never reads exactly 0, so the whole detent band has to give 0, and the
+  // band must clear the knob-pickup threshold (0.02).
+  apply_knob(MenuLayer::Menu3, 5, 0.0f, v);   assert(v.aspiration == 0.0f);
+  apply_knob(MenuLayer::Menu3, 5, 0.049f, v); assert(v.aspiration == 0.0f);
+  assert(KnobPickup::kThreshold < 0.05f);
+  // Just past the detent the breath comes back, and the top still reaches
+  // the full range (the detent rescales the travel, it does not clip it).
+  apply_knob(MenuLayer::Menu3, 5, 0.06f, v);  assert(v.aspiration > 0.0f);
+  apply_knob(MenuLayer::Menu3, 5, 1.0f, v);   assert(near(v.aspiration, 1.0f));
+  apply_knob(MenuLayer::Menu3, 4, 0.0f, v);   assert(near(v.detune_cents, 0.0f));
+  apply_knob(MenuLayer::Menu3, 4, 1.0f, v);   assert(near(v.detune_cents, 60.0f));
 
   printf("test_param_map OK\n");
   return 0;

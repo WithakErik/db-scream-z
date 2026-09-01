@@ -155,105 +155,112 @@ MENU2_SHARED = {
 MENU3_SHARED = {
     1: ("F3 bandwidth", "62.5 Hz", 12, "8:09"),
     2: ("F3 amount", "1.0", 50, "12:00"),
-    5: ("Vib jitter", "0.1", 17, "8:40"),
 }
 
 CHARACTERS = [
     {
         "name": "Wukong", "page": "Set 1", "side": "RIGHT",
         "tag": "The default shout",
-        "flavour": "Mid-placed formants and the shallowest wobble of "
-                   "the four factory voices. The straightest read of "
-                   "the effect: loud, open, steady. Start here.",
+        "flavour": "Mid-placed formants over the reference three-voice "
+                   "stack, with no breath at all. The straightest read "
+                   "of the effect: loud, open, clean. Start here.",
         "m2": {0: ("F1", "858.4 Hz", 55, "12:29"),
                3: ("F2", "1234 Hz", 35, "10:29")},
         "m3": {0: ("F3", "3111.7 Hz", 54, "12:22"),
-               3: ("Vib rate", "6.72 Hz", 48, "11:48"),
-               4: ("Vib depth", "0.42 st", 11, "8:03")},
+               3: ("Voices", "3", 31, "10:07"),
+               4: ("Detune", "11 ct", 18, "8:49"),
+               5: ("Aspiration", "0", 0, "7:00")},
     },
     {
         "name": "Prince", "page": "Set 1", "side": "LEFT",
         "tag": "Clenched teeth",
-        "flavour": "Formants well below Wukong under a 0.7 semitone "
-                   "wobble, so it lands darker and noticeably less "
-                   "stable. Reads as effort rather than power.",
+        "flavour": "Formants well below Wukong under a wider four-voice "
+                   "stack and a little breath, so it lands darker and "
+                   "rougher. Reads as effort rather than power.",
         "m2": {0: ("F1", "741.6 Hz", 45, "11:30"),
                3: ("F2", "1066 Hz", 27, "9:41")},
         "m3": {0: ("F3", "2688.3 Hz", 40, "10:57"),
-               3: ("Vib rate", "6.98 Hz", 50, "11:59"),
-               4: ("Vib depth", "0.7 st", 18, "8:45")},
+               3: ("Voices", "4", 44, "11:22"),
+               4: ("Detune", "18 ct", 30, "10:00"),
+               5: ("Aspiration", "0.15", 19, "8:55")},
     },
     {
         "name": "Rice", "page": "Set 2", "side": "RIGHT",
         "tag": "Clean and glassy",
-        "flavour": "The highest F3 of the eight over the shallowest "
-                   "vibrato of the eight. Bright, hard-edged, almost "
-                   "perfectly steady. Cuts without sounding strained.",
+        "flavour": "The highest F3 of the eight over the thinnest stack "
+                   "in the factory set: two voices, barely detuned. "
+                   "Bright and hard-edged. Cuts without sounding strained.",
         "m2": {0: ("F1", "1000 Hz", 67, "1:40"),
                3: ("F2", "1437.5 Hz", 45, "11:27")},
         "m3": {0: ("F3", "3625 Hz", 71, "2:05"),
-               3: ("Vib rate", "7.25 Hz", 52, "12:10"),
-               4: ("Vib depth", "0.21 st", 5, "7:31")},
+               3: ("Voices", "2", 19, "8:52"),
+               4: ("Detune", "8 ct", 13, "8:20"),
+               5: ("Aspiration", "0.05", 10, "7:58")},
     },
     {
         "name": "Piccolo", "page": "Set 2", "side": "LEFT",
         "tag": "Low growl",
-        "flavour": "The lowest formants in the factory set, under the "
-                   "same 0.7 semitone wobble as Prince. Thick and "
-                   "throaty rather than piercing.",
+        "flavour": "The lowest formants in the factory set under the "
+                   "thickest factory stack, five voices spread wide. "
+                   "Thick and throaty rather than piercing.",
         "m2": {0: ("F1", "697.6 Hz", 41, "11:08"),
                3: ("F2", "1002.8 Hz", 24, "9:23")},
         "m3": {0: ("F3", "2528.8 Hz", 34, "10:25"),
-               3: ("Vib rate", "7.1 Hz", 51, "12:04"),
-               4: ("Vib depth", "0.7 st", 18, "8:45")},
+               3: ("Voices", "5", 56, "12:37"),
+               4: ("Detune", "26 ct", 43, "11:20"),
+               5: ("Aspiration", "0.3", 34, "10:20")},
     },
     {
         "name": "Boo", "page": None, "side": None,
         "tag": "Rubbery and hollow",
-        "flavour": "A wide F1-to-F2 gap over a low F3, wobbling at "
-                   "only 4.5 Hz, the slowest here. The pitch sags and "
-                   "swells rather than shimmers.",
+        "flavour": "A wide F1-to-F2 gap over a low F3, thickened by "
+                   "five detuned voices and the second-most breath "
+                   "here. A big soft body rather than an edge.",
         "m2": {0: ("F1", "900 Hz", 58, "12:50"),
                3: ("F2", "1750 Hz", 60, "12:57")},
         "m3": {0: ("F3", "2900 Hz", 47, "11:40"),
-               3: ("Vib rate", "4.5 Hz", 32, "10:12"),
-               4: ("Vib depth", "0.6 st", 15, "8:30")},
+               3: ("Voices", "5", 56, "12:37"),
+               4: ("Detune", "24 ct", 40, "11:00"),
+               5: ("Aspiration", "0.35", 38, "10:49")},
     },
     {
         "name": "Fling", "page": None, "side": None,
         "tag": "Light and quick",
         "flavour": "Between Wukong and Rice on every formant, with a "
-                   "shallow 0.35 semitone wobble. The least "
-                   "characterful and the most usable under a band.",
+                   "modest three-voice stack so the edge stays on the "
+                   "formants. The most usable of the eight under a band.",
         "m2": {0: ("F1", "880 Hz", 57, "12:40"),
                3: ("F2", "1600 Hz", 52, "12:14")},
         "m3": {0: ("F3", "3050 Hz", 52, "12:10"),
-               3: ("Vib rate", "6.8 Hz", 49, "11:51"),
-               4: ("Vib depth", "0.35 st", 9, "7:52")},
+               3: ("Voices", "3", 31, "10:07"),
+               4: ("Detune", "14 ct", 23, "9:20"),
+               5: ("Aspiration", "0.12", 16, "8:38")},
     },
     {
         "name": "Ki-Ki", "page": None, "side": None,
         "tag": "Small and furious",
-        "flavour": "The highest F2 of the eight and the fastest "
-                   "vibrato at 7.8 Hz, all three formants crowded "
-                   "high. Shrill, nasal, permanently annoyed.",
+        "flavour": "The highest F2 of the eight and the thinnest stack "
+                   "of the eight, all three formants crowded high with "
+                   "nothing blunting them. Shrill, nasal, annoyed.",
         "m2": {0: ("F1", "950 Hz", 62, "1:15"),
                3: ("F2", "1800 Hz", 62, "1:11")},
         "m3": {0: ("F3", "3350 Hz", 62, "1:10"),
-               3: ("Vib rate", "7.8 Hz", 56, "12:34"),
-               4: ("Vib depth", "0.5 st", 12, "8:15")},
+               3: ("Voices", "2", 19, "8:52"),
+               4: ("Detune", "8 ct", 13, "8:20"),
+               5: ("Aspiration", "0.1", 15, "8:27")},
     },
     {
         "name": "Master", "page": None, "side": None,
         "tag": "Old and gravelled",
-        "flavour": "The lowest F1 and F3 of the eight under the "
-                   "deepest wobble, 0.9 st at 5.2 Hz. Dark, unsteady, "
-                   "faintly ridiculous.",
+        "flavour": "The lowest F1 and F3 of the eight, the widest "
+                   "detune and the most breath of any card. Dark, "
+                   "frayed, faintly ridiculous.",
         "m2": {0: ("F1", "640 Hz", 37, "10:39"),
                3: ("F2", "1080 Hz", 28, "9:45")},
         "m3": {0: ("F3", "2400 Hz", 30, "10:00"),
-               3: ("Vib rate", "5.2 Hz", 37, "10:42"),
-               4: ("Vib depth", "0.9 st", 22, "9:15")},
+               3: ("Voices", "4", 44, "11:22"),
+               4: ("Detune", "30 ct", 50, "12:00"),
+               5: ("Aspiration", "0.45", 48, "11:46")},
     },
 ]
 
@@ -269,7 +276,7 @@ CHARGE = [
                            "punch ~0.75 s"], "Middle",
            "Tone", ["brighter", "darker", "off"], "Middle"),
     ("T3", "Decay", ["fast", "slow", "off (instant)"], "Middle",
-           "Vibrato", ["high", "low", "off"], "Middle"),
+           "Aspiration", ["high", "low", "off"], "Middle"),
 ]
 
 TOG_ROWS = ["Up", "Middle", "Down"]
@@ -768,7 +775,13 @@ def build_pages(toc_rows=""):
         'clockwise. Every position in this booklet is a clock face.</p>'
         '<h2>What the knobs do</h2>'
         '<table><tr><th></th><th>Menu 1</th><th>Menu 2</th>'
-        '<th>Menu 3</th></tr>' + KNOB_ROWS + '</table>',
+        '<th>Menu 3</th></tr>' + KNOB_ROWS + '</table>'
+        '<p class="small">Menu 3: <strong>K4</strong> steps through the '
+        'eight voice counts in eight equal bands, so it always lands on a '
+        'whole number. Turn <strong>K6</strong> fully anticlockwise and the '
+        'aspiration switches <strong>off</strong>: the last sliver before '
+        '7:00 reads as a hard zero, so there is no breath in the voice at '
+        'all rather than a residual trickle.</p>',
         "y", "The controls"))
 
     P.append(page(
@@ -840,9 +853,15 @@ def build_pages(toc_rows=""):
         '<p><strong>Bandwidth</strong> is how wide each resonance is: '
         'narrow is more vocal, wide is more washed out. '
         '<strong>Amount</strong> is how much of that formant you get.</p>'
-        '<p><strong>Vibrato</strong> is the wobble. Rate is how fast, '
-        'depth is how far in semitones, jitter is how human, that is to '
-        'say how irregular.</p>',
+        '<p><strong>Voices</strong> is how many copies of the scream sing '
+        'at once, one to eight, and <strong>Detune</strong> is how far '
+        'apart they are tuned, in cents. Together they are the thickness '
+        'of the voice: one voice is bare and focused, eight spread wide is '
+        'a crowd of one person.</p>'
+        '<p><strong>Aspiration</strong> is breath. It is not noise: there '
+        'is no hiss generator anywhere in this pedal. It is two extra '
+        'inharmonic tones inside the voice itself, which is why it tears '
+        'rather than hisses.</p>',
         "y", "The three menus"))
 
     # ---- memory ---------------------------------------------------------
@@ -890,7 +909,8 @@ def build_pages(toc_rows=""):
         '<h1><span class="num">6</span>Charge mode</h1>'
         '<p>With a voice engaged and <strong>no menu latched</strong>, '
         'stomp <strong>both</strong> footswitches together and hold. The '
-        'scream charges: gain swells, pitch sweeps, vibrato deepens, and '
+        'scream charges: gain swells, pitch sweeps, breath tears into the '
+        'voice, and '
         'the LEDs alternate faster and faster as it builds. Release and it '
         'winds down.</p>'
         '<p>It lasts exactly as long as you hold it. No latch, no '
@@ -1035,7 +1055,7 @@ def build_pages(toc_rows=""):
         '<tr><td>Engage or bypass</td><td>Tap either footswitch</td></tr>'
         '<tr><td>Latch menu 2<br>(F1, F2)</td>'
         '<td>Hold RIGHT ~1 s: it latches while you hold</td></tr>'
-        '<tr><td>Latch menu 3<br>(F3, vibrato)</td>'
+        '<tr><td>Latch menu 3<br>(F3, voice stack)</td>'
         '<td>Hold LEFT ~1 s: it latches while you hold</td></tr>'
         '<tr><td>Jump to the other menu</td>'
         '<td>With one latched, tap the other footswitch</td></tr>'

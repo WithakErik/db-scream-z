@@ -42,12 +42,22 @@ export function applyCharge(base, c, level, charging) {
     v.tone += (target - v.tone) * level;
   }
 
-  // Vibrato: added depth/rate, clamped to the menu 3 knob ranges.
-  if (c.vib !== 0) {
-    v.vib_depth += (c.vib === 2 ? 1.5 : 0.5) * level;
-    v.vib_rate += (c.vib === 2 ? 3.0 : 1.0) * level;
-    if (v.vib_depth > 4.0) v.vib_depth = 4.0;
-    if (v.vib_rate > 14.0) v.vib_rate = 14.0;
+  // Aspiration: added breath, clamped to the menu 3 knob range. A voice
+  // sitting at 0 breath still gets it, which is the point: the power-up
+  // ramp is where the scream tears.
+  //
+  // Aspiration is the only thing charge moves that is GRAIN-AFFECTING: any
+  // change to it re-dirties the grain tables, and a rebuild is 8 voices x
+  // grainLen x 3 formants. A continuous ramp would rebuild every block for
+  // the whole charge, so the ADDED amount is quantised to 1/32 of the
+  // range: about 20 rebuilds across a full charge instead of hundreds, and
+  // a step that small is inaudible in a breath texture. The base value is
+  // left exact so level 0 stays a bit-exact identity. Both amounts are
+  // exact multiples of 1/32, so full charge lands on its nominal value.
+  if (c.aspir !== 0) {
+    const add = (c.aspir === 2 ? 0.625 : 0.25) * level;
+    v.aspiration += Math.round(add * 32.0) / 32.0;
+    if (v.aspiration > 1.0) v.aspiration = 1.0;
   }
   return v;
 }
@@ -60,5 +70,5 @@ export const kChargeLabels = {
   decay: ['instant', 'slow', 'fast'],
   pitch: ['off', 'fall', 'rise'],
   tone:  ['off', 'darker', 'brighter'],
-  vib:   ['off', 'low', 'high'],
+  aspir: ['off', 'low', 'high'],
 };

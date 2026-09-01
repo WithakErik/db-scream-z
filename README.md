@@ -25,9 +25,13 @@ recipes in the [manual](manual/DBscreamZ-manual.pdf) that you dial in by hand
 and save to a slot.
 
 There is deliberately **no noise anywhere in the voice path**. No white noise,
-no aspiration hiss, no impulse responses. Everything is grains, resonators and
-LFOs [low-frequency oscillators]. An earlier version injected noise to match a
-measured harmonics-to-noise ratio and was rejected by ear on the spot.
+no hiss generator, no impulse responses. Everything is grains and resonators.
+An earlier version injected noise to match a measured harmonics-to-noise
+ratio and was rejected by ear on the spot.
+
+The **aspiration** knob is the exception that proves it: it adds breath, but
+that breath is two extra inharmonic tones inside the voice itself, not a
+noise source. It tears rather than hisses.
 
 It runs on the [Cleveland Music Co. Hothouse](https://clevelandmusicco.com/hothouse-diy-digital-signal-processing-platform-kit/)
 platform with a **Daisy Seed3**, in a 125B enclosure: six knobs, three
@@ -94,7 +98,7 @@ Normally the six knobs are the default layer:
 Hold the RIGHT stomp: about a second in, **menu 2** latches under your foot,
 the right LED starts blinking, and the knobs now edit formants F1 and F2. It
 does not wait for you to let go, and letting go changes nothing. Hold LEFT
-the same way for **menu 3**, F3 and vibrato. While a menu is latched, tap the
+the same way for **menu 3**, F3 and the voice stack. While a menu is latched, tap the
 *other* stomp to jump straight to the other menu; tap the blinking side's own
 stomp to exit.
 
@@ -104,6 +108,17 @@ blinking light is never mistaken for two lit ones.
 
 After any layer change a knob is inert until you move it, so nothing ever
 jumps to wherever the knob happens to be pointing.
+
+Menu 3's bottom row is the **voice stack**: how many copies of the scream
+sing at once (knob 4, one to eight), how far apart they are tuned (knob 5,
+up to 60 cents), and how much breath rides on top (knob 6). More voices and
+wider detune thicken the scream; one voice with no detune is the bare,
+focused version of the same character.
+
+Knob 4 steps through the eight counts in eight equal bands, so it always
+lands on a whole number. Turning knob 6 fully anticlockwise switches the
+aspiration **off**: the last sliver of travel reads as a hard zero, so there
+is no breath in the voice at all rather than a residual trickle.
 
 ### Toggles
 
@@ -133,7 +148,8 @@ tweaks survive.
 ### Charge mode
 
 With a voice **engaged**, stomp both switches together and hold. The sound
-charges like a power-up: gain swells, pitch sweeps, vibrato deepens, and the
+charges like a power-up: gain swells, pitch sweeps, breath tears into the
+voice, and the
 LEDs alternate faster and faster. Release to let it wind down. It is an
 overlay, so it never touches the voice you have saved.
 
@@ -143,7 +159,7 @@ Configure it with the toggles while a menu is latched:
 |---|---|---|
 | 1 | Gain: big / on / off | Pitch: rise / fall / off |
 | 2 | Time: ~6 s / ~2.5 s / ~0.75 s | Tone: brighter / darker / off |
-| 3 | Decay: fast / slow / instant | Vibrato: high / low / off |
+| 3 | Decay: fast / slow / instant | Aspiration: high / low / off |
 
 That config is global and survives a power cycle.
 

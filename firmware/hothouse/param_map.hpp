@@ -17,6 +17,30 @@ inline float map_cube(float t, float lo, float hi) {
   return lo + (hi - lo) * t * t * t;
 }
 
+// Aspiration: 0..hi with a detent band at the BOTTOM of the travel that
+// maps to exactly 0, so the breath can be switched fully OFF. Same reason
+// as the tone center detent: a real pot never reads exactly 0 at full
+// counter-clockwise, and "no noise anywhere in the voice path" (FIRMWARE.md
+// section 5) means 0 has to be reachable, not a residual trickle. The first
+// 5% of the travel pins to 0 (comfortably above the 2% knob-pickup
+// threshold, so a knob parked at the bottom cannot drift back into life);
+// the rest rescales to 0..hi.
+inline float map_lin_off(float t, float hi) {
+  const float dz = 0.05f;
+  if (t <= dz) return 0.0f;
+  return hi * (t - dz) / (1.0f - dz);
+}
+
+// Voice count: 1..8 in eight equal bands, so every count gets the same
+// slice of the travel and a knob at either stop lands on a legal value.
+// The engine rounds and clamps this again (fof_engine.hpp nUni).
+inline float map_voices(float t) {
+  int n = 1 + static_cast<int>(t * 8.0f);
+  if (n < 1) n = 1;
+  if (n > 8) n = 8;
+  return static_cast<float>(n);
+}
+
 // Tone: -1..+1 with a center detent band that maps to exactly 0. The spec
 // requires the center to be bit-transparent and a real pot never reads
 // exactly 0.5, so +/-10% around center pins tone to 0; the remaining travel
@@ -58,9 +82,9 @@ inline void apply_knob(MenuLayer layer, int k, float t, VoiceParams& vp) {
         case 0: vp.f3  = map_lin(t, 1500.0f, 4500.0f); break;
         case 1: vp.bw3 = map_lin(t, 5.0f, 500.0f); break;
         case 2: vp.a3  = map_lin(t, 0.0f, 2.0f); break;
-        case 3: vp.vib_rate   = map_lin(t, 0.0f, 14.0f); break;
-        case 4: vp.vib_depth  = map_lin(t, 0.0f, 4.0f); break;
-        case 5: vp.vib_jitter = map_lin(t, 0.0f, 0.6f); break;
+        case 3: vp.unison       = map_voices(t); break;
+        case 4: vp.detune_cents = map_lin(t, 0.0f, 60.0f); break;
+        case 5: vp.aspiration   = map_lin_off(t, 1.0f); break;
       }
       break;
   }

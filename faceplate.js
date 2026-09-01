@@ -37,6 +37,15 @@ export class Faceplate {
     // Physical control state.
     this.knobPos = [0.5, 0.5, 0.5, 0.5, 0.5, 0.5];
     this.toggles = [TogglePos.Middle, TogglePos.Up, TogglePos.Middle];
+    // While a menu is latched the three toggles ARE the charge rows, so
+    // they get their own bank: the levers show and edit the charge config
+    // instead of octave/page/gate, seeded from the config the moment the
+    // menu latches. A real pedal cannot do this (the lever is where your
+    // hand left it, and the firmware only reads MOVES), so this is a
+    // deliberate emulator affordance: on screen a lever that reads "on"
+    // while sitting in the down slot is just wrong-looking.
+    this.chargeToggles = [TogglePos.Middle, TogglePos.Middle, TogglePos.Middle];
+    this.chargeBank = false;
     this.leftDown = false;
     this.rightDown = false;
     this.onStompChange = () => {};
@@ -201,7 +210,10 @@ export class Faceplate {
   }
 
   wireToggle(t) {
-    const set = (pos) => { this.toggles[t.t] = pos; };
+    // Writes the bank the lever is currently showing, so what you click is
+    // what moves: outside a menu that is octave/page/gate, inside one it is
+    // the charge row.
+    const set = (pos) => { this.activeToggles()[t.t] = pos; };
     t.g.addEventListener('pointerdown', (e) => {
       const box = t.g.getBoundingClientRect();
       const frac = (e.clientY - box.top) / box.height;
@@ -211,7 +223,7 @@ export class Faceplate {
     });
     t.g.addEventListener('keydown', (e) => {
       const order = [TogglePos.Up, TogglePos.Middle, TogglePos.Down];
-      const at = order.indexOf(this.toggles[t.t]);
+      const at = order.indexOf(this.activeToggles()[t.t]);
       if (e.key === 'ArrowUp') set(order[Math.max(0, at - 1)]);
       else if (e.key === 'ArrowDown') set(order[Math.min(2, at + 1)]);
       else return;
@@ -246,14 +258,30 @@ export class Faceplate {
   // two switches). Returns to normal on release.
   setBothDown(v) { this.leftDown = v; this.rightDown = v; }
 
+  // The bank the levers currently show and edit.
+  activeToggles() {
+    return this.chargeBank ? this.chargeToggles : this.toggles;
+  }
+
+  // Called each frame BEFORE inputs(). Seeds the charge bank from the
+  // stored config on the tick a menu latches, so the levers start where
+  // the settings already are instead of wherever octave/page/gate left
+  // them. The controller ignores the resulting jump because a toggle move
+  // only counts when the menu did not change that tick.
+  setChargeBank(active, seedPositions) {
+    if (active && !this.chargeBank) this.chargeToggles = seedPositions.slice();
+    this.chargeBank = active;
+  }
+
   // ---- what the controller reads each tick ----
   inputs(nowMs) {
+    const tg = this.activeToggles();
     return {
       left_down: this.leftDown,
       right_down: this.rightDown,
-      t_octave: this.toggles[0],
-      t_page: this.toggles[1],
-      t_gate: this.toggles[2],
+      t_octave: tg[0],
+      t_page: tg[1],
+      t_gate: tg[2],
       knobs: this.knobPos.slice(),
       now_ms: nowMs,
     };
@@ -277,7 +305,7 @@ export class Faceplate {
     }
     for (let t = 0; t < 3; t++) {
       const e = this.toggleEls[t];
-      const pos = this.toggles[t];
+      const pos = this.activeToggles()[t];
       e.lever.setAttribute('cy',
         TOG_Y + (pos === TogglePos.Up ? 2 : pos === TogglePos.Down ? 10 : 6));
       e.label.textContent = view.toggleLabels[t];

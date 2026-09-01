@@ -195,10 +195,11 @@ int main() {
     // the RIGHT LED is dark here for the same reason, and this is the
     // case that prompted the amendment: R engaged, menu 3 latched
     assert(!c.right && !d.right);
-    // knob 3 was rearmed at its physical 0.5; moving it to 0.9 crosses
-    // the pickup threshold, so vib rate takes over: 0.9 * 14 = 12.6 Hz
+    // knob 3 was rearmed at its physical 0.5; moving it to 0.9 crosses the
+    // pickup threshold, so the voice count takes over: 0.9 is the eighth of
+    // eight equal bands, so 8 voices.
     s.in.knobs[3] = 0.9f; s.step();
-    assert(near(s.ui.edit_buffer().vib_rate, 12.6f));
+    assert(near(s.ui.edit_buffer().unison, 8.0f));
     s.tap(Side::Left);
     assert(s.ui.layer() == MenuLayer::Menu1);
   }
@@ -365,8 +366,8 @@ int main() {
     assert(!s.ui.save_pending());
     assert(s.ui.engaged() && s.ui.source() == EngagedSource::SlotR);  // no recall
     s.in.knobs[3] = 0.52f;           // pickup rearmed on the switch: a small
-    s.step();                        // move stays inert (vib rate untouched)
-    assert(near(s.ui.edit_buffer().vib_rate, g_store.slots[0].vib_rate));
+    s.step();                        // move stays inert (voice count untouched)
+    assert(near(s.ui.edit_buffer().unison, g_store.slots[0].unison));
     s.tap(Side::Right);              // other side again: back to menu 2
     assert(s.ui.layer() == MenuLayer::Menu2);
     s.tap(Side::Right);              // own side (blinking): exit
@@ -674,7 +675,46 @@ int main() {
     assert(s.ui.page() == Page::Set1);           // page frozen in menus
   }
 
-  // ---- menu 3 rows (pitch/tone/vib); page stays frozen through exit
+  // ---- a toggle reading that differs across a menu change is a change of
+  // MEANING, not a gesture: the three toggles belong to octave/page/gate
+  // outside a menu and to the charge rows inside one, so neither side may
+  // act on the difference. Here the positions cannot physically jump; the
+  // emulator's on-screen levers can, because they swap banks, which is what
+  // this guard exists for (pedal/static/faceplate.js setChargeBank).
+  {
+    g_store = factory_store();
+    Sim s;
+    s.tap(Side::Right);                  // engage 1R
+    const Page page0 = s.ui.page();
+    const uint8_t gate0 = s.ui.edit_buffer().gate_level;
+
+    // Latch menu 3 and swap every toggle reading on the very tick the menu
+    // takes effect: nothing may be written to the charge config.
+    s.press(Side::Left);
+    s.step(1100);                        // menu 3 latches in here
+    s.in.t_octave = TogglePos::Up;
+    s.in.t_page = TogglePos::Down;
+    s.in.t_gate = TogglePos::Up;
+    s.release(Side::Left);
+    assert(s.ui.layer() == MenuLayer::Menu3);
+    // The first tick after the swap DOES see a move (the menu did not
+    // change on it), so the config follows the levers, which is the
+    // emulator's intent. What must never happen is the reverse leak:
+    // page/octave/gate untouched while the menu is latched.
+    assert(s.ui.page() == page0);
+    assert(s.ui.edit_buffer().gate_level == gate0);
+
+    // Now leave the menu while the readings swap back in the same tick.
+    s.in.t_octave = TogglePos::Middle;
+    s.in.t_page = TogglePos::Up;
+    s.in.t_gate = TogglePos::Middle;
+    s.tap(Side::Left);                   // own side: exit
+    assert(s.ui.layer() == MenuLayer::Menu1);
+    assert(s.ui.page() == page0);        // no retro-applied page jump
+    assert(s.ui.edit_buffer().gate_level == gate0);
+  }
+
+  // ---- menu 3 rows (pitch/tone/aspiration); page stays frozen through exit
   // and only follows a NEW move made outside the menu
   {
     g_store = factory_store();
@@ -687,9 +727,9 @@ int main() {
     s.in.t_page = TogglePos::Middle; // tone -> darker (NOT a page change)
     s.step();
     assert(s.ui.charge_config().tone == 1);
-    s.in.t_gate = TogglePos::Up;     // vib -> high
+    s.in.t_gate = TogglePos::Up;     // aspiration -> high
     s.step();
-    assert(s.ui.charge_config().vib == 2);
+    assert(s.ui.charge_config().aspir == 2);
     s.tap(Side::Left);               // exit menu 3 (own side)
     assert(s.ui.config_save_pending());  // dirty exit triggers the write
     g_store.charge = s.ui.charge_config();

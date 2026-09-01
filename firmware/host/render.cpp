@@ -31,6 +31,27 @@ double preset_f0_hz(const std::string& name) {
   return 452.0;
 }
 
+// presets.json vibrato per character, for the same reason: this binary
+// reproduces ref_render.js against the FROZEN v12 engine, and v12 had
+// per-character vibrato. The pedal itself no longer does (menu 3 knobs 4-6
+// are the unison stack now and main.cpp parks the LFO at 0), so these
+// values left presets.hpp along with the rest of the vibrato. They stay
+// here because the milestone reference renders must not move.
+double preset_vib_rate_hz(const std::string& name) {
+  if (name == "Wukong")  return 6.72;
+  if (name == "Rice")    return 7.25;
+  if (name == "Prince")  return 6.98;
+  if (name == "Piccolo") return 7.1;
+  return 6.7;
+}
+double preset_vib_depth_semi(const std::string& name) {
+  if (name == "Wukong")  return 0.423;
+  if (name == "Rice")    return 0.209;
+  if (name == "Prince")  return 0.7;
+  if (name == "Piccolo") return 0.7;
+  return 0.42;
+}
+
 // --set keys are the JS param names (ref_render.js line 81 writes straight
 // into the worklet's `p`), mapped here onto the snake_cased FofParams fields.
 bool apply_set(FofParams& p, const std::string& k, double v) {
@@ -104,8 +125,9 @@ int main(int argc, char** argv) {
   }
 
   // ---- v12 param set: app.js P defaults + applyPreset() baking ----
-  // (ref_render.js lines 69-78; the character supplies formants + vibrato
-  // only, formantScale is already baked into formants_hz)
+  // (ref_render.js lines 69-78; the character supplies formants only,
+  // formantScale is already baked into formants_hz, and the v12 vibrato
+  // comes from the tables above)
   FofParams p;
   p.f1 = pr->formants_hz[0];
   p.f2 = pr->formants_hz[1];
@@ -127,8 +149,8 @@ int main(int argc, char** argv) {
   p.leveler = true;
   p.input_gain = 4.0;
   p.gate = 0.02;
-  p.vib_rate = pr->vib_rate_hz;
-  p.vib_depth = pr->vib_depth_semi;
+  p.vib_rate = preset_vib_rate_hz(character);
+  p.vib_depth = preset_vib_depth_semi(character);
   p.vib_jitter = 0.10;
   p.gain = 1.0;
 

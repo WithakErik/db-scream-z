@@ -37,13 +37,26 @@ Normally the six knobs are the DEFAULT layer:
 Hold the RIGHT stomp: about 1 second in, MENU 2 latches under your foot
 (right LED blinks) and the knobs edit formants F1/F2. It does not wait
 for the release, and letting go changes nothing. Hold LEFT the same way
-for MENU 3 (F3 + vibrato). While a menu is latched ONLY the blinking
+for MENU 3 (F3 + the voice stack). While a menu is latched ONLY the blinking
 LED is lit: the other goes dark even if that was the engaged side. The
 sound keeps playing, its LED just steps aside so one blinking light is
 never mistaken for two lit ones. Tap the OTHER stomp to jump straight
 to the other menu; tap the blinking side's own stomp to exit. After
 any menu change a knob is inert until you move it, so nothing ever
 jumps.
+
+Menu 3's bottom row is the VOICE STACK: how many copies of the voice
+sing at once (knob 4, one to eight), how far apart they are tuned
+(knob 5, up to 60 cents) and how much breath rides on top (knob 6).
+More voices and wider detune thicken the scream; one voice with no
+detune is the bare, focused version of the same character.
+
+Knob 4 steps: the travel is eight equal bands, one per voice count, so
+it lands on a whole number wherever you leave it. Turning knob 6 fully
+counter-clockwise switches the aspiration OFF: the last sliver of
+travel before 7:00 is a detent that reads as a hard zero, so the voice
+path goes back to having no breath in it at all rather than a residual
+trickle.
 
 ### Toggles (left to right)
 
@@ -77,7 +90,8 @@ update gesture instead, and it will take the pedal off-line mid-song.
 
 With a voice engaged, then, stomp BOTH switches together and hold: the
 sound charges up like a power-up scream, gain swelling, pitch sweeping,
-vibrato deepening, while the LEDs alternate faster and faster. Release
+breath tearing into the voice, while the LEDs alternate faster and
+faster. Release
 to let it wind down. Configure it with the toggles while a menu is
 latched:
 
@@ -85,7 +99,7 @@ latched:
 |---|---|---|
 | 1 | Gain: Above 9000! / on / off | Pitch: rise / fall / off |
 | 2 | Charge time: Birit Spomb ~6 s / Hamekameka ~2.5 s / punch ~0.75 s | Tone: brighter / darker / off |
-| 3 | Decay: fast / slow / off (instant) | Vibrato: high / low / off |
+| 3 | Decay: fast / slow / off (instant) | Aspiration: high / low / off |
 
 The config is global, remembered across power cycles, and never touches
 your saved voices.
@@ -154,9 +168,9 @@ until moved), then save to any slot.
 | F3 Hz | 3111.7 | 54% | 12:22 |
 | F3 bandwidth | 62.5 | 12% | 8:09 |
 | F3 amount | 1 | 50% | 12:00 |
-| Vibrato rate Hz | 6.72 | 48% | 11:48 |
-| Vibrato depth st | 0.423 | 11% | 8:03 |
-| Vibrato jitter | 0.1 | 17% | 8:40 |
+| Voices | 3 | 31% | 10:07 |
+| Detune cents | 11 | 18% | 8:49 |
+| Aspiration | 0 | 0% | 7:00 |
 
 Toggles: 1 Octave = Middle (0), 3 Gate = Middle (medium).
 
@@ -195,9 +209,9 @@ until moved), then save to any slot.
 | F3 Hz | 3625 | 71% | 2:05 |
 | F3 bandwidth | 62.5 | 12% | 8:09 |
 | F3 amount | 1 | 50% | 12:00 |
-| Vibrato rate Hz | 7.25 | 52% | 12:10 |
-| Vibrato depth st | 0.209 | 5% | 7:31 |
-| Vibrato jitter | 0.1 | 17% | 8:40 |
+| Voices | 2 | 19% | 8:52 |
+| Detune cents | 8 | 13% | 8:20 |
+| Aspiration | 0.05 | 10% | 7:58 |
 
 Toggles: 1 Octave = Middle (0), 3 Gate = Middle (medium).
 
@@ -236,9 +250,9 @@ until moved), then save to any slot.
 | F3 Hz | 2688.3 | 40% | 10:57 |
 | F3 bandwidth | 62.5 | 12% | 8:09 |
 | F3 amount | 1 | 50% | 12:00 |
-| Vibrato rate Hz | 6.98 | 50% | 11:59 |
-| Vibrato depth st | 0.7 | 18% | 8:45 |
-| Vibrato jitter | 0.1 | 17% | 8:40 |
+| Voices | 4 | 44% | 11:22 |
+| Detune cents | 18 | 30% | 10:00 |
+| Aspiration | 0.15 | 19% | 8:55 |
 
 Toggles: 1 Octave = Middle (0), 3 Gate = Middle (medium).
 
@@ -277,9 +291,9 @@ until moved), then save to any slot.
 | F3 Hz | 2528.8 | 34% | 10:25 |
 | F3 bandwidth | 62.5 | 12% | 8:09 |
 | F3 amount | 1 | 50% | 12:00 |
-| Vibrato rate Hz | 7.1 | 51% | 12:04 |
-| Vibrato depth st | 0.7 | 18% | 8:45 |
-| Vibrato jitter | 0.1 | 17% | 8:40 |
+| Voices | 5 | 56% | 12:37 |
+| Detune cents | 26 | 43% | 11:20 |
+| Aspiration | 0.3 | 34% | 10:20 |
 
 Toggles: 1 Octave = Middle (0), 3 Gate = Middle (medium).
 
@@ -318,9 +332,9 @@ until moved), then save to any slot.
 | F3 Hz | 2900 | 47% | 11:40 |
 | F3 bandwidth | 62.5 | 12% | 8:09 |
 | F3 amount | 1 | 50% | 12:00 |
-| Vibrato rate Hz | 4.5 | 32% | 10:12 |
-| Vibrato depth st | 0.6 | 15% | 8:30 |
-| Vibrato jitter | 0.1 | 17% | 8:40 |
+| Voices | 5 | 56% | 12:37 |
+| Detune cents | 24 | 40% | 11:00 |
+| Aspiration | 0.35 | 38% | 10:49 |
 
 Toggles: 1 Octave = Middle (0), 3 Gate = Middle (medium).
 
@@ -359,9 +373,9 @@ until moved), then save to any slot.
 | F3 Hz | 3050 | 52% | 12:10 |
 | F3 bandwidth | 62.5 | 12% | 8:09 |
 | F3 amount | 1 | 50% | 12:00 |
-| Vibrato rate Hz | 6.8 | 49% | 11:51 |
-| Vibrato depth st | 0.35 | 9% | 7:52 |
-| Vibrato jitter | 0.1 | 17% | 8:40 |
+| Voices | 3 | 31% | 10:07 |
+| Detune cents | 14 | 23% | 9:20 |
+| Aspiration | 0.12 | 16% | 8:38 |
 
 Toggles: 1 Octave = Middle (0), 3 Gate = Middle (medium).
 
@@ -400,9 +414,9 @@ until moved), then save to any slot.
 | F3 Hz | 3350 | 62% | 1:10 |
 | F3 bandwidth | 62.5 | 12% | 8:09 |
 | F3 amount | 1 | 50% | 12:00 |
-| Vibrato rate Hz | 7.8 | 56% | 12:34 |
-| Vibrato depth st | 0.5 | 12% | 8:15 |
-| Vibrato jitter | 0.1 | 17% | 8:40 |
+| Voices | 2 | 19% | 8:52 |
+| Detune cents | 8 | 13% | 8:20 |
+| Aspiration | 0.1 | 15% | 8:27 |
 
 Toggles: 1 Octave = Middle (0), 3 Gate = Middle (medium).
 
@@ -441,8 +455,8 @@ until moved), then save to any slot.
 | F3 Hz | 2400 | 30% | 10:00 |
 | F3 bandwidth | 62.5 | 12% | 8:09 |
 | F3 amount | 1 | 50% | 12:00 |
-| Vibrato rate Hz | 5.2 | 37% | 10:42 |
-| Vibrato depth st | 0.9 | 22% | 9:15 |
-| Vibrato jitter | 0.1 | 17% | 8:40 |
+| Voices | 4 | 44% | 11:22 |
+| Detune cents | 30 | 50% | 12:00 |
+| Aspiration | 0.45 | 48% | 11:46 |
 
 Toggles: 1 Octave = Middle (0), 3 Gate = Middle (medium).

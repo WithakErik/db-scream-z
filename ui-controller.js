@@ -56,6 +56,7 @@ export class UiController {
     this.lastOctave = input.t_octave;
     this.lastPage = input.t_page;
     this.lastGate = input.t_gate;
+    this.lastMenu = this.menu;
     this.persistedConfig = { ...store.charge };
     this.leftDown = input.left_down;
     this.rightDown = input.right_down;
@@ -150,7 +151,17 @@ export class UiController {
     // freeform live-tracking) write the edit buffer. Inside a latched menu:
     // toggle MOVES edit the global charge config instead. The page is
     // move-event-driven so a config edit can never page-switch on exit.
-    if (this.menu === Menu.None) {
+    // A toggle only counts as MOVED when the menu did not change on this
+    // same tick. Latching or leaving a menu hands the three toggles to a
+    // different set of parameters, so a reading that differs across that
+    // boundary is a change of meaning, not a gesture, and must not be
+    // applied to either side. On hardware the positions cannot jump and
+    // this only costs the one tick the menu changes in; the emulator needs
+    // it because its levers swap banks (faceplate.js setChargeBank).
+    const menuChanged = this.menu !== this.lastMenu;
+    if (menuChanged) {
+      // fall through to the re-baseline below: no move this tick
+    } else if (this.menu === Menu.None) {
       if (input.t_page !== this.lastPage) this.page = UiController.pageFrom(input.t_page);
       const freeformLive = this.src === EngagedSource.Freeform;
       if (input.t_octave !== this.lastOctave || freeformLive)
@@ -162,6 +173,7 @@ export class UiController {
       if (input.t_page !== this.lastPage) this.setChargeField(1, input.t_page);
       if (input.t_gate !== this.lastGate) this.setChargeField(2, input.t_gate);
     }
+    this.lastMenu = this.menu;
     this.lastOctave = input.t_octave;
     this.lastPage = input.t_page;
     this.lastGate = input.t_gate;
@@ -297,12 +309,12 @@ export class UiController {
   static menuOf(side) { return side === Side.Right ? Menu.Menu2 : Menu.Menu3; }
 
   // Toggle move while a menu is latched edits the global charge config.
-  // Menu 2: gain/time/decay. Menu 3: pitch/tone/vib.
+  // Menu 2: gain/time/decay. Menu 3: pitch/tone/aspiration.
   setChargeField(toggle, pos) {
     const v = UiController.chargeVal(pos);
     const keys = this.menu === Menu.Menu2
       ? ['gain', 'time', 'decay']
-      : ['pitch', 'tone', 'vib'];
+      : ['pitch', 'tone', 'aspir'];
     // Dirtiness is judged at menu exit against persistedConfig.
     this.config[keys[toggle]] = v;
   }

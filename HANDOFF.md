@@ -182,10 +182,17 @@ Key properties, all verified:
 - The grain is **pitch-independent**; it is only recomputed when formant
   parameters change. This is what makes FOF cheap.
 - Vibrato is a sine LFO with jitter applied to the **LFO rate**, never to the
-  audio. No noise is introduced.
+  audio. No noise is introduced. Rate 0 means OFF: the phase is parked at 0
+  rather than frozen where it stopped, because a frozen phase would leave a
+  constant `depth * sin(phase)` detune on the whole stack.
 - **Aspiration is forced to zero.** MonkSynth's aspiration is two inharmonic
   sinusoids (4951/3802 Hz), not white noise, but it is off by default.
-- Unison up to 8 detuned voices with staggered vibrato phase.
+  (Superseded for the PEDAL as of voice store v3: aspiration is a menu 3
+  knob and a charge-mode row there. It is still two sinusoids, so the
+  no-noise property below is unaffected; the lab default stays 0.)
+- Unison up to 8 detuned voices with staggered vibrato phase. The pedal
+  exposes the count and the detune on menu 3 knobs 4 and 5, and has no
+  vibrato of its own: it parks the LFO at 0 and thickens with the stack.
 
 **Measured spectral flatness 2.3e-5 to 1.2e-4.** For comparison, the dry
 guitar measures 2e-4 and the rejected noise-based version measured 0.06-0.09.

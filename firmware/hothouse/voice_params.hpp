@@ -7,7 +7,11 @@
 
 #include "presets.hpp"
 
-inline constexpr uint32_t kVoiceStoreVersion = 2;  // v2: + ChargeConfig
+// v2: + ChargeConfig. v3: vibrato removed; menu 3 knobs 4-6 and the sixth
+// charge row are the unison stack (voices / detune / aspiration) instead.
+// The block is the same SIZE, so the bump is what stops a v2 flash from
+// being read back with vib_rate/vib_depth/vib_jitter in those three floats.
+inline constexpr uint32_t kVoiceStoreVersion = 3;
 
 // Gate toggle thresholds, indexed low/medium/high. PLACEHOLDERS until the
 // milestone 3 on-hardware ear calibration (FIRMWARE.md gotcha 3): medium
@@ -19,7 +23,9 @@ struct VoiceParams {
   float f1, f2, f3;
   float bw1, bw2, bw3;
   float a1, a2, a3;
-  float vib_rate, vib_depth, vib_jitter;
+  float unison;        // stacked voices, 1..8 (engine rounds and clamps)
+  float detune_cents;  // unison spread, 0..60 cents
+  float aspiration;    // MonkSynth two-sine breath, 0..1, 0 = none
   float mix;           // 0 = 100% dry (bypass sound), 1 = 100% voice
   float glide_ms;      // 0..300
   float master_vol;    // 0..2, unity 1 (both paths)
@@ -41,7 +47,7 @@ struct ChargeConfig {
   uint8_t decay;    // 0 off (instant), 1 slow, 2 fast
   uint8_t pitch;    // 0 off, 1 fall, 2 rise
   uint8_t tone;     // 0 off, 1 darker, 2 brighter
-  uint8_t vib;      // 0 off, 1 low, 2 high
+  uint8_t aspir;    // 0 off, 1 low, 2 high (added breath on the ramp)
   uint8_t pad_[2];  // always 0 (memcmp comparability)
 };
 static_assert(sizeof(ChargeConfig) == 8, "no hidden padding");
@@ -57,7 +63,7 @@ inline ChargeConfig factory_charge_config() {
   c.decay = 1;  // slow
   c.pitch = 1;  // fall
   c.tone = 1;   // darker
-  c.vib = 1;    // low
+  c.aspir = 1;  // low
   return c;
 }
 
@@ -88,8 +94,10 @@ inline int slot_index(Page p, Side s) {
 // preset_idx indexes kPresets (presets.hpp): Wukong 0, Rice 1, Prince 2,
 // Piccolo 3. Non-preset fields are the v12 defaults (FIRMWARE.md section 5)
 // plus the milestone 5 post-chain factory values: drive 0, tone center,
-// volumes unity, mix full wet (factory slots must A/B against the
-// voice-only milestone renders, spec success criterion 1).
+// volumes unity, mix full wet. Only Wukong still A/Bs against the
+// voice-only milestone renders (spec success criterion 1): it keeps the v12
+// reference stack, while the other three are voiced by their own unison
+// stack, and no character has vibrato any more.
 inline VoiceParams factory_voice(int preset_idx) {
   const CharacterPreset& c = kPresets[preset_idx];
   VoiceParams v{};
@@ -98,9 +106,9 @@ inline VoiceParams factory_voice(int preset_idx) {
   v.f3 = c.formants_hz[2];
   v.bw1 = 32.5f; v.bw2 = 47.5f; v.bw3 = 62.5f;
   v.a1 = v.a2 = v.a3 = 1.0f;
-  v.vib_rate = c.vib_rate_hz;
-  v.vib_depth = c.vib_depth_semi;
-  v.vib_jitter = 0.10f;
+  v.unison = c.unison;
+  v.detune_cents = c.detune_cents;
+  v.aspiration = c.aspiration;
   v.mix = 1.0f;
   v.glide_ms = 0.0f;
   v.master_vol = 1.0f;

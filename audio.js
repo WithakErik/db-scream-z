@@ -22,7 +22,10 @@ export function toFofParams(v) {
     f1: v.f1, f2: v.f2, f3: v.f3,
     bw1: v.bw1, bw2: v.bw2, bw3: v.bw3,
     a1: v.a1, a2: v.a2, a3: v.a3,
-    vibRate: v.vib_rate, vibDepth: v.vib_depth, vibJitter: v.vib_jitter,
+    unison: v.unison, detuneCents: v.detune_cents, aspiration: v.aspiration,
+    // No vibrato anywhere in the pedal: the engine's LFO stays parked at 0
+    // (rate 0 is OFF and holds the phase at 0).
+    vibRate: 0, vibDepth: 0, vibJitter: 0,
     glideMs: v.glide_ms,
     octaveShift: v.octave,
     gate: kGateLevels[v.gate_level],

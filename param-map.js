@@ -9,6 +9,22 @@ export function mapLin(t, lo, hi) { return lo + (hi - lo) * t; }
 // Glide taper: cubic over 0..300 ms puts 100 ms at ~69% of the travel.
 export function mapCube(t, lo, hi) { return lo + (hi - lo) * t * t * t; }
 
+// Aspiration: 0..hi with a detent band at the BOTTOM of the travel that maps
+// to exactly 0, so the breath can be switched fully off. Same reason as the
+// tone center detent: a real pot never reads exactly 0 at full
+// counter-clockwise. The first 5% of the travel pins to 0, the rest rescales.
+export function mapLinOff(t, hi) {
+  const dz = 0.05;
+  if (t <= dz) return 0.0;
+  return hi * (t - dz) / (1.0 - dz);
+}
+
+// Voice count: 1..8 in eight equal bands, so every count gets the same slice
+// of the travel and a knob at either stop lands on a legal value.
+export function mapVoices(t) {
+  return Math.min(8, Math.max(1, 1 + Math.floor(t * 8)));
+}
+
 // Tone: -1..+1 with a center detent band that maps to exactly 0. The center
 // must be bit-transparent and a real pot never reads exactly 0.5, so +/-10%
 // around center pins tone to 0 and the rest rescales to the full range.
@@ -45,9 +61,9 @@ export function applyKnob(layer, k, t, vp) {
       case 0: vp.f3  = mapLin(t, 1500.0, 4500.0); break;
       case 1: vp.bw3 = mapLin(t, 5.0, 500.0); break;
       case 2: vp.a3  = mapLin(t, 0.0, 2.0); break;
-      case 3: vp.vib_rate   = mapLin(t, 0.0, 14.0); break;
-      case 4: vp.vib_depth  = mapLin(t, 0.0, 4.0); break;
-      case 5: vp.vib_jitter = mapLin(t, 0.0, 0.6); break;
+      case 3: vp.unison       = mapVoices(t); break;
+      case 4: vp.detune_cents = mapLin(t, 0.0, 60.0); break;
+      case 5: vp.aspiration   = mapLinOff(t, 1.0); break;
     }
   }
 }
@@ -58,6 +74,13 @@ export function applyKnob(layer, k, t, vp) {
 export function knobPositions(layer, vp) {
   const inv = (v, lo, hi) => Math.min(1, Math.max(0, (v - lo) / (hi - lo)));
   const invCube = (v, lo, hi) => Math.cbrt(inv(v, lo, hi));
+  const invLinOff = (v, hi) => {
+    const dz = 0.05;
+    if (v <= 0) return 0;
+    return Math.min(1, dz + (1 - dz) * (v / hi));
+  };
+  // A voice count owns a whole band of travel; draw the knob at its centre.
+  const invVoices = (v) => (Math.min(8, Math.max(1, Math.round(v))) - 0.5) / 8;
   const invTone = (v) => {
     const dz = 0.1;
     if (v === 0) return 0.5;
@@ -74,15 +97,15 @@ export function knobPositions(layer, vp) {
             inv(vp.f2, 500, 2600), inv(vp.bw2, 5, 400), inv(vp.a2, 0, 2)];
   }
   return [inv(vp.f3, 1500, 4500), inv(vp.bw3, 5, 500), inv(vp.a3, 0, 2),
-          inv(vp.vib_rate, 0, 14), inv(vp.vib_depth, 0, 4),
-          inv(vp.vib_jitter, 0, 0.6)];
+          invVoices(vp.unison), inv(vp.detune_cents, 0, 60),
+          invLinOff(vp.aspiration, 1)];
 }
 
 // Knob captions per layer, matching docs/BOOKLET.md.
 export const kKnobLabels = [
   ['Mix', 'Glide', 'Master', 'Vocal', 'Drive', 'Tone'],
   ['F1', 'F1 bw', 'F1 amt', 'F2', 'F2 bw', 'F2 amt'],
-  ['F3', 'F3 bw', 'F3 amt', 'Vib rate', 'Vib depth', 'Vib jitter'],
+  ['F3', 'F3 bw', 'F3 amt', 'Voices', 'Detune', 'Aspiration'],
 ];
 
 // Readouts for the value display under each knob.
@@ -98,6 +121,6 @@ export function knobValueText(layer, k, vp) {
             `${f(vp.f2)} Hz`, f(vp.bw2, 1), f(vp.a2, 2)][k];
   }
   return [`${f(vp.f3)} Hz`, f(vp.bw3, 1), f(vp.a3, 2),
-          `${f(vp.vib_rate, 2)} Hz`, `${f(vp.vib_depth, 2)} st`,
-          f(vp.vib_jitter, 2)][k];
+          f(vp.unison), `${f(vp.detune_cents, 1)} ct`,
+          f(vp.aspiration, 2)][k];
 }

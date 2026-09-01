@@ -197,7 +197,13 @@ class FofEngine {
       // stack; the jitter modulates the RATE, never the audio.
       jit_phase_ += (2 * M_PI * 0.31) / sr_;
       const double vib_rate = p.vib_rate * (1 + p.vib_jitter * std::sin(jit_phase_));
-      vib_phase_ += (2 * M_PI * vib_rate) / sr_;
+      // Rate 0 means vibrato OFF, so the phase is PARKED at 0, not frozen
+      // where it happened to stop: a frozen phase leaves a constant
+      // depth*sin(phase) detune on the whole stack (up to 4 semitones of
+      // permanent mistuning) instead of silence, and turning the rate back
+      // up would resume from an arbitrary offset. jitter only scales the
+      // rate by 0.4..1.6, so vib_rate is 0 only when p.vib_rate is.
+      vib_phase_ = vib_rate > 0 ? vib_phase_ + (2 * M_PI * vib_rate) / sr_ : 0.0;
       const double vib = p.vib_depth * std::sin(vib_phase_);
 
       // ---- JS lines 992-1036: trigger grains per unison voice ----

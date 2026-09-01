@@ -78,6 +78,7 @@ class UiController {
     last_octave_ = in.t_octave;
     last_page_ = in.t_page;
     last_gate_ = in.t_gate;
+    last_menu_ = menu_;
     persisted_config_ = store->charge;
     left_down_ = in.left_down;
     right_down_ = in.right_down;
@@ -175,7 +176,17 @@ class UiController {
     // latched menu: toggle MOVES edit the global charge config instead,
     // and page/octave/gate are untouched. The page is move-event-driven
     // so a config edit can never page-switch on menu exit.
-    if (menu_ == Menu::None) {
+    // A toggle only counts as MOVED when the menu did not change on this
+    // same tick. Latching or leaving a menu hands the three toggles to a
+    // different set of parameters, so a reading that differs across that
+    // boundary is a change of meaning, not a gesture, and must not be
+    // applied to either side. Here the positions cannot jump, so this only
+    // costs the one tick the menu changes in; the emulator needs it because
+    // its on-screen levers swap banks (pedal/static/faceplate.js).
+    const bool menu_changed = menu_ != last_menu_;
+    if (menu_changed) {
+      // fall through to the re-baseline below: no move this tick
+    } else if (menu_ == Menu::None) {
       if (in.t_page != last_page_) page_ = page_from(in.t_page);
       const bool freeform_live = src_ == EngagedSource::Freeform;
       if (in.t_octave != last_octave_ || freeform_live)
@@ -187,6 +198,7 @@ class UiController {
       if (in.t_page != last_page_) set_charge_field(1, in.t_page);
       if (in.t_gate != last_gate_) set_charge_field(2, in.t_gate);
     }
+    last_menu_ = menu_;
     last_octave_ = in.t_octave;
     last_page_ = in.t_page;
     last_gate_ = in.t_gate;
@@ -326,7 +338,7 @@ class UiController {
     return 1;
   }
   // Toggle move while a menu is latched edits the global charge config.
-  // Menu 2: gain/time/decay. Menu 3: pitch/tone/vib.
+  // Menu 2: gain/time/decay. Menu 3: pitch/tone/aspiration.
   void set_charge_field(int toggle, TogglePos pos) {
     const uint8_t v = charge_val(pos);
     uint8_t* f;
@@ -337,7 +349,7 @@ class UiController {
     else
       f = toggle == 0 ? &config_.pitch
         : toggle == 1 ? &config_.tone
-                      : &config_.vib;
+                      : &config_.aspir;
     *f = v;  // dirtiness is judged at menu exit vs persisted_config_
   }
   static Menu menu_of(Side s) {
@@ -505,6 +517,7 @@ class UiController {
 
   TogglePos last_octave_ = TogglePos::Middle, last_gate_ = TogglePos::Middle;
   TogglePos last_page_ = TogglePos::Up;
+  Menu last_menu_ = Menu::None;      // menu at the previous tick (move guard)
   ChargeConfig persisted_config_{};  // last QSPI-persisted config (ISR only)
   bool left_down_ = false, right_down_ = false;
   uint32_t left_start_ = 0, right_start_ = 0;

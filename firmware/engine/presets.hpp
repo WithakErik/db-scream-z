@@ -3,12 +3,13 @@
 struct CharacterPreset {
   const char* name;
   float formants_hz[3];   // baked (tract scale already applied), Hz
-  float vib_rate_hz;
-  float vib_depth_semi;
+  float unison;           // stacked voices, 1..8
+  float detune_cents;     // unison spread, 0..60 cents
+  float aspiration;       // MonkSynth two-sine breath, 0..1
 };
 inline constexpr CharacterPreset kPresets[4] = {
-  {"Wukong",    {858.4f, 1234.0f, 3111.7f}, 6.72f, 0.423f},
-  {"Rice",    {1000.0f, 1437.5f, 3625.0f}, 7.25f, 0.209f},
-  {"Prince",    {741.6f, 1066.0f, 2688.3f}, 6.98f, 0.7f},
-  {"Piccolo",    {697.6f, 1002.8f, 2528.8f}, 7.1f, 0.7f},
+  {"Wukong",    {858.4f, 1234.0f, 3111.7f}, 3.0f, 11.0f, 0.0f},
+  {"Rice",    {1000.0f, 1437.5f, 3625.0f}, 2.0f, 8.0f, 0.05f},
+  {"Prince",    {741.6f, 1066.0f, 2688.3f}, 4.0f, 18.0f, 0.15f},
+  {"Piccolo",    {697.6f, 1002.8f, 2528.8f}, 5.0f, 26.0f, 0.3f},
 };

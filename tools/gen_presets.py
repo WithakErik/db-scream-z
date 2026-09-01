@@ -1,9 +1,28 @@
 #!/usr/bin/env python3
-"""Generate firmware/engine/presets.hpp from dbscreamz_lab/static/presets.json"""
+"""Generate firmware/engine/presets.hpp from dbscreamz_lab/static/presets.json
+
+The formants come from presets.json, which is a FROZEN copy of the lab's
+(tools/check_engine_copy.py hashes the two against each other), so nothing
+new may be added to it. The unison stack below therefore lives here: it is
+a pedal-side voicing choice, not lab data.
+"""
 
 import json
 import sys
 from pathlib import Path
+
+# Per-character unison stack, replacing the vibrato that used to carry the
+# character in menu 3 knobs 4-6. Ranges mirror the lab's controls (voices
+# 1-8, detune 0-60 cents, aspiration 0-1) and firmware/hothouse/param_map.hpp.
+# Wukong keeps the v12 reference stack (3 / 11 / 0) so the hero voice still
+# matches the milestone renders; the others are voiced by ear from their
+# vocal quality and are meant to be re-tuned on hardware.
+STACK = {
+    'Wukong':  {'unison': 3, 'detune_cents': 11.0, 'aspiration': 0.0},
+    'Rice':    {'unison': 2, 'detune_cents': 8.0,  'aspiration': 0.05},
+    'Prince':  {'unison': 4, 'detune_cents': 18.0, 'aspiration': 0.15},
+    'Piccolo': {'unison': 5, 'detune_cents': 26.0, 'aspiration': 0.30},
+}
 
 
 def format_float(value):
@@ -30,8 +49,9 @@ def generate_header(presets):
         "struct CharacterPreset {",
         "  const char* name;",
         "  float formants_hz[3];   // baked (tract scale already applied), Hz",
-        "  float vib_rate_hz;",
-        "  float vib_depth_semi;",
+        "  float unison;           // stacked voices, 1..8",
+        "  float detune_cents;     // unison spread, 0..60 cents",
+        "  float aspiration;       // MonkSynth two-sine breath, 0..1",
         "};",
         "inline constexpr CharacterPreset kPresets[4] = {",
     ]
@@ -40,28 +60,26 @@ def generate_header(presets):
     preset_items = []
     for name, data in presets.items():
         formants = data['formants_hz']
-        vib_rate = data['vib_rate_hz']
-        vib_depth = data['vib_depth_semi']
+        if name not in STACK:
+            raise AssertionError(f"{name}: no unison stack entry in gen_presets.py STACK")
+        stack = STACK[name]
 
         # Format each field
         formants_str = ', '.join(format_float(f) for f in formants)
-        vib_rate_str = format_float(vib_rate)
-        vib_depth_str = format_float(vib_depth)
 
         preset_items.append({
             'name': name,
             'formants': formants,
-            'vib_rate': vib_rate,
-            'vib_depth': vib_depth,
+            'stack': stack,
             'formants_str': formants_str,
-            'vib_rate_str': vib_rate_str,
-            'vib_depth_str': vib_depth_str,
+            'stack_str': ', '.join(format_float(stack[k]) for k in
+                                   ('unison', 'detune_cents', 'aspiration')),
         })
 
     # Build preset lines with careful spacing
-    for i, item in enumerate(preset_items):
-        # Format: {"<name>",    {formants}, vib_rate, vib_depth},
-        line = f'  {{"{item["name"]}",    {{{item["formants_str"]}}}, {item["vib_rate_str"]}, {item["vib_depth_str"]}}}'
+    for item in preset_items:
+        # Format: {"<name>",    {formants}, unison, detune_cents, aspiration},
+        line = f'  {{"{item["name"]}",    {{{item["formants_str"]}}}, {item["stack_str"]}}}'
         # Add comma after all items (including last)
         line += ','
         lines.append(line)
@@ -73,7 +91,7 @@ def generate_header(presets):
 
 
 def verify_roundtrip(presets, preset_items):
-    """Verify each emitted number equals JSON value exactly"""
+    """Verify each emitted number equals its source value exactly"""
     for preset_data, item in zip(presets.values(), preset_items):
         # Check formants
         for i, (json_val, emitted_val) in enumerate(zip(preset_data['formants_hz'], item['formants'])):
@@ -82,17 +100,17 @@ def verify_roundtrip(presets, preset_items):
                     f"{item['name']}: formants[{i}] JSON={json_val} != emitted={emitted_val}"
                 )
 
-        # Check vib_rate
-        if preset_data['vib_rate_hz'] != item['vib_rate']:
-            raise AssertionError(
-                f"{item['name']}: vib_rate_hz JSON={preset_data['vib_rate_hz']} != emitted={item['vib_rate']}"
-            )
-
-        # Check vib_depth
-        if preset_data['vib_depth_semi'] != item['vib_depth']:
-            raise AssertionError(
-                f"{item['name']}: vib_depth_semi JSON={preset_data['vib_depth_semi']} != emitted={item['vib_depth']}"
-            )
+        # Check the unison stack against STACK, and that it stays in the
+        # ranges the menu 3 knobs can reach.
+        s = item['stack']
+        if s != STACK[item['name']]:
+            raise AssertionError(f"{item['name']}: stack {s} != STACK {STACK[item['name']]}")
+        if not 1 <= s['unison'] <= 8:
+            raise AssertionError(f"{item['name']}: unison {s['unison']} outside 1..8")
+        if not 0 <= s['detune_cents'] <= 60:
+            raise AssertionError(f"{item['name']}: detune {s['detune_cents']} outside 0..60")
+        if not 0 <= s['aspiration'] <= 1:
+            raise AssertionError(f"{item['name']}: aspiration {s['aspiration']} outside 0..1")
 
 
 def main():

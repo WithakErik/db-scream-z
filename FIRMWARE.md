@@ -73,8 +73,13 @@ v12). It contains, top to bottom:
    overlap-add loop, common vibrato LFO, register/transpose, quantizer,
    glide, leveler, envelope follower, noise gate. Port each verbatim.
 3. Presets: `dbscreamz_lab/static/presets.json` -> generate a `presets.h`
-   (4 characters: formants_hz[3], vib_rate_hz, vib_depth_semi; f0 stats
-   are legacy, only used by the deprecated snap mode).
+   (4 characters: formants_hz[3]; f0 stats are legacy, only used by the
+   deprecated snap mode). As of store v3 the header also carries a
+   per-character unison stack (unison / detune_cents / aspiration) that
+   does NOT come from presets.json, because that file is a frozen copy of
+   the lab's; it lives in `tools/gen_presets.py` STACK. The character
+   vibrato that used to be in the header went with the vibrato removal
+   and now lives only in `firmware/host/render.cpp`, for parity renders.
 4. The old YIN/causal tracker in the same file is DEAD CODE for firmware:
    do not port it. BACF replaced it (measured better on every metric).
 
@@ -137,7 +142,8 @@ headers). firmware/MILESTONE5.md is the on-device runbook.
 Summary: 4 voices (2 stomp slots x 2 memory sets, factory Wukong/Prince and
 Rice/Piccolo), one volatile edit buffer, three knob layers (default layer:
 mix / glide / master / vocal vol / drive / tone; RIGHT-stomp hold-menu:
-F1/F2; LEFT-stomp hold-menu: F3 + vibrato), toggles = octave / memory page /
+F1/F2; LEFT-stomp hold-menu: F3 + unison stack, meaning voices / detune /
+aspiration; the pedal has no vibrato as of store v3), toggles = octave / memory page /
 gate level, voice-only post chain (tanh drive, tilt tone), QSPI persistence
 via libDaisy PersistentStorage, save gesture = hold one stomp ~1 s then
 press the other while still holding (menus never save; in a menu the
@@ -150,7 +156,7 @@ so no LED ever changes colour at runtime. The stock Hothouse kit BOM calls
 for two red 3mm LEDs; we deviate. Any manual or booklet copy must say blue
 LEFT / orange RIGHT.
 Charge mode (2026-08-27): both stomps together while engaged ramps a
-configurable power-up boost (gain/pitch/tone/vibrato overlay, never
+configurable power-up boost (gain/pitch/tone/aspiration overlay, never
 written to the edit buffer), configured via toggles while a menu is
 latched; spec in docs/superpowers/specs/2026-08-27-charge-mode-design.md.
 
@@ -212,23 +218,31 @@ session, in C++ form.
 
 ## 10. Suggested kickoff
 
-Where things stand (2026-08-27): milestones 0-5 are written, host-tested,
-and ARM build-verified (see firmware/MILESTONE5.md section 1 for the
-flash/RAM figures). Nothing has run on a real Hothouse yet; the project
-is waiting on hardware. HANDOFF.md and PROTOTYPE.md are historical
-background from the research phase, not current state.
+Where things stand (2026-08-31): **it runs on real hardware.** The
+milestone 5 firmware, charge mode included, was built and flashed to an
+assembled Hothouse with a Seed3 and played: audio path, footswitches,
+LEDs, voice recall and the engage/bypass path all work on first power-on.
+Build size 123,060 B, 93.88% of the 128 KB internal flash. HANDOFF.md and
+PROTOTYPE.md are historical background from the research phase, not
+current state.
 
-When the boards arrive, start a fresh session in this project directory
+What has NOT been done on hardware yet: the six criterion scripts in
+MILESTONE5.md section 5 as a full pass, the charge-mode test script
+(section 8), and the gate calibration (section 6). The three kGateLevels
+values and every charge-mode modulation depth are still placeholders
+carried over from the browser lab, never tuned by ear on the real analog
+input stage.
+
+To pick the work up, start a fresh session in this project directory
 with:
 
-> Read FIRMWARE.md, then firmware/MILESTONE5.md. The Hothouse hardware
-> just arrived. Walk me through flashing the milestone 5 firmware
-> (MILESTONE5.md section 3, plain DFU), then run the on-device test
-> scripts in MILESTONE5.md section 5 (spec success criteria 1-6) in
-> order, and finish with the gate calibration in section 6. If anything
-> fails, use the triage table in MILESTONE5.md section 7 and the earlier
-> runbooks (firmware/MILESTONE1.md, firmware/MILESTONE2-4.md) before
-> debugging by intuition.
+> Read FIRMWARE.md, then firmware/MILESTONE5.md. The pedal is built and
+> flashed and works. Run the on-device test scripts in MILESTONE5.md
+> section 5 (spec success criteria 1-6) in order, then the charge-mode
+> script in section 8, and finish with the gate calibration in section 6.
+> If anything fails, use the triage table in MILESTONE5.md section 7 and
+> the earlier runbooks (firmware/MILESTONE1.md, firmware/MILESTONE2-4.md)
+> before debugging by intuition.
 
 The earlier milestone runbooks stay relevant on hardware day:
 MILESTONE1.md has the build/flash mechanics, MILESTONE2-4.md has the

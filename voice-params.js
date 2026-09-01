@@ -3,7 +3,9 @@
 // octave and gate level. Kept structurally identical to the C++ so the Node
 // tests in ../tests can assert the same values the host tests do.
 
-export const kVoiceStoreVersion = 2;
+// v3: vibrato removed; menu 3 knobs 4-6 and the sixth charge row are the
+// unison stack (voices / detune / aspiration) instead.
+export const kVoiceStoreVersion = 3;
 
 // Gate toggle thresholds, indexed low/medium/high. Placeholders until the
 // on-hardware ear calibration; medium is the v12 ear-approved 0.02.
@@ -23,11 +25,15 @@ export const MenuLayer = { Menu1: 0, Menu2: 1, Menu3: 2 };
 
 // Wukong 0, Rice 1, Prince 2, Piccolo 3 - the order in
 // firmware/engine/presets.hpp, which slot_index and factory_store depend on.
+// The unison stack per character mirrors tools/gen_presets.py STACK, which
+// is what generates firmware/engine/presets.hpp. Formants come from
+// presets.json; the stack does not, because that file is a frozen copy of
+// the lab's.
 export const kPresets = [
-  { name: 'Wukong',  formants_hz: [858.4, 1234.0, 3111.7], vib_rate_hz: 6.72, vib_depth_semi: 0.423 },
-  { name: 'Rice',    formants_hz: [1000.0, 1437.5, 3625.0], vib_rate_hz: 7.25, vib_depth_semi: 0.209 },
-  { name: 'Prince',  formants_hz: [741.6, 1066.0, 2688.3], vib_rate_hz: 6.98, vib_depth_semi: 0.7 },
-  { name: 'Piccolo', formants_hz: [697.6, 1002.8, 2528.8], vib_rate_hz: 7.1,  vib_depth_semi: 0.7 },
+  { name: 'Wukong',  formants_hz: [858.4, 1234.0, 3111.7], unison: 3, detune_cents: 11.0, aspiration: 0.0 },
+  { name: 'Rice',    formants_hz: [1000.0, 1437.5, 3625.0], unison: 2, detune_cents: 8.0,  aspiration: 0.05 },
+  { name: 'Prince',  formants_hz: [741.6, 1066.0, 2688.3], unison: 4, detune_cents: 18.0, aspiration: 0.15 },
+  { name: 'Piccolo', formants_hz: [697.6, 1002.8, 2528.8], unison: 5, detune_cents: 26.0, aspiration: 0.30 },
 ];
 
 export function cloneVoice(v) { return { ...v }; }
@@ -45,7 +51,7 @@ export function factoryVoice(presetIdx) {
     f1: c.formants_hz[0], f2: c.formants_hz[1], f3: c.formants_hz[2],
     bw1: 32.5, bw2: 47.5, bw3: 62.5,
     a1: 1.0, a2: 1.0, a3: 1.0,
-    vib_rate: c.vib_rate_hz, vib_depth: c.vib_depth_semi, vib_jitter: 0.10,
+    unison: c.unison, detune_cents: c.detune_cents, aspiration: c.aspiration,
     mix: 1.0,
     glide_ms: 0.0,
     master_vol: 1.0,
@@ -58,12 +64,12 @@ export function factoryVoice(presetIdx) {
 }
 
 export function factoryChargeConfig() {
-  return { gain: 1, time: 1, decay: 1, pitch: 1, tone: 1, vib: 1 };
+  return { gain: 1, time: 1, decay: 1, pitch: 1, tone: 1, aspir: 1 };
 }
 
 export function chargeConfigsEqual(a, b) {
   return a.gain === b.gain && a.time === b.time && a.decay === b.decay &&
-         a.pitch === b.pitch && a.tone === b.tone && a.vib === b.vib;
+         a.pitch === b.pitch && a.tone === b.tone && a.aspir === b.aspir;
 }
 
 // Set 1 = Wukong (R) / Prince (L); Set 2 = Rice (R) / Piccolo (L).

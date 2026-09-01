@@ -5,6 +5,8 @@
 // returned copy to the engine and post chain each block. All the
 // numeric targets are placeholders to ear-tune on hardware.
 #pragma once
+#include <cmath>
+
 #include "voice_params.hpp"
 
 inline VoiceParams apply_charge(const VoiceParams& base,
@@ -47,12 +49,23 @@ inline VoiceParams apply_charge(const VoiceParams& base,
     v.tone += (target - v.tone) * level;
   }
 
-  // Vibrato: added depth/rate, clamped to the menu 3 knob ranges.
-  if (c.vib != 0) {
-    v.vib_depth += (c.vib == 2 ? 1.5f : 0.5f) * level;
-    v.vib_rate += (c.vib == 2 ? 3.0f : 1.0f) * level;
-    if (v.vib_depth > 4.0f) v.vib_depth = 4.0f;
-    if (v.vib_rate > 14.0f) v.vib_rate = 14.0f;
+  // Aspiration: added breath, clamped to the menu 3 knob range. A voice
+  // sitting at 0 breath still gets it, which is the point: the power-up
+  // ramp is where the scream tears.
+  //
+  // Aspiration is the only thing charge moves that is GRAIN-AFFECTING: any
+  // change to it re-dirties the grain tables (fof_engine.hpp set_params),
+  // and a rebuild is 8 voices x grain_len x 3 formants on the main loop.
+  // A continuous ramp would therefore rebuild on every 5 ms main-loop pass
+  // for the whole charge, so the ADDED amount is quantised to 1/32 of the
+  // range: about 20 rebuilds across a full charge instead of hundreds, and
+  // a step that small is inaudible in a breath texture. The base value is
+  // left exact so level 0 stays a bit-exact identity. Both amounts are
+  // exact multiples of 1/32, so full charge lands on its nominal value.
+  if (c.aspir != 0) {
+    const float add = (c.aspir == 2 ? 0.625f : 0.25f) * level;
+    v.aspiration += std::floor(add * 32.0f + 0.5f) / 32.0f;
+    if (v.aspiration > 1.0f) v.aspiration = 1.0f;
   }
   return v;
 }

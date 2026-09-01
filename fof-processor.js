@@ -985,7 +985,7 @@ class FofProcessor extends AudioWorkletProcessor {
       // stack together and detune alone supplies the thickness.
       this.jitPhase[0] += (2 * Math.PI * 0.31) / this.sr;
       const vibRate = p.vibRate * (1 + p.vibJitter * Math.sin(this.jitPhase[0]));
-      this.vibPhase[0] += (2 * Math.PI * vibRate) / this.sr;
+      this.vibPhase[0] = vibRate > 0 ? this.vibPhase[0] + (2 * Math.PI * vibRate) / this.sr : 0;
       const vib = p.vibDepth * Math.sin(this.vibPhase[0]);
 
       // ---- trigger grains per unison voice ----

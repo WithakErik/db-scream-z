@@ -6,7 +6,7 @@
 // FOOTSWITCH_2/LED_2 = RIGHT, verified against the Hothouse PCB netlists):
 //   Knobs 1-6 (menu 1): mix, glide, master vol, vocal vol, drive, tone
 //   RIGHT hold ~1 s   : latch menu 2 (F1/F2 formants), right LED blinks
-//   LEFT hold ~1 s    : latch menu 3 (F3 + vibrato), left LED blinks
+//   LEFT hold ~1 s    : latch menu 3 (F3 + unison stack), left LED blinks
 //   Stomp taps        : recall/engage slots, tap again = bypass; while a
 //                       menu is latched the OTHER stomp's tap = SAVE
 //   Toggle 1: octave +1/0/-1   Toggle 2: page Set1/Freeform/Set2
@@ -70,9 +70,14 @@ static FofParams to_fof_params(const VoiceParams& v) {
   p.f1 = v.f1; p.f2 = v.f2; p.f3 = v.f3;
   p.bw1 = v.bw1; p.bw2 = v.bw2; p.bw3 = v.bw3;
   p.a1 = v.a1; p.a2 = v.a2; p.a3 = v.a3;
-  p.vib_rate = v.vib_rate;
-  p.vib_depth = v.vib_depth;
-  p.vib_jitter = v.vib_jitter;
+  p.unison = static_cast<int>(v.unison);
+  p.detune_cents = v.detune_cents;
+  p.aspiration = v.aspiration;
+  // No vibrato anywhere in the pedal: the engine's LFO stays parked at 0
+  // (fof_engine.hpp treats rate 0 as OFF and holds the phase at 0).
+  p.vib_rate = 0.0;
+  p.vib_depth = 0.0;
+  p.vib_jitter = 0.0;
   p.glide_ms = v.glide_ms;
   p.octave_shift = v.octave;
   p.gate = kGateLevels[v.gate_level];

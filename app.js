@@ -18,7 +18,7 @@ import { UiController, Menu } from './ui-controller.js';
 import { Faceplate } from './faceplate.js';
 import { AudioEngine, encodeWav } from './audio.js';
 
-const STORE_KEY = 'dbscreamz.voicestore.v2';
+const STORE_KEY = 'dbscreamz.voicestore.v3';
 
 // ---- the QSPI stand-in -----------------------------------------------
 // The pedal keeps four slots and the charge config in QSPI flash, written
@@ -236,9 +236,9 @@ function toggleView() {
   if (m === Menu.Menu3) {
     const c = ui.chargeConfig();
     return {
-      labels: ['Pitch', 'Tone', 'Vib'],
+      labels: ['Pitch', 'Tone', 'Aspir'],
       values: [kChargeLabels.pitch[c.pitch], kChargeLabels.tone[c.tone],
-               kChargeLabels.vib[c.vib]],
+               kChargeLabels.aspir[c.aspir]],
       charge: 'left',    // menu 3 is the LEFT stomp: blue, like LED 1
     };
   }
@@ -264,8 +264,26 @@ function statusText() {
 }
 
 // ---- the loop ---------------------------------------------------------
+// Charge config value (0/1/2) to the lever position that means it. The
+// mapping is uniform across every row: Up = 2, Middle = 1, Down = 0.
+const CHARGE_POS = [TogglePos.Down, TogglePos.Middle, TogglePos.Up];
+
+// The three charge rows of the latched menu, as lever positions.
+function chargeTogglePositions() {
+  const c = ui.chargeConfig();
+  const keys = ui.menuLatched() === Menu.Menu2
+    ? ['gain', 'time', 'decay']
+    : ['pitch', 'tone', 'aspir'];
+  return keys.map((k) => CHARGE_POS[c[k]]);
+}
+
 function frame() {
   const t = now();
+  // Hand the levers to the charge rows while a menu is latched, so they
+  // show and edit the setting under them rather than sitting wherever
+  // octave/page/gate left them. Must run before inputs().
+  const latched = ui.menuLatched() !== Menu.None;
+  face.setChargeBank(latched, latched ? chargeTogglePositions() : []);
   ui.tick(face.inputs(t));
 
   // Save handshakes: on hardware these cross to the main loop because the

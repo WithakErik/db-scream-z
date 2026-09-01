@@ -9,30 +9,35 @@ export function applyCharge(base, c, level, charging) {
   const v = cloneVoice(base);
   if (level <= 0.0) return v;
 
-  // Gain (post chain): on = x1.5 vocal + 0.3 drive at full charge; the top
-  // setting pins drive toward 1 and doubles vocal.
-  if (c.gain === 1) {
-    v.vocal_vol *= 1.0 + 0.5 * level;
-    v.drive += 0.3 * level;
-  } else if (c.gain === 2) {
-    v.drive += (1.0 - v.drive) * level;
-    v.vocal_vol *= 1.0 + 1.0 * level;
+  // Every row here ramps its parameter toward the TOP of its own range,
+  // measured from wherever the voice already sits: charge is a power-up, so
+  // a full charge means full value, not a fixed increment on top of whatever
+  // you dialled. `reach` is how far up that gap the row travels at full
+  // charge: up goes the whole way, middle stops halfway.
+  //
+  // Gain (post chain) drives both halves of the loudness: drive toward 1 and
+  // vocal volume toward its 2.0 ceiling.
+  if (c.gain !== 0) {
+    const reach = c.gain === 2 ? 1.0 : 0.5;
+    v.drive += (1.0 - v.drive) * reach * level;
+    v.vocal_vol += (2.0 - v.vocal_vol) * reach * level;
   }
-  if (v.vocal_vol > 2.0) v.vocal_vol = 2.0;
-  if (v.drive > 1.0) v.drive = 1.0;
 
-  // Pitch: an octave step swept continuously by the engine's portamento
-  // smoother via a long glide override. Saturates at +/-1.
+  // Pitch: a TWO octave sweep, run continuously by the engine's portamento
+  // smoother via a long glide override. The result is capped at +/-2 rather
+  // than the sweep being cancelled, so pitch always does something: a voice
+  // whose own octave toggle is already at +1 simply has one octave of travel
+  // left instead of two.
   if (c.pitch !== 0) {
-    const target = base.octave + (c.pitch === 2 ? 1 : -1);
-    if (target >= -1 && target <= 1) {
-      if (charging) {
-        v.octave = target;
-        v.glide_ms = 2000.0;   // the sweep: rise/fall, never a jump
-      } else {
-        v.octave = base.octave;   // decay: glide back home
-        v.glide_ms = kDecayTimesMs[c.decay];
-      }
+    let target = base.octave + (c.pitch === 2 ? 2 : -2);
+    if (target > 2) target = 2;
+    if (target < -2) target = -2;
+    if (charging) {
+      v.octave = target;
+      v.glide_ms = 2000.0;   // the sweep: rise/fall, never a jump
+    } else {
+      v.octave = base.octave;   // decay: glide back home
+      v.glide_ms = kDecayTimesMs[c.decay];
     }
   }
 
@@ -42,22 +47,22 @@ export function applyCharge(base, c, level, charging) {
     v.tone += (target - v.tone) * level;
   }
 
-  // Aspiration: added breath, clamped to the menu 3 knob range. A voice
-  // sitting at 0 breath still gets it, which is the point: the power-up
-  // ramp is where the scream tears.
+  // Aspiration: breath ramped toward a full 1.0, same reach rule as gain.
+  // A voice sitting at 0 breath still gets it, which is the point: the
+  // power-up ramp is where the scream tears.
   //
   // Aspiration is the only thing charge moves that is GRAIN-AFFECTING: any
   // change to it re-dirties the grain tables, and a rebuild is 8 voices x
   // grainLen x 3 formants. A continuous ramp would rebuild every block for
-  // the whole charge, so the ADDED amount is quantised to 1/32 of the
-  // range: about 20 rebuilds across a full charge instead of hundreds, and
-  // a step that small is inaudible in a breath texture. The base value is
-  // left exact so level 0 stays a bit-exact identity. Both amounts are
-  // exact multiples of 1/32, so full charge lands on its nominal value.
+  // the whole charge, so the ramp is stepped: about 33 rebuilds across a
+  // full charge instead of hundreds, and a step that small is inaudible in
+  // a breath texture. level 0 is still a bit-exact identity.
   if (c.aspir !== 0) {
-    const add = (c.aspir === 2 ? 0.625 : 0.25) * level;
-    v.aspiration += Math.round(add * 32.0) / 32.0;
-    if (v.aspiration > 1.0) v.aspiration = 1.0;
+    const reach = c.aspir === 2 ? 1.0 : 0.5;
+    // Quantise the LEVEL, not the result: level 1 stays exactly 1 so a full
+    // charge still lands exactly on the top of the range.
+    const q = Math.round(level * 32.0) / 32.0;
+    v.aspiration += (1.0 - v.aspiration) * reach * q;
   }
   return v;
 }

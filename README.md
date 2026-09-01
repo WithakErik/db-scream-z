@@ -148,8 +148,9 @@ tweaks survive.
 ### Charge mode
 
 With a voice **engaged**, stomp both switches together and hold. The sound
-charges like a power-up: gain swells, pitch sweeps, breath tears into the
-voice, and the
+charges like a power-up: at a full charge every row you have switched on
+reaches the **top of its range**, so the gain is all the way up, the pitch
+has swept two octaves, and the breath has torn right into the voice. The
 LEDs alternate faster and faster. Release to let it wind down. It is an
 overlay, so it never touches the voice you have saved.
 
@@ -157,7 +158,7 @@ Configure it with the toggles while a menu is latched:
 
 | Toggle | Menu 2 latched | Menu 3 latched |
 |---|---|---|
-| 1 | Gain: big / on / off | Pitch: rise / fall / off |
+| 1 | Gain: big / on / off | Pitch: rise 2 oct / fall 2 oct / off |
 | 2 | Time: ~6 s / ~2.5 s / ~0.75 s | Tone: brighter / darker / off |
 | 3 | Decay: fast / slow / instant | Aspiration: high / low / off |
 

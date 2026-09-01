@@ -289,10 +289,15 @@ export class Faceplate {
 
   // ---- drawing ----
   render(view) {
+    // Pointers normally sit at the physical knob positions. view.knobPos
+    // overrides that for display only, so a charge ramp can sweep the
+    // pointers with the sound; knobPos itself stays the user's hand, since
+    // that is what the controller reads.
+    const shown = view.knobPos || this.knobPos;
     for (let i = 0; i < 6; i++) {
       const k = this.knobs[i];
       // 270 degrees of travel: 7 o'clock at 0, 5 o'clock at 1.
-      const deg = this.knobPos[i] * 270 - 135;
+      const deg = shown[i] * 270 - 135;
       const rad = (deg * Math.PI) / 180;
       k.ptr.setAttribute('x2', k.cx + KNOB_R * 0.82 * Math.sin(rad));
       k.ptr.setAttribute('y2', k.cy - KNOB_R * 0.82 * Math.cos(rad));

@@ -325,11 +325,21 @@ function frame() {
   // over AND the pointer disagrees with the parameter.
   const truePos = knobPositions(layer, ui.editBuffer());
   const agrees = (i) => Math.abs(face.knobPos[i] - truePos[i]) < 0.005;
+  // While charging, sweep the pointers with the overlay so the panel shows
+  // the sound: the readouts already track the charged voice, and a pointer
+  // frozen at the resting value next to a climbing number reads as a bug.
+  // Display only, and the pointers land back on the knobs as it decays.
+  // The real pedal cannot do this either; same call as the toggle levers.
+  const charging = ui.chargeLevel > 0;
+  const shownPos = charging ? knobPositions(layer, voice) : null;
   face.render({
     leds: ui.leds(t),
     knobLabels: kKnobLabels[layer],
     knobValues: [0, 1, 2, 3, 4, 5].map((i) => knobValueText(layer, i, voice)),
-    knobLive: [0, 1, 2, 3, 4, 5].map((i) => ui.pickup.live(i) || agrees(i)),
+    knobPos: shownPos,
+    // Charging, the pointer is drawn FROM the value shown, so the two agree
+    // by construction and greying them would be a lie.
+    knobLive: [0, 1, 2, 3, 4, 5].map((i) => charging || ui.pickup.live(i) || agrees(i)),
     toggleLabels: tv.labels,
     toggleValues: tv.values,
     chargeMenu: tv.charge,

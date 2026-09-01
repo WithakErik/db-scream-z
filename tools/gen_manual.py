@@ -271,7 +271,7 @@ CHARGE = [
     # (toggle, menu 2 role, m2 options up/mid/down, factory m2 position,
     #          menu 3 role, m3 options,             factory m3 position)
     ("T1", "Gain", ["Above 9000!", "on", "off"], "Middle",
-           "Pitch", ["rise", "fall", "off"], "Middle"),
+           "Pitch", ["rise 2 oct", "fall 2 oct", "off"], "Middle"),
     ("T2", "Charge time", ["Birit Spomb ~6 s", "Hamekameka ~2.5 s",
                            "punch ~0.75 s"], "Middle",
            "Tone", ["brighter", "darker", "off"], "Middle"),
@@ -913,6 +913,14 @@ def build_pages(toc_rows=""):
         'voice, and '
         'the LEDs alternate faster and faster as it builds. Release and it '
         'winds down.</p>'
+        '<p>At a <strong>full charge every row you have switched on reaches '
+        'the top of its range</strong>: the gain is all the way up, the '
+        'pitch has swept two octaves, and the breath has torn right into '
+        'the voice. On the amount rows, gain and aspiration, the middle '
+        'position gets you halfway there from wherever the voice already '
+        'sits and the up position takes it the whole way. Tone is a '
+        'direction rather than an amount, so both of its positions go the '
+        'whole way: darker is fully dark, brighter fully bright.</p>'
         '<p>It lasts exactly as long as you hold it. No latch, no '
         'timeout.</p>'
         '<p><strong>Engaged is the whole condition.</strong> The same '

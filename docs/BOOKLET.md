@@ -89,17 +89,24 @@ stomp: the same two-stomp hold done while BYPASSED is the firmware
 update gesture instead, and it will take the pedal off-line mid-song.
 
 With a voice engaged, then, stomp BOTH switches together and hold: the
-sound charges up like a power-up scream, gain swelling, pitch sweeping,
-breath tearing into the voice, while the LEDs alternate faster and
-faster. Release
+sound charges up like a power-up scream: at a full charge every row you
+have switched on reaches the TOP of its range, so the gain is all the
+way up, the pitch has swept two octaves, and the breath has torn right
+into the voice. The LEDs alternate faster and faster. Release
 to let it wind down. Configure it with the toggles while a menu is
 latched:
 
 | Toggle | Menu 2 latched | Menu 3 latched |
 |---|---|---|
-| 1 | Gain: Above 9000! / on / off | Pitch: rise / fall / off |
+| 1 | Gain: Above 9000! / on / off | Pitch: rise 2 oct / fall 2 oct / off |
 | 2 | Charge time: Birit Spomb ~6 s / Hamekameka ~2.5 s / punch ~0.75 s | Tone: brighter / darker / off |
 | 3 | Decay: fast / slow / off (instant) | Aspiration: high / low / off |
+
+On the amount rows (gain and aspiration) the middle position gets you
+HALFWAY from wherever the voice already sits to the top, and the up
+position takes it all the way. Tone's two positions are directions
+rather than amounts, so both go the whole way: darker means fully dark,
+brighter means fully bright.
 
 The config is global, remembered across power cycles, and never touches
 your saved voices.

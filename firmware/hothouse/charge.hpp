@@ -15,31 +15,35 @@ inline VoiceParams apply_charge(const VoiceParams& base,
   VoiceParams v = base;
   if (level <= 0.0f) return v;
 
-  // Gain (post chain): on = x1.5 vocal + 0.3 drive at full charge;
-  // Above 9000! = drive pinned toward 1 and vocal x2.
-  if (c.gain == 1) {
-    v.vocal_vol *= 1.0f + 0.5f * level;
-    v.drive += 0.3f * level;
-  } else if (c.gain == 2) {
-    v.drive += (1.0f - v.drive) * level;
-    v.vocal_vol *= 1.0f + 1.0f * level;
+  // Every row here ramps its parameter toward the TOP of its own range,
+  // measured from wherever the voice already sits: charge is a power-up,
+  // so a full charge means full value, not a fixed increment on top of
+  // whatever you dialled. `reach` is how far up that gap the row travels
+  // at full charge: Up goes the whole way, Middle stops halfway.
+  //
+  // Gain (post chain) drives both halves of the loudness: drive toward 1
+  // and vocal volume toward its 2.0 ceiling.
+  if (c.gain != 0) {
+    const float reach = c.gain == 2 ? 1.0f : 0.5f;
+    v.drive += (1.0f - v.drive) * reach * level;
+    v.vocal_vol += (2.0f - v.vocal_vol) * reach * level;
   }
-  if (v.vocal_vol > 2.0f) v.vocal_vol = 2.0f;
-  if (v.drive > 1.0f) v.drive = 1.0f;
 
-  // Pitch: an octave step swept continuously by the engine's portamento
-  // smoother (fof_engine.hpp cur_f0_) via a long glide override.
-  // Saturates at +/-1: a +/-1 voice charging further adds no pitch.
+  // Pitch: a TWO octave sweep, run continuously by the engine's portamento
+  // smoother (fof_engine.hpp cur_f0_) via a long glide override. The result
+  // is capped at +/-2 rather than the sweep being cancelled, so pitch always
+  // does something: a voice whose own octave toggle is already at +1 simply
+  // has one octave of travel left instead of two.
   if (c.pitch != 0) {
-    const int target = base.octave + (c.pitch == 2 ? 1 : -1);
-    if (target >= -1 && target <= 1) {
-      if (charging) {
-        v.octave = static_cast<int8_t>(target);
-        v.glide_ms = 2000.0f;  // the sweep: rise/fall, never a jump
-      } else {
-        v.octave = base.octave;  // decay: glide back home
-        v.glide_ms = static_cast<float>(kDecayTimesMs[c.decay]);
-      }
+    int target = base.octave + (c.pitch == 2 ? 2 : -2);
+    if (target > 2) target = 2;
+    if (target < -2) target = -2;
+    if (charging) {
+      v.octave = static_cast<int8_t>(target);
+      v.glide_ms = 2000.0f;  // the sweep: rise/fall, never a jump
+    } else {
+      v.octave = base.octave;  // decay: glide back home
+      v.glide_ms = static_cast<float>(kDecayTimesMs[c.decay]);
     }
   }
 
@@ -49,23 +53,24 @@ inline VoiceParams apply_charge(const VoiceParams& base,
     v.tone += (target - v.tone) * level;
   }
 
-  // Aspiration: added breath, clamped to the menu 3 knob range. A voice
-  // sitting at 0 breath still gets it, which is the point: the power-up
-  // ramp is where the scream tears.
+  // Aspiration: breath ramped toward a full 1.0, same reach rule as gain.
+  // A voice sitting at 0 breath still gets it, which is the point: the
+  // power-up ramp is where the scream tears.
   //
   // Aspiration is the only thing charge moves that is GRAIN-AFFECTING: any
   // change to it re-dirties the grain tables (fof_engine.hpp set_params),
-  // and a rebuild is 8 voices x grain_len x 3 formants on the main loop.
-  // A continuous ramp would therefore rebuild on every 5 ms main-loop pass
-  // for the whole charge, so the ADDED amount is quantised to 1/32 of the
-  // range: about 20 rebuilds across a full charge instead of hundreds, and
-  // a step that small is inaudible in a breath texture. The base value is
-  // left exact so level 0 stays a bit-exact identity. Both amounts are
-  // exact multiples of 1/32, so full charge lands on its nominal value.
+  // and a rebuild is 8 voices x grain_len x 3 formants on the main loop. A
+  // continuous ramp would therefore rebuild on every 5 ms main-loop pass for
+  // the whole charge, so the ramp is stepped: about 33 rebuilds across a
+  // full charge instead of hundreds, and a step that small is inaudible in
+  // a breath texture. level 0 is still a bit-exact identity.
   if (c.aspir != 0) {
-    const float add = (c.aspir == 2 ? 0.625f : 0.25f) * level;
-    v.aspiration += std::floor(add * 32.0f + 0.5f) / 32.0f;
-    if (v.aspiration > 1.0f) v.aspiration = 1.0f;
+    const float reach = c.aspir == 2 ? 1.0f : 0.5f;
+    // Quantise the LEVEL, not the result: 33 distinct steps up the ramp
+    // keeps the rebuild count down, and level 1 stays exactly 1 so a full
+    // charge still lands exactly on the top of the range.
+    const float q = std::floor(level * 32.0f + 0.5f) / 32.0f;
+    v.aspiration += (1.0f - v.aspiration) * reach * q;
   }
   return v;
 }

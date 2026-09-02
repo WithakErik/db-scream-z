@@ -8,8 +8,8 @@
 // exactly.
 //
 // input 0 = dry guitar, input 1 = the voice from fof-processor.
-// The dry path is never touched: voice -> DRIVE -> TONE -> VOCAL VOL, then
-// a dry/wet crossfade and MASTER on the sum.
+// The dry path is never touched: voice -> TONE -> VOCAL VOL, then a
+// dry/wet crossfade and MASTER on the sum.
 
 const kRampSeconds = 0.010;   // engage/bypass crossfade, click-free
 
@@ -19,7 +19,6 @@ class PostProcessor extends AudioWorkletProcessor {
     this.sr = sampleRate;
     this.cLp = 1.0 - Math.exp(-2.0 * 3.14159265 * 1500.0 / this.sr);
     this.lp = 0.0;
-    this.drive = 0.0;
     this.tone = 0.0;
     this.vocal = 1.0;
     this.mix = 1.0;
@@ -30,7 +29,6 @@ class PostProcessor extends AudioWorkletProcessor {
     this.port.onmessage = (e) => {
       const m = e.data;
       if (m.type === 'params') {
-        this.drive = m.drive;
         this.tone = m.tone;
         this.vocal = m.vocal;
         this.mix = m.mix;
@@ -59,13 +57,6 @@ class PostProcessor extends AudioWorkletProcessor {
       }
       let v = voiceIn ? voiceIn[i] : 0;
 
-      // DRIVE: tanh soft clip BEFORE any makeup gain. drive == 0 is an
-      // exact passthrough; otherwise y = tanh(g x)/g, unity small-signal
-      // gain with ceiling 1/g.
-      if (this.drive > 0.001) {
-        const g = 1.0 + 9.0 * this.drive;
-        v = Math.tanh(g * v) / g;
-      }
       // TONE: one-pole tilt around a 1.5 kHz lowpass. tone 0 leaves the
       // sample untouched; -1 is the pure lowpass, +1 adds the residual
       // highs back on top. The lowpass state always runs so sweeping

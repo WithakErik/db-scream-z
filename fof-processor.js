@@ -467,7 +467,6 @@ class FofProcessor extends AudioWorkletProcessor {
       grainMs: 20,
       unison: 3,
       detuneCents: 11,
-      vibRate: 6.7, vibDepth: 0.42, vibJitter: 0.10,
       aspiration: 0.0,
       quantize: 1,
       ampComp: 1,   // MonkSynth's low-note boost: the human prefers it ON
@@ -507,12 +506,6 @@ class FofProcessor extends AudioWorkletProcessor {
 
     // per-unison-voice state
     this.vphase = new Float64Array(MAX_UNISON);   // grain trigger phase
-    this.vibPhase = new Float64Array(MAX_UNISON);
-    this.jitPhase = new Float64Array(MAX_UNISON);
-    for (let i = 0; i < MAX_UNISON; i++) {
-      this.vibPhase[i] = (2 * Math.PI * i) / MAX_UNISON;
-      this.jitPhase[i] = (1.7 * i) % (2 * Math.PI);
-    }
     this.curF0 = 200;
 
     // leveler state: fast/slow rectified-average trackers
@@ -888,7 +881,7 @@ class FofProcessor extends AudioWorkletProcessor {
       // FIXED TRANSPOSE. Plain octave shift, nothing auto-computed.
       // Deriving the transposition from the character's measured f0 gave +2
       // octaves on this player's material and was rejected by ear; the
-      // character preset now controls formants/vibrato only, and octaveShift
+      // character preset now controls formants only, and octaveShift
       // (default +1) is the single, explicit pitch-register control.
       return f0 * Math.pow(2, p.octaveShift);
     }
@@ -975,19 +968,6 @@ class FofProcessor extends AudioWorkletProcessor {
       // portamento / glide
       this.curF0 = target + (this.curF0 - target) * glideCoef;
 
-      // COMMON vibrato LFO for the whole unison stack (jitter on the RATE,
-      // never on the audio). MonkSynth staggers vibrato phase per voice for a
-      // choir effect, but with vibrato swing (42 cents) far exceeding the
-      // detune spacing (11 cents) the voices' frequencies keep crossing, and
-      // each crossing stalls their relative phase into a coherent lock or a
-      // hole: measured as the remaining intermittent spikes, all of which
-      // vanish at vibDepth=0. One scream is one larynx; vibrato moves the
-      // stack together and detune alone supplies the thickness.
-      this.jitPhase[0] += (2 * Math.PI * 0.31) / this.sr;
-      const vibRate = p.vibRate * (1 + p.vibJitter * Math.sin(this.jitPhase[0]));
-      this.vibPhase[0] = vibRate > 0 ? this.vibPhase[0] + (2 * Math.PI * vibRate) / this.sr : 0;
-      const vib = p.vibDepth * Math.sin(this.vibPhase[0]);
-
       // ---- trigger grains per unison voice ----
       for (let u = 0; u < nUni; u++) {
         const spread = nUni === 1 ? 0 : (u / (nUni - 1)) * 2 - 1;
@@ -996,7 +976,7 @@ class FofProcessor extends AudioWorkletProcessor {
         // centre voice always dominates and deep nulls become impossible.
         const vGain = 1 - 0.45 * Math.abs(spread);
 
-        const semis = (spread * p.detuneCents) / 100 + vib;
+        const semis = (spread * p.detuneCents) / 100;
         let f = this.curF0 * Math.pow(2, semis / 12);
         // floor 16 Hz, not 50: transpose -3 octaves from low E is ~10-20 Hz,
         // where FOF degrades gracefully into separated grain pulses

@@ -49,10 +49,7 @@ class FofEngine {
     // overrunning on an unexpectedly high sample rate.
     assert(obuf_len_ <= kObufMax);
 
-    // JS lines 509-516: vphase/vibPhase/jitPhase zeroed. Only index 0 of
-    // vibPhase/jitPhase is ever read (one common LFO, lines 986-989), and
-    // vibPhase[0] = 2*PI*0/8 = 0, jitPhase[0] = (1.7*0) % 2PI = 0, so the
-    // faithful port of the used state is a pair of scalars starting at 0.
+    // JS line 509: vphase zeroed.
     for (int u = 0; u < kMaxUnison; u++) vphase_[u] = 0.0;
     for (int s = 0; s < 2; s++)
       for (int u = 0; u < kMaxUnison; u++)
@@ -133,7 +130,7 @@ class FofEngine {
   }
 
   // JS onMsg 'live' (lines 604-613): new BACF detector, front-end reset,
-  // overlap buffer cleared. curF0 / vphase / vibrato / leveler state are
+  // overlap buffer cleared. curF0 / vphase / leveler state are
   // deliberately NOT reset here, matching the JS.
   void reset_live() {
     fe_.reset();
@@ -193,26 +190,13 @@ class FofEngine {
       const double target = register_map(raw_f0, p);
       cur_f0_ = target + (cur_f0_ - target) * glide_coef;
 
-      // JS lines 986-989: ONE common vibrato LFO for the whole unison
-      // stack; the jitter modulates the RATE, never the audio.
-      jit_phase_ += (2 * M_PI * 0.31) / sr_;
-      const double vib_rate = p.vib_rate * (1 + p.vib_jitter * std::sin(jit_phase_));
-      // Rate 0 means vibrato OFF, so the phase is PARKED at 0, not frozen
-      // where it happened to stop: a frozen phase leaves a constant
-      // depth*sin(phase) detune on the whole stack (up to 4 semitones of
-      // permanent mistuning) instead of silence, and turning the rate back
-      // up would resume from an arbitrary offset. jitter only scales the
-      // rate by 0.4..1.6, so vib_rate is 0 only when p.vib_rate is.
-      vib_phase_ = vib_rate > 0 ? vib_phase_ + (2 * M_PI * vib_rate) / sr_ : 0.0;
-      const double vib = p.vib_depth * std::sin(vib_phase_);
-
       // ---- JS lines 992-1036: trigger grains per unison voice ----
       for (int u = 0; u < n_uni; u++) {
         const double spread =
             (n_uni == 1) ? 0.0 : (static_cast<double>(u) / (n_uni - 1)) * 2 - 1;
         const double v_gain = 1 - 0.45 * std::fabs(spread);   // side taper
 
-        const double semis = (spread * p.detune_cents) / 100 + vib;
+        const double semis = (spread * p.detune_cents) / 100;
         double f = cur_f0_ * std::pow(2.0, semis / 12.0);
         f = std::min(std::max(f, 16.0), 2000.0);   // clamp BEFORE quantize
         f = quantize_hz(f, p.quantize);
@@ -301,8 +285,6 @@ class FofEngine {
   int   owrite_ = 0, oread_ = 0; // JS lines 505-506
 
   double vphase_[kMaxUnison];    // JS line 509
-  double vib_phase_ = 0.0;       // JS vibPhase[0], line 513 with i = 0
-  double jit_phase_ = 0.0;       // JS jitPhase[0], line 514 with i = 0
   double cur_f0_ = 200.0;        // JS line 516
 
   double lv_fast_ = 0.0;         // JS line 519

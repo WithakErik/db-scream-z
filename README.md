@@ -29,9 +29,9 @@ no hiss generator, no impulse responses. Everything is grains and resonators.
 An earlier version injected noise to match a measured harmonics-to-noise
 ratio and was rejected by ear on the spot.
 
-The **aspiration** knob is the exception that proves it: it adds breath, but
-that breath is two extra inharmonic tones inside the voice itself, not a
-noise source. It tears rather than hisses.
+The engine can add breath as two extra inharmonic tones inside the voice
+rather than as a noise source, but the pedal keeps it switched off: on
+hardware those tones read as static, so no control reaches them.
 
 It runs on the [Cleveland Music Co. Hothouse](https://clevelandmusicco.com/hothouse-diy-digital-signal-processing-platform-kit/)
 platform with a **Daisy Seed3**, in a 125B enclosure: six knobs, three
@@ -88,12 +88,12 @@ Normally the six knobs are the default layer:
 
 | Knob | Function |
 |---|---|
-| 1 | Mix (dry to voice) |
-| 2 | Glide (0-300 ms) |
+| 1 | Vocal volume |
+| 2 | Mix (dry to voice) |
 | 3 | Master volume |
-| 4 | Vocal volume |
-| 5 | Drive (clean to saturated) |
-| 6 | Tone (dark, flat at centre, bright) |
+| 4 | Tone (dark, flat at centre, bright) |
+| 5 | Glide (0-300 ms) |
+| 6 | Vocal size (character as written to deepest) |
 
 Hold the RIGHT stomp: about a second in, **menu 2** latches under your foot,
 the right LED starts blinking, and the knobs now edit formants F1 and F2. It
@@ -111,14 +111,21 @@ jumps to wherever the knob happens to be pointing.
 
 Menu 3's bottom row is the **voice stack**: how many copies of the scream
 sing at once (knob 4, one to eight), how far apart they are tuned (knob 5,
-up to 60 cents), and how much breath rides on top (knob 6). More voices and
-wider detune thicken the scream; one voice with no detune is the bare,
-focused version of the same character.
+up to 60 cents), and how long each grain of the voice lasts (knob 6, 4 to
+40 ms). More voices and wider detune thicken the scream; one voice with no
+detune is the bare, focused version of the same character.
 
 Knob 4 steps through the eight counts in eight equal bands, so it always
-lands on a whole number. Turning knob 6 fully anticlockwise switches the
-aspiration **off**: the last sliver of travel reads as a hard zero, so there
-is no breath in the voice at all rather than a residual trickle.
+lands on a whole number. Knob 6 sets texture rather than pitch: short grains
+are buzzy and rough, long ones smooth and vocal. It has a detent at 12:00
+that reads as exactly 20 ms, the length every voice ships with, so centring
+it always returns you to the factory texture.
+
+Back on the default layer, knob 6 is vocal size. It scales all three
+formants together, which is acoustically vocal tract length, so the voice
+sounds like it is coming from a physically larger creature: same character,
+same vowel, much bigger body. All the way down is the character exactly as
+written; all the way up is the deepest it goes.
 
 ### Toggles
 
@@ -150,7 +157,7 @@ tweaks survive.
 With a voice **engaged**, stomp both switches together and hold. The sound
 charges like a power-up: at a full charge every row you have switched on
 reaches the **top of its range**, so the gain is all the way up, the pitch
-has swept two octaves, and the breath has torn right into the voice. The
+has swept two octaves, and the voice has grown to its deepest. The
 LEDs alternate faster and faster. Release to let it wind down. It is an
 overlay, so it never touches the voice you have saved.
 
@@ -160,7 +167,7 @@ Configure it with the toggles while a menu is latched:
 |---|---|---|
 | 1 | Gain: big / on / off | Pitch: rise 2 oct / fall 2 oct / off |
 | 2 | Time: ~6 s / ~2.5 s / ~0.75 s | Tone: brighter / darker / off |
-| 3 | Decay: fast / slow / instant | Aspiration: high / low / off |
+| 3 | Decay: fast / slow / instant | Vocal size: full / half / off |
 
 That config is global and survives a power cycle.
 

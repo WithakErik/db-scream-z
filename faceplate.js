@@ -46,6 +46,7 @@ export class Faceplate {
     // while sitting in the down slot is just wrong-looking.
     this.chargeToggles = [TogglePos.Middle, TogglePos.Middle, TogglePos.Middle];
     this.chargeBank = false;
+    this.chargeBankMenu = null;   // which menu's rows the bank is seeded for
     this.leftDown = false;
     this.rightDown = false;
     this.onStompChange = () => {};
@@ -263,14 +264,26 @@ export class Faceplate {
     return this.chargeBank ? this.chargeToggles : this.toggles;
   }
 
-  // Called each frame BEFORE inputs(). Seeds the charge bank from the
-  // stored config on the tick a menu latches, so the levers start where
-  // the settings already are instead of wherever octave/page/gate left
-  // them. The controller ignores the resulting jump because a toggle move
-  // only counts when the menu did not change that tick.
-  setChargeBank(active, seedPositions) {
-    if (active && !this.chargeBank) this.chargeToggles = seedPositions.slice();
-    this.chargeBank = active;
+  // Called each frame BEFORE inputs(). `menu` identifies which set of rows
+  // the levers currently stand for; pass null outside a menu. The bank is
+  // re-seeded from the stored config whenever that IDENTITY changes, which
+  // means entering a menu AND switching menu 2 <-> menu 3: each menu has
+  // its own three rows, so the levers have to be re-pointed at the new
+  // ones or they keep showing the previous menu's settings.
+  //
+  // It deliberately does NOT re-seed on every frame within one menu. A
+  // lever the user just clicked has not reached the controller yet, so the
+  // config still holds the old value for one frame, and re-seeding from it
+  // would snap the lever back before the move was ever read.
+  //
+  // The controller ignores the resulting jump because a toggle move only
+  // counts when the menu did not change that tick.
+  setChargeBank(menu, seedPositions) {
+    if (menu !== null && menu !== this.chargeBankMenu) {
+      this.chargeToggles = seedPositions.slice();
+    }
+    this.chargeBankMenu = menu;
+    this.chargeBank = menu !== null;
   }
 
   // ---- what the controller reads each tick ----

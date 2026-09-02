@@ -109,7 +109,7 @@ int main() {
     Sim s;
     s.tap(Side::Right);                       // Wukong engaged (pickup rearmed
     assert(s.ui.take_engage_edge());          // consume the recall edge
-    s.in.knobs[0] = 0.8f; s.step();           // at 0.5; 0.8 crosses the
+    s.in.knobs[1] = 0.8f; s.step();           // at 0.5; 0.8 crosses the
     assert(near(s.ui.edit_buffer().mix, 0.8f));  // threshold, mix takes over)
     s.in.t_page = TogglePos::Middle;          // Freeform
     s.step();
@@ -157,10 +157,10 @@ int main() {
     Sim s;
     s.tap(Side::Right);
     float mix0 = s.ui.edit_buffer().mix;  // factory 1.0
-    s.in.knobs[0] = 0.505f;  // within threshold of 0.5
+    s.in.knobs[1] = 0.505f;  // within threshold of 0.5
     s.step();
     assert(near(s.ui.edit_buffer().mix, mix0));
-    s.in.knobs[0] = 0.7f;    // crosses threshold
+    s.in.knobs[1] = 0.7f;    // crosses threshold
     s.step();
     assert(near(s.ui.edit_buffer().mix, 0.7f));
   }
@@ -186,7 +186,7 @@ int main() {
     assert(s.ui.layer() == MenuLayer::Menu1);
     assert(s.ui.engaged());               // exit does not bypass
     s.in.knobs[0] = 0.74f; s.step();      // small move, inert after rearm
-    assert(near(s.ui.edit_buffer().mix, 1.0f));
+    assert(near(s.ui.edit_buffer().vocal_vol, 1.0f));
     // left hold latches menu 3, left LED blinks (half-period apart differs)
     s.hold(Side::Left);
     assert(s.ui.layer() == MenuLayer::Menu3);
@@ -274,7 +274,7 @@ int main() {
     Sim s;
     s.tap(Side::Right);        // engage Wukong (Set 1 R)
     assert(s.ui.take_engage_edge());
-    s.in.knobs[0] = 0.8f;      // menu 1 knob 0: mix -> 0.8 (differs from
+    s.in.knobs[1] = 0.8f;      // menu 1 knob 1: mix -> 0.8 (differs from
     s.step();                  // the factory slot's 1.0)
     s.press(Side::Right);
     s.step(1200);              // past kHoldMs, still holding
@@ -501,7 +501,7 @@ int main() {
     g_store = factory_store();
     Sim s;
     s.tap(Side::Right);        // engage Wukong (Set 1 R)
-    s.in.knobs[0] = 0.8f;      // mix tweak so the buffer differs
+    s.in.knobs[1] = 0.8f;      // mix tweak so the buffer differs
     s.step();
     s.press(Side::Right);      // save chord ...
     s.step(1200);
@@ -714,7 +714,7 @@ int main() {
     assert(s.ui.edit_buffer().gate_level == gate0);
   }
 
-  // ---- menu 3 rows (pitch/tone/aspiration); page stays frozen through exit
+  // ---- menu 3 rows (pitch/tone/size); page stays frozen through exit
   // and only follows a NEW move made outside the menu
   {
     g_store = factory_store();
@@ -727,9 +727,9 @@ int main() {
     s.in.t_page = TogglePos::Middle; // tone -> darker (NOT a page change)
     s.step();
     assert(s.ui.charge_config().tone == 1);
-    s.in.t_gate = TogglePos::Up;     // aspiration -> high
+    s.in.t_gate = TogglePos::Up;     // size -> full
     s.step();
-    assert(s.ui.charge_config().aspir == 2);
+    assert(s.ui.charge_config().size == 2);
     s.tap(Side::Left);               // exit menu 3 (own side)
     assert(s.ui.config_save_pending());  // dirty exit triggers the write
     g_store.charge = s.ui.charge_config();

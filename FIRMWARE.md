@@ -75,11 +75,13 @@ v12). It contains, top to bottom:
 3. Presets: `dbscreamz_lab/static/presets.json` -> generate a `presets.h`
    (4 characters: formants_hz[3]; f0 stats are legacy, only used by the
    deprecated snap mode). As of store v3 the header also carries a
-   per-character unison stack (unison / detune_cents / aspiration) that
+   per-character voice stack (unison / detune_cents / grain_ms) that
    does NOT come from presets.json, because that file is a frozen copy of
    the lab's; it lives in `tools/gen_presets.py` STACK. The character
-   vibrato that used to be in the header went with the vibrato removal
-   and now lives only in `firmware/host/render.cpp`, for parity renders.
+   vibrato left presets.hpp at commit 37ed8bf (Aug 31) and moved to render.cpp,
+   then was removed on 2026-09-01 when the vibrato LFO itself was retired; `firmware/host/render.cpp` no longer
+   reproduces the v12 milestone reference renders either, an accepted
+   cost of the removal (see the vocal size design spec section 7).
 4. The old YIN/causal tracker in the same file is DEAD CODE for firmware:
    do not port it. BACF replaced it (measured better on every metric).
 
@@ -103,7 +105,7 @@ section 11 explains the history.
 |---|---|
 | Per-grain gain = 0.55 * vGain / sqrt(overlap), overlap = grainLen*f/sr, computed AT TRIGGER TIME | low notes ~3 dB/octave louder; level spikes on pitch motion |
 | Side-voice gain taper: vGain = 1 - 0.45*abs(spread) | deep unison nulls -> +9 dB swells |
-| ONE common vibrato LFO for the whole unison stack (jitter on LFO rate) | staggered-phase frequency crossings -> intermittent spikes |
+| ONE common vibrato LFO for the whole unison stack (jitter on LFO rate). Historical: the vibrato LFO itself was removed from the engine 2026-09-01; kept here so the reasoning is not lost if it is ever reconsidered | staggered-phase frequency crossings -> intermittent spikes |
 | Per-voice grain sinusoid phases, deterministic golden-ratio scatter, voice 0 = zero phase | coherent unison beating |
 | Target leveler BEFORE envelope multiply: 8 ms rectified tracker, g = 0.09/(lvl+1e-3), clamp 0.25-4, slew 10 ms down / 60 ms up | formant-comb loudness (+/-7.8 dB between notes) and residual wobble |
 | Envelope: 6 ms attack / 80 ms release, peak-normalised with FLOOR 0.05, output amp scaled x0.5 | silence-AGC (constant Ahhh from noise floor); WaveShaper-era clipping |
@@ -114,21 +116,25 @@ section 11 explains the history.
 | Transpose = plain 2^octaveShift multiply; characters NEVER change pitch | the +2-octave "sounds too high" failure |
 | Grain floor 16 Hz | -3 octave transpose clamping to 50 Hz |
 | MonkSynth grain: 20 ms, 3 damped sinusoids, cosine window (1.8 ms attack, release from 13 ms), exp(-pi*BW*i/sr) decay, BW = 32.5/47.5/62.5 | the voice sounding wrong in ways nobody wants to rediscover |
-| NO noise sources anywhere in the voice path (aspiration = 2 inharmonic sines, default 0) | the rejected hiss |
+| NO noise sources anywhere in the voice path. The engine's aspiration (2 inharmonic sines) is the nearest thing and the pedal pins it to 0: main.cpp never passes it through. Removed from the controls 2026-09-01 after it was measured as the on-hardware "static", +22.6 dB in the 3-6 kHz band at 0.3 with no change in broadband level | the rejected hiss |
 
 ## 5. Ear-approved defaults (v12) - bake as firmware constants
 
 ```
-grainMs 20, unison 3, detuneCents 11, aspiration 0
+grainMs 20 (knob-settable 4..40 as of store v4), unison 3, detuneCents 11,
+aspiration 0 (pinned; not reachable from any control)
 octaveShift 0 (range -3..+3), followPitch on, quantize ON
 glideMs 0, ampComp ON (MonkSynth low-note boost), taperEnd on (user ran
   off; either fine - expose nothing), leveler ON
 gate 0.02 default - MUST be user-adjustable (knob or trim)
 inputGain: hardware analog gain replaces the lab's digital x4; gate
   threshold must be calibrated against the Hothouse input stage level
-vibrato per character from presets.json; vibJitter 0.10
+vibrato per character from presets.json; vibJitter 0.10 (v12 lab baseline
+  only: the engine's vibrato LFO was removed 2026-09-01 and the pedal has
+  none)
 characters: Wukong 858/1234/3112 Hz, Rice 1000/1438/3625,
-  Prince 742/1066/2688, Piccolo 698/1003/2529 (+ vib rate/depth each)
+  Prince 742/1066/2688, Piccolo 698/1003/2529 (+ vib rate/depth each, v12
+  lab baseline only)
 ```
 
 ## 6. Control mapping (milestone 5, IMPLEMENTED)
@@ -141,10 +147,12 @@ headers). firmware/MILESTONE5.md is the on-device runbook.
 
 Summary: 4 voices (2 stomp slots x 2 memory sets, factory Wukong/Prince and
 Rice/Piccolo), one volatile edit buffer, three knob layers (default layer:
-mix / glide / master / vocal vol / drive / tone; RIGHT-stomp hold-menu:
-F1/F2; LEFT-stomp hold-menu: F3 + unison stack, meaning voices / detune /
-aspiration; the pedal has no vibrato as of store v3), toggles = octave / memory page /
-gate level, voice-only post chain (tanh drive, tilt tone), QSPI persistence
+vocal vol / mix / master / tone / glide / vocal size; RIGHT-stomp hold-menu:
+F1/F2; LEFT-stomp hold-menu: F3 + voice stack, meaning voices / detune /
+grain length; the pedal has no vibrato as of store v3, no aspiration as
+of v4, and no drive as of v5, which retired the drive knob and replaced it
+with vocal size in the same slot), toggles = octave / memory page /
+gate level, voice-only post chain (tilt tone), QSPI persistence
 via libDaisy PersistentStorage, save gesture = hold one stomp ~1 s then
 press the other while still holding (menus never save; in a menu the
 other stomp's tap switches menus and the own stomp's tap exits; amended
@@ -156,9 +164,12 @@ so no LED ever changes colour at runtime. The stock Hothouse kit BOM calls
 for two red 3mm LEDs; we deviate. Any manual or booklet copy must say blue
 LEFT / orange RIGHT.
 Charge mode (2026-08-27): both stomps together while engaged ramps a
-configurable power-up boost (gain/pitch/tone/aspiration overlay, never
+configurable power-up boost (gain/pitch/tone/size overlay, never
 written to the edit buffer), configured via toggles while a menu is
 latched; spec in docs/superpowers/specs/2026-08-27-charge-mode-design.md.
+The size row was a stack row until the vocal size redesign (spec
+2026-09-01-vocal-size-design.md): charge mode no longer ramps the unison
+count during a charge, it ramps vocal size instead.
 
 The section-6 proposal that previously lived here (FS2 character cycle,
 knob-per-function map) is obsolete; the open questions it posed were
@@ -184,7 +195,16 @@ session, in C++ form.
 ## 8. Budgets and expectations
 
 - CPU: engine ~7 MOPS + BACF (~8 ns/sample native) - single-digit
-  percent of the Seed3's 480+ MHz M7. No SDRAM needed (~90 KB RAM).
+  percent of the Seed3's 480+ MHz M7. No SDRAM needed.
+- RAM: measured from the map file, not estimated. `.bss` links into
+  SRAM (512 KB at 0x24000000), NOT the 128 KB DTCMRAM, and was 119 KB
+  at MAX_GRAIN_LEN 1024. The grain tables dominate it at 64 bytes per
+  sample of length (2 sets x 8 voices x 4 bytes), so the 1920 the 40 ms
+  grain knob needs puts `.bss` near 175 KB, about a third of SRAM.
+  There is room; RAM has never been the binding budget here.
+- Flash IS the binding budget: `.text` was 121,696 of 131,072 bytes
+  (92.8%) as of 2026-08-31. Grain tables are `.bss` and cost none of it,
+  but new CODE is nearly out of room. Check the map before adding any.
 - Latency: ~28-32 ms note-lock (BACF, measured) + ~2-3 ms codec I/O.
   Better than the browser because the browser I/O tax disappears.
 - Binary: small; internal flash is fine.
@@ -249,3 +269,79 @@ MILESTONE1.md has the build/flash mechanics, MILESTONE2-4.md has the
 fixed-pitch and tracking checks to fall back to if a milestone 5 script
 fails, and MILESTONE0.md documents the host harness that regenerates the
 reference renders.
+
+## 11. Beast mode (the hidden bank)
+
+**Gesture: hold BOTH footswitches while powering the pedal on.**
+
+The four DBZ characters are replaced for that session by four sustained
+animal calls: Set 1 is Cow (right) / Wolf (left), Set 2 is Whale (right)
+/ Elephant (left). Toggle 2 still pages between the sets, Freeform is
+unchanged, and charge mode works on the animals exactly as it does on the
+characters.
+
+Nothing is written to QSPI. The save chord still works as a session
+sandbox (tweak a cow, save it, keep it until you pull the plug), but
+`main.cpp` skips `storage->Save()` while beast mode is active, so the
+saved characters can never be overwritten by it. Power cycle to get them
+back.
+
+Why it is cheap: `ui_controller.hpp` holds a `const VoiceStore*` and only
+ever reads it, so the whole mechanism is pointing that at a static store
+built by `beast_store()`. The switches are already debounced by the
+50-pass ADC settle loop that runs before `ui.init()`.
+
+**The one real collision, and how it is handled.** The pedal boots
+BYPASSED, which is exactly when the Hothouse DFU escape is armed, and that
+escape fires once both stomps have been held for 2000 ms
+(`CheckResetToBootloader` / `HOLD_THRESHOLD_MS` in
+`third_party/HothouseExamples/src/hothouse.cpp:181`). Left alone, holding
+both stomps a beat too long at power-up would load the bank and then
+reboot straight into the bootloader, which is a trap rather than a
+feature. So the entry gesture CONSUMES that grip: `main.cpp` swallows the
+DFU check until both stomps have been seen released once. After the first
+release the escape behaves exactly as it always has, beast session or not.
+Skipping the call outright rather than gating it also leaves Hothouse's
+`dfu_start_time_` at 0, so no partial hold is banked while we wait.
+
+This is the one behaviour here that no host test can cover, because it
+lives in `main.cpp` and `hothouse.cpp`. Check it by hand on the next
+hardware pass: hold both stomps through power-up for a good five seconds
+and confirm the pedal is playing animals rather than sitting in DFU, then
+release, hold both again for 2 s, and confirm the LEDs do their triple
+alternation and the board enumerates as `0483:df11`.
+
+The bank lives in `firmware/hothouse/beast_presets.hpp`, deliberately
+outside the generated `firmware/engine/presets.hpp`: a `CharacterPreset`
+carries only formants, unison, detune and grain length, and these voices
+need octave, glide and bandwidth to sound like anything. The engine is a
+pitch-tracked formant resynth, which is why all four are SUSTAINED calls;
+it does vowel-like animal voices well and percussive ones (a bark, a
+quack) badly, because there is no per-attack amplitude shaper or noise
+burst anywhere in the chain.
+
+Every number in the bank is a first-pass ear target, in the same state as
+the `kGateLevels` placeholders: plausible on paper, never heard through
+an amp. `firmware/host/tests/test_beast_presets.cpp` asserts ranges and
+relationships rather than exact values so a tuning pass does not mean
+rewriting the test.
+
+**Flash cost: NOT YET MEASURED.** The bank is ~208 bytes of table plus
+the builders and about fifteen lines in `main.cpp`; the estimate is well
+under 1 KB against the 7,916 bytes that were free at 123,156 B. Measure
+it on the next build and record the real number here rather than trusting
+that estimate.
+
+The booklet (`docs/BOOKLET.md`, generated) carries a hint that the four
+voices exist and does not say how to reach them. This section and
+HANDOFF.md are the only places the gesture is written down.
+
+### In the emulator
+
+`pedal/` gets the same bank via `?beast` (or `#beast`) on the URL, which
+is the browser's only equivalent of a decision made at boot. `app.js`
+swaps the store and its `persist()` refuses to write, mirroring the
+firmware's skipped QSPI commit. `pedal/static/beast-presets.js` is a
+value-for-value port, and `pedal/tests/presets.test.mjs` parses
+`beast_presets.hpp` to keep the two from drifting, the same way it
+already does for `presets.hpp`.

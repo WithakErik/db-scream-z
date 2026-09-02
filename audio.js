@@ -10,7 +10,7 @@
 // precomputed-contour path is deliberately not used: it is a lab artifact
 // and the firmware has no equivalent.
 
-import { kGateLevels } from './voice-params.js';
+import { kGateLevels, formantScaleFrom } from './voice-params.js';
 
 // The lab's digital x4 stands in for the analog input gain the pedal's
 // hardware provides, and the gate thresholds were tuned against it.
@@ -22,10 +22,13 @@ export function toFofParams(v) {
     f1: v.f1, f2: v.f2, f3: v.f3,
     bw1: v.bw1, bw2: v.bw2, bw3: v.bw3,
     a1: v.a1, a2: v.a2, a3: v.a3,
-    unison: v.unison, detuneCents: v.detune_cents, aspiration: v.aspiration,
-    // No vibrato anywhere in the pedal: the engine's LFO stays parked at 0
-    // (rate 0 is OFF and holds the phase at 0).
-    vibRate: 0, vibDepth: 0, vibJitter: 0,
+    unison: v.unison, detuneCents: v.detune_cents, grainMs: v.grain_ms,
+    formantScale: formantScaleFrom(v.vocal_size),
+    // No aspiration: fof-processor.js still carries the breath branch, so
+    // the pedal switches it off here instead. Its two 4-5 kHz sinusoids,
+    // retriggered once per pitch period, were the "static" heard on
+    // hardware on 2026-09-01.
+    aspiration: 0,
     glideMs: v.glide_ms,
     octaveShift: v.octave,
     gate: kGateLevels[v.gate_level],
@@ -85,7 +88,7 @@ export class AudioEngine {
     if (!this.ctx) return;
     this.fof.port.postMessage({ type: 'params', values: toFofParams(v) });
     this.post.port.postMessage({
-      type: 'params', drive: v.drive, tone: v.tone, vocal: v.vocal_vol,
+      type: 'params', tone: v.tone, vocal: v.vocal_vol,
       mix: v.mix, master: v.master_vol, engaged,
     });
   }
@@ -196,7 +199,7 @@ export class AudioEngine {
     fof.port.postMessage({ type: 'transport', playing: true, reset: true });
     fof.port.postMessage({ type: 'params', values: toFofParams(voice) });
     post.port.postMessage({
-      type: 'params', drive: voice.drive, tone: voice.tone,
+      type: 'params', tone: voice.tone,
       vocal: voice.vocal_vol, mix: voice.mix, master: voice.master_vol,
       engaged: true,
     });

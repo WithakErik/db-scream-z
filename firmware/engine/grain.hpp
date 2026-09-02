@@ -13,10 +13,11 @@ inline int build_grains(const FofParams& p, double sr,
   // Float32Array resizes per-call. Where this clamp bites depends on the
   // build: host default kMaxGrainLen=4800 (100 ms @ 48k) diverges only for
   // grain_ms > 100 ms, which the lab UI's slider (capped at 40 ms) never
-  // produces; firmware's -DDBSCREAMZ_MAX_GRAIN_LEN=1024 diverges above
-  // ~21.3 ms (1024 samples @ 48k). grain_ms is pinned at 20 in firmware
-  // (main.cpp never overrides FofParams::grain_ms), well under either
-  // bound.
+  // produces; firmware's -DDBSCREAMZ_MAX_GRAIN_LEN=1920 diverges above
+  // 40 ms (1920 samples @ 48k), which is exactly where menu 3 knob 6 tops
+  // out (param_map.hpp map_grain). So neither build can reach its clamp
+  // through the controls, and the two stay in agreement everywhere the
+  // pedal can go.
   const int n = std::min(kMaxGrainLen, std::max(16, (int)jsRound(sr * p.grain_ms * 0.001)));
 
   // cosine window, matching voice.c build_window_and_decay()

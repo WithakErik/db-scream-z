@@ -29,7 +29,6 @@ struct FofParams {           // live-path mirror of fof-processor.js this.p
   double grain_ms = 20;
   int    unison = 3;
   double detune_cents = 11;
-  double vib_rate = 6.7, vib_depth = 0.42, vib_jitter = 0.10;
   double aspiration = 0.0;
   bool   quantize = true;
   bool   amp_comp = true;

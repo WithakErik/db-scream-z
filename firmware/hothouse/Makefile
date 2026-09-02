@@ -28,10 +28,16 @@ C_INCLUDES += -I../engine \
               -I../third_party/q/q_lib/include \
               -I../third_party/q/infra/include
 
-# Two grain-table sets on the pedal; 1024 covers grainMs 20 (960 samples)
-# with headroom, host keeps its 4800 default.
+# Two grain-table sets on the pedal; 1920 covers the menu 3 grain knob at
+# its 40 ms maximum (1920 samples at 48 kHz), host keeps its 4800 default.
+#
+# This costs RAM, not flash: the tables are .bss. Each unit of length is
+# 64 bytes (2 sets x kMaxUnison 8 voices x 4 bytes), so 1920 spends 120 KB
+# on grains and puts .bss around 175 KB. That lands in SRAM (512 KB at
+# 0x24000000 per the linker script, NOT the 128 KB DTCMRAM), so it is about
+# a third of the region. Flash is the tight budget here, at ~93%.
 # C_DEFS reaches C++ TUs via the core Makefile's CFLAGS -> CPPFLAGS chain.
-C_DEFS += -DDBSCREAMZ_MAX_GRAIN_LEN=1024
+C_DEFS += -DDBSCREAMZ_MAX_GRAIN_LEN=1920
 
 LIBDAISY_DIR = ../third_party/libDaisy
 # No DAISYSP_DIR on purpose: the DSP is ours plus cycfi/q (FIRMWARE.md sec 2).

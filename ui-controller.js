@@ -309,12 +309,12 @@ export class UiController {
   static menuOf(side) { return side === Side.Right ? Menu.Menu2 : Menu.Menu3; }
 
   // Toggle move while a menu is latched edits the global charge config.
-  // Menu 2: gain/time/decay. Menu 3: pitch/tone/aspiration.
+  // Menu 2: gain/time/decay. Menu 3: pitch/tone/size.
   setChargeField(toggle, pos) {
     const v = UiController.chargeVal(pos);
     const keys = this.menu === Menu.Menu2
       ? ['gain', 'time', 'decay']
-      : ['pitch', 'tone', 'aspir'];
+      : ['pitch', 'tone', 'size'];
     // Dirtiness is judged at menu exit against persistedConfig.
     this.config[keys[toggle]] = v;
   }

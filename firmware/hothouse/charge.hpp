@@ -21,11 +21,11 @@ inline VoiceParams apply_charge(const VoiceParams& base,
   // whatever you dialled. `reach` is how far up that gap the row travels
   // at full charge: Up goes the whole way, Middle stops halfway.
   //
-  // Gain (post chain) drives both halves of the loudness: drive toward 1
-  // and vocal volume toward its 2.0 ceiling.
+  // Gain: the ramp drives vocal volume toward its 2.0 ceiling. It used to
+  // push drive as well, but the pedal has no drive any more (vocal size
+  // design spec section 6), so loudness is the whole of this row now.
   if (c.gain != 0) {
     const float reach = c.gain == 2 ? 1.0f : 0.5f;
-    v.drive += (1.0f - v.drive) * reach * level;
     v.vocal_vol += (2.0f - v.vocal_vol) * reach * level;
   }
 
@@ -53,24 +53,23 @@ inline VoiceParams apply_charge(const VoiceParams& base,
     v.tone += (target - v.tone) * level;
   }
 
-  // Aspiration: breath ramped toward a full 1.0, same reach rule as gain.
-  // A voice sitting at 0 breath still gets it, which is the point: the
-  // power-up ramp is where the scream tears.
+  // Size: the ramp grows the voice itself, scaling the whole vocal tract
+  // toward its deepest. Same reach rule as gain: Up travels the whole gap,
+  // Middle half of it. The scream physically grows as it charges.
   //
-  // Aspiration is the only thing charge moves that is GRAIN-AFFECTING: any
-  // change to it re-dirties the grain tables (fof_engine.hpp set_params),
-  // and a rebuild is 8 voices x grain_len x 3 formants on the main loop. A
-  // continuous ramp would therefore rebuild on every 5 ms main-loop pass for
-  // the whole charge, so the ramp is stepped: about 33 rebuilds across a
-  // full charge instead of hundreds, and a step that small is inaudible in
-  // a breath texture. level 0 is still a bit-exact identity.
-  if (c.aspir != 0) {
-    const float reach = c.aspir == 2 ? 1.0f : 0.5f;
-    // Quantise the LEVEL, not the result: 33 distinct steps up the ramp
-    // keeps the rebuild count down, and level 1 stays exactly 1 so a full
-    // charge still lands exactly on the top of the range.
+  // UNLIKE every other row, this one IS grain-affecting: main.cpp turns
+  // vocal_size into FofParams::formant_scale, which grain.hpp bakes into
+  // the formants and fof_engine.hpp dirty-checks. An unquantised ramp would
+  // therefore rebuild the grain tables on every 5 ms main loop pass for the
+  // whole charge. Quantising the LEVEL to 32 steps holds that to about 33
+  // rebuilds per charge, exactly as the aspiration row used to. Audio is
+  // never at risk either way (rebuilds are double buffered and published by
+  // an active_set_ flip), but an unbounded rebuild rate starves the main
+  // loop and the LEDs visibly stutter.
+  if (c.size != 0) {
+    const float reach = c.size == 2 ? 1.0f : 0.5f;
     const float q = std::floor(level * 32.0f + 0.5f) / 32.0f;
-    v.aspiration += (1.0f - v.aspiration) * reach * q;
+    v.vocal_size += (1.0f - v.vocal_size) * reach * q;
   }
   return v;
 }

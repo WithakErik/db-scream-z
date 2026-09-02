@@ -17,8 +17,25 @@ import { applyCharge, kChargeLabels } from './charge.js';
 import { UiController, Menu } from './ui-controller.js';
 import { Faceplate } from './faceplate.js';
 import { AudioEngine, encodeWav } from './audio.js';
+import { beastStore, kBeasts } from './beast-presets.js';
 
 const STORE_KEY = 'dbscreamz.voicestore.v3';
+
+// ---- beast mode -------------------------------------------------------
+// The pedal's hidden bank is entered by holding both footswitches THROUGH
+// power-up. A page has no power cycle and a pointer cannot hold two
+// stomps, so the browser's equivalent of "a thing decided at boot" is the
+// URL it was loaded with: ?beast (or #beast). See beast-presets.js.
+//
+// Everything downstream follows the firmware: the store is swapped, and
+// persist() below refuses to write, exactly as main.cpp skips its QSPI
+// commit. Saved characters survive; a plain reload brings them back.
+const beastMode = (() => {
+  try {
+    const u = new URL(window.location.href);
+    return u.searchParams.has('beast') || u.hash.toLowerCase() === '#beast';
+  } catch { return false; }
+})();
 
 // ---- the QSPI stand-in -----------------------------------------------
 // The pedal keeps four slots and the charge config in QSPI flash, written
@@ -36,13 +53,22 @@ function loadStore() {
 }
 
 function persist(store) {
+  // Beast mode never commits, so a save there is a session sandbox: tweak
+  // a cow, save it, keep it until you reload. What it can never do is
+  // overwrite a character. This one guard covers every save path, the way
+  // `if (!beast_mode) storage->Save()` does in main.cpp.
+  if (beastMode) return;
   try { localStorage.setItem(STORE_KEY, JSON.stringify(store)); }
   catch { /* nothing we can do, and the session still works */ }
 }
 
 // ---- setup ------------------------------------------------------------
 const $ = (id) => document.getElementById(id);
-const store = loadStore();
+const store = beastMode ? beastStore() : loadStore();
+
+// Names the panel can put to a voice. The characters are always matched;
+// the animals only when they are the ones loaded.
+const vname = (v) => voiceName(v, beastMode ? kBeasts : []);
 const face = new Faceplate($('stage'));
 const ui = new UiController();
 const audio = new AudioEngine();
@@ -77,6 +103,12 @@ function say(text, warn = false, ms = 4000) {
   note = text; noteWarn = warn; noteUntil = now() + ms;
 }
 
+if (beastMode) {
+  say('Beast mode. Set 1 is Cow and Wolf, Set 2 is Whale and Elephant. ' +
+      'Nothing here is saved, and your characters are untouched: reload ' +
+      'without ?beast to get them back.', false, 9000);
+}
+
 let live = { f0: 0, gateOpen: false };
 audio.onLiveState = (s) => { live = s; };
 
@@ -105,13 +137,18 @@ $('saveL').addEventListener('click', () => ui.requestSave(Side.Left, now()));
 $('saveR').addEventListener('click', () => ui.requestSave(Side.Right, now()));
 
 $('reset').addEventListener('click', () => {
-  const f = factoryStore();
+  // In beast mode this restores the ANIMALS, not the characters. Resetting
+  // to the factory characters here would be a lie twice over: it would put
+  // voices on screen that this session is not running, and persist() would
+  // refuse to save them anyway.
+  const f = beastMode ? beastStore() : factoryStore();
   store.version = f.version;
   store.slots = f.slots;
   store.charge = f.charge;
   persist(store);
   ui.init(store, face.inputs(now()));
-  say('Factory voices and charge settings restored.');
+  say(beastMode ? 'Beast voices and charge settings restored.'
+                : 'Factory voices and charge settings restored.');
 });
 
 // ---- audio source -----------------------------------------------------
@@ -205,7 +242,7 @@ renderBtn.addEventListener('click', async () => {
     const url = URL.createObjectURL(encodeWav(buf));
     const a = document.createElement('a');
     a.href = url;
-    a.download = `dbscreamz-${voiceName(ui.editBuffer()).toLowerCase()}.wav`;
+    a.download = `dbscreamz-${vname(ui.editBuffer()).toLowerCase()}.wav`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 10000);
     say('Rendered.');
@@ -236,9 +273,9 @@ function toggleView() {
   if (m === Menu.Menu3) {
     const c = ui.chargeConfig();
     return {
-      labels: ['Pitch', 'Tone', 'Aspir'],
+      labels: ['Pitch', 'Tone', 'Size'],
       values: [kChargeLabels.pitch[c.pitch], kChargeLabels.tone[c.tone],
-               kChargeLabels.aspir[c.aspir]],
+               kChargeLabels.size[c.size]],
       charge: 'left',    // menu 3 is the LEFT stomp: blue, like LED 1
     };
   }
@@ -253,7 +290,7 @@ function statusText() {
   const src = ui.source();
   const where = src === EngagedSource.None ? 'bypassed'
     : src === EngagedSource.Freeform ? 'freeform'
-    : `${voiceName(ui.editBuffer())} ${src === EngagedSource.SlotL ? 'L' : 'R'}`;
+    : `${vname(ui.editBuffer())} ${src === EngagedSource.SlotL ? 'L' : 'R'}`;
   const menu = ui.menuLatched() === Menu.Menu2 ? ' · menu 2'
     : ui.menuLatched() === Menu.Menu3 ? ' · menu 3' : '';
   const chg = ui.chargeLevel > 0
@@ -273,7 +310,7 @@ function chargeTogglePositions() {
   const c = ui.chargeConfig();
   const keys = ui.menuLatched() === Menu.Menu2
     ? ['gain', 'time', 'decay']
-    : ['pitch', 'tone', 'aspir'];
+    : ['pitch', 'tone', 'size'];
   return keys.map((k) => CHARGE_POS[c[k]]);
 }
 
@@ -282,8 +319,13 @@ function frame() {
   // Hand the levers to the charge rows while a menu is latched, so they
   // show and edit the setting under them rather than sitting wherever
   // octave/page/gate left them. Must run before inputs().
-  const latched = ui.menuLatched() !== Menu.None;
-  face.setChargeBank(latched, latched ? chargeTogglePositions() : []);
+  // Pass the menu IDENTITY, not just "is a menu latched": switching
+  // menu 2 <-> menu 3 swaps which three rows the levers stand for, and the
+  // bank has to be re-seeded for the new ones.
+  const latchedMenu = ui.menuLatched();
+  const inMenu = latchedMenu !== Menu.None;
+  face.setChargeBank(inMenu ? latchedMenu : null,
+                     inMenu ? chargeTogglePositions() : []);
   ui.tick(face.inputs(t));
 
   // Save handshakes: on hardware these cross to the main loop because the

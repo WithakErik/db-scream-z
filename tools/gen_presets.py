@@ -11,17 +11,23 @@ import json
 import sys
 from pathlib import Path
 
-# Per-character unison stack, replacing the vibrato that used to carry the
-# character in menu 3 knobs 4-6. Ranges mirror the lab's controls (voices
-# 1-8, detune 0-60 cents, aspiration 0-1) and firmware/hothouse/param_map.hpp.
-# Wukong keeps the v12 reference stack (3 / 11 / 0) so the hero voice still
-# matches the milestone renders; the others are voiced by ear from their
-# vocal quality and are meant to be re-tuned on hardware.
+# Per-character voice stack, carried by menu 3 knobs 4-6. Ranges mirror the
+# lab's controls (voices 1-8, detune 0-60 cents, grain 4-40 ms) and
+# firmware/hothouse/param_map.hpp. Wukong keeps the v12 reference stack
+# (3 / 11 / 20) so the hero voice still matches the milestone renders; the
+# others are voiced by ear from their vocal quality and are meant to be
+# re-tuned on hardware.
+#
+# grain_ms is 20 for every character on purpose: 20 is the value the engine
+# has always baked in (FofParams::grain_ms), so making it a stored, knob-
+# reachable parameter changes no character's sound. It replaces aspiration,
+# which was removed after its two 4-5 kHz sinusoids turned out to be the
+# "static" heard on hardware (see the aspiration removal, 2026-09-01).
 STACK = {
-    'Wukong':  {'unison': 3, 'detune_cents': 11.0, 'aspiration': 0.0},
-    'Rice':    {'unison': 2, 'detune_cents': 8.0,  'aspiration': 0.05},
-    'Prince':  {'unison': 4, 'detune_cents': 18.0, 'aspiration': 0.15},
-    'Piccolo': {'unison': 5, 'detune_cents': 26.0, 'aspiration': 0.30},
+    'Wukong':  {'unison': 3, 'detune_cents': 11.0, 'grain_ms': 20.0},
+    'Rice':    {'unison': 2, 'detune_cents': 8.0,  'grain_ms': 20.0},
+    'Prince':  {'unison': 4, 'detune_cents': 18.0, 'grain_ms': 20.0},
+    'Piccolo': {'unison': 5, 'detune_cents': 26.0, 'grain_ms': 20.0},
 }
 
 
@@ -51,7 +57,7 @@ def generate_header(presets):
         "  float formants_hz[3];   // baked (tract scale already applied), Hz",
         "  float unison;           // stacked voices, 1..8",
         "  float detune_cents;     // unison spread, 0..60 cents",
-        "  float aspiration;       // MonkSynth two-sine breath, 0..1",
+        "  float grain_ms;         // FOF grain length, 4..40 ms",
         "};",
         "inline constexpr CharacterPreset kPresets[4] = {",
     ]
@@ -73,12 +79,12 @@ def generate_header(presets):
             'stack': stack,
             'formants_str': formants_str,
             'stack_str': ', '.join(format_float(stack[k]) for k in
-                                   ('unison', 'detune_cents', 'aspiration')),
+                                   ('unison', 'detune_cents', 'grain_ms')),
         })
 
     # Build preset lines with careful spacing
     for item in preset_items:
-        # Format: {"<name>",    {formants}, unison, detune_cents, aspiration},
+        # Format: {"<name>",    {formants}, unison, detune_cents, grain_ms},
         line = f'  {{"{item["name"]}",    {{{item["formants_str"]}}}, {item["stack_str"]}}}'
         # Add comma after all items (including last)
         line += ','
@@ -109,8 +115,8 @@ def verify_roundtrip(presets, preset_items):
             raise AssertionError(f"{item['name']}: unison {s['unison']} outside 1..8")
         if not 0 <= s['detune_cents'] <= 60:
             raise AssertionError(f"{item['name']}: detune {s['detune_cents']} outside 0..60")
-        if not 0 <= s['aspiration'] <= 1:
-            raise AssertionError(f"{item['name']}: aspiration {s['aspiration']} outside 0..1")
+        if not 4 <= s['grain_ms'] <= 40:
+            raise AssertionError(f"{item['name']}: grain_ms {s['grain_ms']} outside 4..40")
 
 
 def main():

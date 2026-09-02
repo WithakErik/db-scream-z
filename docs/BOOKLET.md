@@ -27,12 +27,18 @@ Normally the six knobs are the DEFAULT layer:
 
 | Knob | Function |
 |---|---|
-| 1 | Mix (dry to voice) |
-| 2 | Glide (0-300 ms) |
+| 1 | Vocal volume |
+| 2 | Mix (dry to voice) |
 | 3 | Master volume |
-| 4 | Vocal volume |
-| 5 | Drive (clean to saturated) |
-| 6 | Tone (dark - flat at center - bright) |
+| 4 | Tone (dark - flat at center - bright) |
+| 5 | Glide (0-300 ms) |
+| 6 | Vocal size (character as written - deepest) |
+
+Knob 6, vocal size, scales all three formants together, which is
+acoustically vocal tract length: the same character, the same vowel,
+coming from a physically bigger body. All the way down (7:00) is the
+character exactly as written; all the way up (5:00) is the deepest it
+goes.
 
 Hold the RIGHT stomp: about 1 second in, MENU 2 latches under your foot
 (right LED blinks) and the knobs edit formants F1/F2. It does not wait
@@ -47,16 +53,17 @@ jumps.
 
 Menu 3's bottom row is the VOICE STACK: how many copies of the voice
 sing at once (knob 4, one to eight), how far apart they are tuned
-(knob 5, up to 60 cents) and how much breath rides on top (knob 6).
-More voices and wider detune thicken the scream; one voice with no
-detune is the bare, focused version of the same character.
+(knob 5, up to 60 cents) and how long each grain of the voice lasts
+(knob 6, 4 to 40 ms). More voices and wider detune thicken the scream;
+one voice with no detune is the bare, focused version of the same
+character.
 
 Knob 4 steps: the travel is eight equal bands, one per voice count, so
-it lands on a whole number wherever you leave it. Turning knob 6 fully
-counter-clockwise switches the aspiration OFF: the last sliver of
-travel before 7:00 is a detent that reads as a hard zero, so the voice
-path goes back to having no breath in it at all rather than a residual
-trickle.
+it lands on a whole number wherever you leave it. Knob 6 sets the
+texture: short grains are buzzy and rough, long ones smooth and vocal.
+It has a detent at 12:00 that reads as exactly 20 ms, which is the
+value every character ships with, so centring the knob always gets you
+back to the factory texture.
 
 ### Toggles (left to right)
 
@@ -91,8 +98,8 @@ update gesture instead, and it will take the pedal off-line mid-song.
 With a voice engaged, then, stomp BOTH switches together and hold: the
 sound charges up like a power-up scream: at a full charge every row you
 have switched on reaches the TOP of its range, so the gain is all the
-way up, the pitch has swept two octaves, and the breath has torn right
-into the voice. The LEDs alternate faster and faster. Release
+way up, the pitch has swept two octaves, and the voice has grown to its
+deepest. The LEDs alternate faster and faster. Release
 to let it wind down. Configure it with the toggles while a menu is
 latched:
 
@@ -100,9 +107,9 @@ latched:
 |---|---|---|
 | 1 | Gain: Above 9000! / on / off | Pitch: rise 2 oct / fall 2 oct / off |
 | 2 | Charge time: Birit Spomb ~6 s / Hamekameka ~2.5 s / punch ~0.75 s | Tone: brighter / darker / off |
-| 3 | Decay: fast / slow / off (instant) | Aspiration: high / low / off |
+| 3 | Decay: fast / slow / off (instant) | Size: full / half / off |
 
-On the amount rows (gain and aspiration) the middle position gets you
+On the amount rows (gain and size) the middle position gets you
 HALFWAY from wherever the voice already sits to the top, and the up
 position takes it all the way. Tone's two positions are directions
 rather than amounts, so both go the whole way: darker means fully dark,
@@ -150,12 +157,12 @@ until moved), then save to any slot.
 
 | Param | Value | Travel | Clock |
 |---|---|---|---|
-| Mix | 1 | 100% | 5:00 |
-| Glide ms | 0 | 0% | 7:00 |
-| Master volume | 1 | 50% | 12:00 |
 | Vocal volume | 1 | 50% | 12:00 |
-| Drive | 0 | 0% | 7:00 |
+| Mix | 1 | 100% | 5:00 |
+| Master volume | 1 | 50% | 12:00 |
 | Tone | 0 | 50% | 12:00 |
+| Glide ms | 0 | 0% | 7:00 |
+| Vocal size | 0 | 0% | 7:00 |
 
 ### Menu 2 (hold RIGHT stomp): knobs 1-6
 
@@ -177,7 +184,7 @@ until moved), then save to any slot.
 | F3 amount | 1 | 50% | 12:00 |
 | Voices | 3 | 31% | 10:07 |
 | Detune cents | 11 | 18% | 8:49 |
-| Aspiration | 0 | 0% | 7:00 |
+| Grain ms | 20 | 50% | 12:00 |
 
 Toggles: 1 Octave = Middle (0), 3 Gate = Middle (medium).
 
@@ -191,12 +198,12 @@ until moved), then save to any slot.
 
 | Param | Value | Travel | Clock |
 |---|---|---|---|
-| Mix | 1 | 100% | 5:00 |
-| Glide ms | 0 | 0% | 7:00 |
-| Master volume | 1 | 50% | 12:00 |
 | Vocal volume | 1 | 50% | 12:00 |
-| Drive | 0 | 0% | 7:00 |
+| Mix | 1 | 100% | 5:00 |
+| Master volume | 1 | 50% | 12:00 |
 | Tone | 0 | 50% | 12:00 |
+| Glide ms | 0 | 0% | 7:00 |
+| Vocal size | 0 | 0% | 7:00 |
 
 ### Menu 2 (hold RIGHT stomp): knobs 1-6
 
@@ -218,7 +225,7 @@ until moved), then save to any slot.
 | F3 amount | 1 | 50% | 12:00 |
 | Voices | 2 | 19% | 8:52 |
 | Detune cents | 8 | 13% | 8:20 |
-| Aspiration | 0.05 | 10% | 7:58 |
+| Grain ms | 20 | 50% | 12:00 |
 
 Toggles: 1 Octave = Middle (0), 3 Gate = Middle (medium).
 
@@ -232,12 +239,12 @@ until moved), then save to any slot.
 
 | Param | Value | Travel | Clock |
 |---|---|---|---|
-| Mix | 1 | 100% | 5:00 |
-| Glide ms | 0 | 0% | 7:00 |
-| Master volume | 1 | 50% | 12:00 |
 | Vocal volume | 1 | 50% | 12:00 |
-| Drive | 0 | 0% | 7:00 |
+| Mix | 1 | 100% | 5:00 |
+| Master volume | 1 | 50% | 12:00 |
 | Tone | 0 | 50% | 12:00 |
+| Glide ms | 0 | 0% | 7:00 |
+| Vocal size | 0 | 0% | 7:00 |
 
 ### Menu 2 (hold RIGHT stomp): knobs 1-6
 
@@ -259,7 +266,7 @@ until moved), then save to any slot.
 | F3 amount | 1 | 50% | 12:00 |
 | Voices | 4 | 44% | 11:22 |
 | Detune cents | 18 | 30% | 10:00 |
-| Aspiration | 0.15 | 19% | 8:55 |
+| Grain ms | 20 | 50% | 12:00 |
 
 Toggles: 1 Octave = Middle (0), 3 Gate = Middle (medium).
 
@@ -273,12 +280,12 @@ until moved), then save to any slot.
 
 | Param | Value | Travel | Clock |
 |---|---|---|---|
-| Mix | 1 | 100% | 5:00 |
-| Glide ms | 0 | 0% | 7:00 |
-| Master volume | 1 | 50% | 12:00 |
 | Vocal volume | 1 | 50% | 12:00 |
-| Drive | 0 | 0% | 7:00 |
+| Mix | 1 | 100% | 5:00 |
+| Master volume | 1 | 50% | 12:00 |
 | Tone | 0 | 50% | 12:00 |
+| Glide ms | 0 | 0% | 7:00 |
+| Vocal size | 0 | 0% | 7:00 |
 
 ### Menu 2 (hold RIGHT stomp): knobs 1-6
 
@@ -300,7 +307,7 @@ until moved), then save to any slot.
 | F3 amount | 1 | 50% | 12:00 |
 | Voices | 5 | 56% | 12:37 |
 | Detune cents | 26 | 43% | 11:20 |
-| Aspiration | 0.3 | 34% | 10:20 |
+| Grain ms | 20 | 50% | 12:00 |
 
 Toggles: 1 Octave = Middle (0), 3 Gate = Middle (medium).
 
@@ -314,12 +321,12 @@ until moved), then save to any slot.
 
 | Param | Value | Travel | Clock |
 |---|---|---|---|
-| Mix | 1 | 100% | 5:00 |
-| Glide ms | 0 | 0% | 7:00 |
-| Master volume | 1 | 50% | 12:00 |
 | Vocal volume | 1 | 50% | 12:00 |
-| Drive | 0 | 0% | 7:00 |
+| Mix | 1 | 100% | 5:00 |
+| Master volume | 1 | 50% | 12:00 |
 | Tone | 0 | 50% | 12:00 |
+| Glide ms | 0 | 0% | 7:00 |
+| Vocal size | 0 | 0% | 7:00 |
 
 ### Menu 2 (hold RIGHT stomp): knobs 1-6
 
@@ -341,7 +348,7 @@ until moved), then save to any slot.
 | F3 amount | 1 | 50% | 12:00 |
 | Voices | 5 | 56% | 12:37 |
 | Detune cents | 24 | 40% | 11:00 |
-| Aspiration | 0.35 | 38% | 10:49 |
+| Grain ms | 20 | 50% | 12:00 |
 
 Toggles: 1 Octave = Middle (0), 3 Gate = Middle (medium).
 
@@ -355,12 +362,12 @@ until moved), then save to any slot.
 
 | Param | Value | Travel | Clock |
 |---|---|---|---|
-| Mix | 1 | 100% | 5:00 |
-| Glide ms | 0 | 0% | 7:00 |
-| Master volume | 1 | 50% | 12:00 |
 | Vocal volume | 1 | 50% | 12:00 |
-| Drive | 0 | 0% | 7:00 |
+| Mix | 1 | 100% | 5:00 |
+| Master volume | 1 | 50% | 12:00 |
 | Tone | 0 | 50% | 12:00 |
+| Glide ms | 0 | 0% | 7:00 |
+| Vocal size | 0 | 0% | 7:00 |
 
 ### Menu 2 (hold RIGHT stomp): knobs 1-6
 
@@ -382,7 +389,7 @@ until moved), then save to any slot.
 | F3 amount | 1 | 50% | 12:00 |
 | Voices | 3 | 31% | 10:07 |
 | Detune cents | 14 | 23% | 9:20 |
-| Aspiration | 0.12 | 16% | 8:38 |
+| Grain ms | 20 | 50% | 12:00 |
 
 Toggles: 1 Octave = Middle (0), 3 Gate = Middle (medium).
 
@@ -396,12 +403,12 @@ until moved), then save to any slot.
 
 | Param | Value | Travel | Clock |
 |---|---|---|---|
-| Mix | 1 | 100% | 5:00 |
-| Glide ms | 0 | 0% | 7:00 |
-| Master volume | 1 | 50% | 12:00 |
 | Vocal volume | 1 | 50% | 12:00 |
-| Drive | 0 | 0% | 7:00 |
+| Mix | 1 | 100% | 5:00 |
+| Master volume | 1 | 50% | 12:00 |
 | Tone | 0 | 50% | 12:00 |
+| Glide ms | 0 | 0% | 7:00 |
+| Vocal size | 0 | 0% | 7:00 |
 
 ### Menu 2 (hold RIGHT stomp): knobs 1-6
 
@@ -423,7 +430,7 @@ until moved), then save to any slot.
 | F3 amount | 1 | 50% | 12:00 |
 | Voices | 2 | 19% | 8:52 |
 | Detune cents | 8 | 13% | 8:20 |
-| Aspiration | 0.1 | 15% | 8:27 |
+| Grain ms | 20 | 50% | 12:00 |
 
 Toggles: 1 Octave = Middle (0), 3 Gate = Middle (medium).
 
@@ -437,12 +444,12 @@ until moved), then save to any slot.
 
 | Param | Value | Travel | Clock |
 |---|---|---|---|
-| Mix | 1 | 100% | 5:00 |
-| Glide ms | 0 | 0% | 7:00 |
-| Master volume | 1 | 50% | 12:00 |
 | Vocal volume | 1 | 50% | 12:00 |
-| Drive | 0 | 0% | 7:00 |
+| Mix | 1 | 100% | 5:00 |
+| Master volume | 1 | 50% | 12:00 |
 | Tone | 0 | 50% | 12:00 |
+| Glide ms | 0 | 0% | 7:00 |
+| Vocal size | 0 | 0% | 7:00 |
 
 ### Menu 2 (hold RIGHT stomp): knobs 1-6
 
@@ -464,6 +471,15 @@ until moved), then save to any slot.
 | F3 amount | 1 | 50% | 12:00 |
 | Voices | 4 | 44% | 11:22 |
 | Detune cents | 30 | 50% | 12:00 |
-| Aspiration | 0.45 | 48% | 11:46 |
+| Grain ms | 20 | 50% | 12:00 |
 
 Toggles: 1 Octave = Middle (0), 3 Gate = Middle (medium).
+
+## One more thing
+
+The pedal knows four voices that are not in this booklet, and they are
+not people. They are already in there. Nothing you can do from the front
+panel will find them by accident, and nothing they do can overwrite the
+four characters above.
+
+Someone will have to tell you.

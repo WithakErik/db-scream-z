@@ -21,23 +21,23 @@ PRESETS = ROOT / "firmware" / "engine" / "presets.hpp"
 OUT = ROOT / "docs" / "BOOKLET.md"
 
 # Knob ranges: MUST mirror firmware/hothouse/param_map.hpp.
-MENU1 = [("Mix", "mix"), ("Glide ms", "glide_ms"),
-         ("Master volume", "master_vol"), ("Vocal volume", "vocal_vol"),
-         ("Drive", "drive"), ("Tone", "tone")]
+MENU1 = [("Vocal volume", "vocal_vol"), ("Mix", "mix"),
+         ("Master volume", "master_vol"), ("Tone", "tone"),
+         ("Glide ms", "glide_ms"), ("Vocal size", "vocal_size")]
 MENU2 = [("F1 Hz", "f1", 200, 1400), ("F1 bandwidth", "bw1", 5, 300),
          ("F1 amount", "a1", 0, 2), ("F2 Hz", "f2", 500, 2600),
          ("F2 bandwidth", "bw2", 5, 400), ("F2 amount", "a2", 0, 2)]
 MENU3 = [("F3 Hz", "f3", 1500, 4500), ("F3 bandwidth", "bw3", 5, 500),
          ("F3 amount", "a3", 0, 2), ("Voices", "unison", 1, 8),
          ("Detune cents", "detune_cents", 0, 60),
-         ("Aspiration", "aspiration", 0, 1)]
+         ("Grain ms", "grain_ms", 4, 40)]
 V12 = {"bw1": 32.5, "bw2": 47.5, "bw3": 62.5,
        "a1": 1.0, "a2": 1.0, "a3": 1.0}
 # Menu 1 + toggle factory values (firmware/hothouse/voice_params.hpp
 # factory_voice(): every character ships with these unless its card
 # overrides them).
 V12_MENU1 = {"mix": 1.0, "glide_ms": 0.0, "master_vol": 1.0,
-             "vocal_vol": 1.0, "drive": 0.0, "tone": 0.0,
+             "vocal_vol": 1.0, "vocal_size": 0.0, "tone": 0.0,
              "octave": 0, "gate": "medium"}
 OCTAVE_POS = {1: "Up (+1)", 0: "Middle (0)", -1: "Down (-1)"}
 GATE_POS = {"high": "Up", "medium": "Middle", "low": "Down"}
@@ -46,7 +46,7 @@ GATE_POS = {"high": "Up", "medium": "Middle", "low": "Down"}
 def menu1_frac(key, v):
     """Inverse of the menu 1 knob tapers in param_map.hpp: glide is
     cube-tapered, tone has a +/-10% center deadzone, the rest are linear."""
-    if key == "mix" or key == "drive":
+    if key == "mix" or key == "vocal_size":
         return v
     if key == "glide_ms":
         return (v / 300.0) ** (1.0 / 3.0) if v > 0 else 0.0
@@ -64,34 +64,40 @@ SLOTS = {"Wukong": "Set 1, RIGHT", "Prince": "Set 1, LEFT",
 
 # Booklet-only characters: not factory slots, dial by hand and save
 # wherever you like. Same keys as a parsed preset (f1/f2/f3/unison/
-# detune_cents/aspiration) plus an optional "note" line shown on the card.
+# detune_cents/grain_ms) plus an optional "note" line shown on the card.
 #
-# The unison stack replaced the vibrato these characters used to be voiced
-# with, so the bottom row of menu 3 carries them now: thick and rough voices
-# take more stacked voices, wider detune and audible breath; thin and
-# piercing ones take fewer, tighter, drier. All eight are designed on paper
-# from the character's vocal quality, not measured, and are meant to be
-# re-tuned by ear on hardware.
+# The voice stack carries the bottom row of menu 3: thick and rough voices
+# take more stacked voices and wider detune; thin and piercing ones take
+# fewer and tighter. All eight are designed on paper from the character's
+# vocal quality, not measured, and are meant to be re-tuned by ear on
+# hardware.
+#
+# Every card ships at the engine's default 20 ms grain. Aspiration used to
+# be this row's third dimension and gave Boo and Master their "breath", but
+# it was removed on 2026-09-01 after its two 4-5 kHz sinusoids turned out to
+# be the static heard on hardware. Grain length replaced it on knob 6 and is
+# an obvious place to re-voice these eight by ear: shorter is buzzier and
+# rougher, longer is smoother and more vocal.
 EXTRA = {
     # Ear-picked 2026-08-27 (candidate B of three LPC-derived options)
     # from the Sparking! ZERO Fat Boo voice clips (Josh Martin):
-    # F1/F2/F3 medians pushed bright. Thick and breathy: a big soft body.
+    # F1/F2/F3 medians pushed bright. Thick and soft: a big loose body.
     "Boo": {"f1": 900.0, "f2": 1750.0, "f3": 2900.0,
-            "unison": 5, "detune_cents": 24.0, "aspiration": 0.35},
+            "unison": 5, "detune_cents": 24.0, "grain_ms": 20.0},
     # Designed by ear 2026-08-28 (no reference clips in the repo, unlike
     # Boo): values chosen from the character's vocal quality, tunable in
     # the lab. Fling = the brash blonde persona: hard bright female, a
     # modest stack so the edge stays on the formants.
     "Fling": {"f1": 880.0, "f2": 1600.0, "f3": 3050.0,
-              "unison": 3, "detune_cents": 14.0, "aspiration": 0.12},
+              "unison": 3, "detune_cents": 14.0, "grain_ms": 20.0},
     # Ki-Ki: shrill piercing female, everything pushed high. Thinnest
     # stack in the booklet so nothing blunts the point of it.
     "Ki-Ki": {"f1": 950.0, "f2": 1800.0, "f3": 3350.0,
-              "unison": 2, "detune_cents": 8.0, "aspiration": 0.10},
-    # Master: old raspy male, small dark tract. The most breath of the
-    # eight, wide detune for the frayed edge of an elderly voice.
+              "unison": 2, "detune_cents": 8.0, "grain_ms": 20.0},
+    # Master: old raspy male, small dark tract. The widest detune of the
+    # eight, for the frayed edge of an elderly voice.
     "Master": {"f1": 640.0, "f2": 1080.0, "f3": 2400.0,
-               "unison": 4, "detune_cents": 30.0, "aspiration": 0.45},
+               "unison": 4, "detune_cents": 30.0, "grain_ms": 20.0},
 }
 
 # Hand-maintained usage section. MUST mirror firmware/MILESTONE5.md
@@ -118,12 +124,18 @@ Normally the six knobs are the DEFAULT layer:
 
 | Knob | Function |
 |---|---|
-| 1 | Mix (dry to voice) |
-| 2 | Glide (0-300 ms) |
+| 1 | Vocal volume |
+| 2 | Mix (dry to voice) |
 | 3 | Master volume |
-| 4 | Vocal volume |
-| 5 | Drive (clean to saturated) |
-| 6 | Tone (dark - flat at center - bright) |
+| 4 | Tone (dark - flat at center - bright) |
+| 5 | Glide (0-300 ms) |
+| 6 | Vocal size (character as written - deepest) |
+
+Knob 6, vocal size, scales all three formants together, which is
+acoustically vocal tract length: the same character, the same vowel,
+coming from a physically bigger body. All the way down (7:00) is the
+character exactly as written; all the way up (5:00) is the deepest it
+goes.
 
 Hold the RIGHT stomp: about 1 second in, MENU 2 latches under your foot
 (right LED blinks) and the knobs edit formants F1/F2. It does not wait
@@ -138,16 +150,17 @@ jumps.
 
 Menu 3's bottom row is the VOICE STACK: how many copies of the voice
 sing at once (knob 4, one to eight), how far apart they are tuned
-(knob 5, up to 60 cents) and how much breath rides on top (knob 6).
-More voices and wider detune thicken the scream; one voice with no
-detune is the bare, focused version of the same character.
+(knob 5, up to 60 cents) and how long each grain of the voice lasts
+(knob 6, 4 to 40 ms). More voices and wider detune thicken the scream;
+one voice with no detune is the bare, focused version of the same
+character.
 
 Knob 4 steps: the travel is eight equal bands, one per voice count, so
-it lands on a whole number wherever you leave it. Turning knob 6 fully
-counter-clockwise switches the aspiration OFF: the last sliver of
-travel before 7:00 is a detent that reads as a hard zero, so the voice
-path goes back to having no breath in it at all rather than a residual
-trickle.
+it lands on a whole number wherever you leave it. Knob 6 sets the
+texture: short grains are buzzy and rough, long ones smooth and vocal.
+It has a detent at 12:00 that reads as exactly 20 ms, which is the
+value every character ships with, so centring the knob always gets you
+back to the factory texture.
 
 ### Toggles (left to right)
 
@@ -182,8 +195,8 @@ update gesture instead, and it will take the pedal off-line mid-song.
 With a voice engaged, then, stomp BOTH switches together and hold: the
 sound charges up like a power-up scream: at a full charge every row you
 have switched on reaches the TOP of its range, so the gain is all the
-way up, the pitch has swept two octaves, and the breath has torn right
-into the voice. The LEDs alternate faster and faster. Release
+way up, the pitch has swept two octaves, and the voice has grown to its
+deepest. The LEDs alternate faster and faster. Release
 to let it wind down. Configure it with the toggles while a menu is
 latched:
 
@@ -191,9 +204,9 @@ latched:
 |---|---|---|
 | 1 | Gain: Above 9000! / on / off | Pitch: rise 2 oct / fall 2 oct / off |
 | 2 | Charge time: Birit Spomb ~6 s / Hamekameka ~2.5 s / punch ~0.75 s | Tone: brighter / darker / off |
-| 3 | Decay: fast / slow / off (instant) | Aspiration: high / low / off |
+| 3 | Decay: fast / slow / off (instant) | Size: full / half / off |
 
-On the amount rows (gain and aspiration) the middle position gets you
+On the amount rows (gain and size) the middle position gets you
 HALFWAY from wherever the voice already sits to the top, and the up
 position takes it all the way. Tone's two positions are directions
 rather than amounts, so both go the whole way: darker means fully dark,
@@ -247,10 +260,10 @@ def parse_presets():
                     r'\s*([\d.]+)f,\s*([\d.]+)f,\s*([\d.]+)f\}')
     out = {}
     for m in rx.finditer(text):
-        name, f1, f2, f3, un, dt, asp = m.groups()
+        name, f1, f2, f3, un, dt, grain = m.groups()
         out[name] = {"f1": float(f1), "f2": float(f2), "f3": float(f3),
                      "unison": float(un), "detune_cents": float(dt),
-                     "aspiration": float(asp)}
+                     "grain_ms": float(grain)}
     assert len(out) == 4, f"expected 4 presets, parsed {len(out)}"
     return out
 
@@ -265,16 +278,21 @@ def row(label, value, lo, hi):
     return frow(label, value, (value - lo) / (hi - lo))
 
 
-# Aspiration has a detent at the BOTTOM of the travel that maps to exactly 0
-# (map_lin_off() in param_map.hpp), so the breath can be switched off on a pot
-# that never reads exactly 0 at full counter-clockwise. Every non-zero value
-# therefore sits OFF_DZ further up the knob than a plain linear range would
-# put it.
-OFF_DZ = 0.05
+# Grain length has a CENTRE detent that maps to exactly 20 ms (map_grain()
+# in param_map.hpp), so the factory texture stays reachable on a pot that
+# never reads exactly 0.5. Its two halves are also scaled independently,
+# because the 4..40 ms range is asymmetric about that detent (16 ms below,
+# 20 ms above), so a plain linear inverse would put every value in the wrong
+# place on the dial.
+GRAIN_DZ = 0.1
 
 
-def off_frac(v, hi):
-    return 0.0 if v <= 0 else OFF_DZ + (1.0 - OFF_DZ) * (v / hi)
+def grain_frac(v):
+    if v == 20.0:
+        return 0.5
+    s = 1.0 if v > 20.0 else -1.0
+    u = (v - 20.0) / 20.0 if v > 20.0 else (20.0 - v) / 16.0
+    return 0.5 + s * (u * (1.0 - GRAIN_DZ) + GRAIN_DZ) / 2.0
 
 
 # The voice count is eight equal bands over 1..8 (map_voices() in
@@ -308,8 +326,8 @@ def card(name, p):
     lines += ["", "### Menu 3 (hold LEFT stomp): knobs 1-6",
               "", "| Param | Value | Travel | Clock |", "|---|---|---|---|"]
     for label, key, lo, hi in MENU3:
-        if key == "aspiration":
-            lines.append(frow(label, vals[key], off_frac(vals[key], hi)))
+        if key == "grain_ms":
+            lines.append(frow(label, vals[key], grain_frac(vals[key])))
         elif key == "unison":
             lines.append(frow(label, vals[key], voices_frac(vals[key])))
         else:
@@ -318,6 +336,20 @@ def card(name, p):
               f"Toggles: 1 Octave = {OCTAVE_POS[vals['octave']]}, "
               f"3 Gate = {GATE_POS[vals['gate']]} ({vals['gate']}).", ""]
     return "\n".join(lines)
+
+
+# The beast bank hint. Deliberately says WHAT and not HOW: the gesture is
+# documented in FIRMWARE.md and HANDOFF.md, which owners do not read. See
+# firmware/hothouse/beast_presets.hpp.
+HINT = """## One more thing
+
+The pedal knows four voices that are not in this booklet, and they are
+not people. They are already in there. Nothing you can do from the front
+panel will find them by accident, and nothing they do can overwrite the
+four characters above.
+
+Someone will have to tell you.
+"""
 
 
 def main():
@@ -335,6 +367,7 @@ def main():
              "# Character settings cards", ""]
     parts += [card(n, presets[n]) for n in order]
     parts += [card(n, p) for n, p in EXTRA.items()]
+    parts += [HINT]
     OUT.write_text("\n".join(parts))
     print(f"wrote {OUT}")
 

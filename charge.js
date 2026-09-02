@@ -15,11 +15,11 @@ export function applyCharge(base, c, level, charging) {
   // you dialled. `reach` is how far up that gap the row travels at full
   // charge: up goes the whole way, middle stops halfway.
   //
-  // Gain (post chain) drives both halves of the loudness: drive toward 1 and
-  // vocal volume toward its 2.0 ceiling.
+  // Gain: the ramp drives vocal volume toward its 2.0 ceiling. It used to
+  // push drive as well, but the pedal has no drive any more (vocal size
+  // design spec section 6), so loudness is the whole of this row now.
   if (c.gain !== 0) {
     const reach = c.gain === 2 ? 1.0 : 0.5;
-    v.drive += (1.0 - v.drive) * reach * level;
     v.vocal_vol += (2.0 - v.vocal_vol) * reach * level;
   }
 
@@ -47,22 +47,19 @@ export function applyCharge(base, c, level, charging) {
     v.tone += (target - v.tone) * level;
   }
 
-  // Aspiration: breath ramped toward a full 1.0, same reach rule as gain.
-  // A voice sitting at 0 breath still gets it, which is the point: the
-  // power-up ramp is where the scream tears.
+  // Size: the ramp grows the voice itself, scaling the whole vocal tract
+  // toward its deepest. Same reach rule as gain: Up travels the whole gap,
+  // Middle half of it. The scream physically grows as it charges.
   //
-  // Aspiration is the only thing charge moves that is GRAIN-AFFECTING: any
-  // change to it re-dirties the grain tables, and a rebuild is 8 voices x
-  // grainLen x 3 formants. A continuous ramp would rebuild every block for
-  // the whole charge, so the ramp is stepped: about 33 rebuilds across a
-  // full charge instead of hundreds, and a step that small is inaudible in
-  // a breath texture. level 0 is still a bit-exact identity.
-  if (c.aspir !== 0) {
-    const reach = c.aspir === 2 ? 1.0 : 0.5;
-    // Quantise the LEVEL, not the result: level 1 stays exactly 1 so a full
-    // charge still lands exactly on the top of the range.
-    const q = Math.round(level * 32.0) / 32.0;
-    v.aspiration += (1.0 - v.aspiration) * reach * q;
+  // UNLIKE every other row, this one IS grain-affecting: audio.js turns
+  // vocal_size into formantScale, which fof-processor.js bakes into the
+  // formants and dirty-checks. An unquantised ramp would therefore rebuild
+  // the grain tables far more often than needed. Quantising the LEVEL to 32
+  // steps holds that down, exactly as the aspiration row used to.
+  if (c.size !== 0) {
+    const reach = c.size === 2 ? 1.0 : 0.5;
+    const q = Math.floor(level * 32.0 + 0.5) / 32.0;
+    v.vocal_size += (1.0 - v.vocal_size) * reach * q;
   }
   return v;
 }
@@ -75,5 +72,5 @@ export const kChargeLabels = {
   decay: ['instant', 'slow', 'fast'],
   pitch: ['off', 'fall', 'rise'],
   tone:  ['off', 'darker', 'brighter'],
-  aspir: ['off', 'low', 'high'],
+  size:  ['off', 'half', 'full'],
 };

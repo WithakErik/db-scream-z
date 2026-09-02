@@ -138,12 +138,12 @@ def knob_markers(cx, cy, marks):
 # is the rounded number printed for the reader.
 # --------------------------------------------------------------------------
 MENU1 = [
-    ("Mix", "full voice", 100, "5:00"),
-    ("Glide", "0 ms", 0, "7:00"),
-    ("Master vol", "unity", 50, "12:00"),
     ("Vocal vol", "unity", 50, "12:00"),
-    ("Drive", "clean", 0, "7:00"),
+    ("Mix", "full voice", 100, "5:00"),
+    ("Master vol", "unity", 50, "12:00"),
     ("Tone", "flat", 50, "12:00"),
+    ("Glide", "0 ms", 0, "7:00"),
+    ("Vocal size", "as written", 0, "7:00"),
 ]
 
 MENU2_SHARED = {
@@ -162,27 +162,27 @@ CHARACTERS = [
         "name": "Wukong", "page": "Set 1", "side": "RIGHT",
         "tag": "The default shout",
         "flavour": "Mid-placed formants over the reference three-voice "
-                   "stack, with no breath at all. The straightest read "
+                   "stack at the default grain. The straightest read "
                    "of the effect: loud, open, clean. Start here.",
         "m2": {0: ("F1", "858.4 Hz", 55, "12:29"),
                3: ("F2", "1234 Hz", 35, "10:29")},
         "m3": {0: ("F3", "3111.7 Hz", 54, "12:22"),
                3: ("Voices", "3", 31, "10:07"),
                4: ("Detune", "11 ct", 18, "8:49"),
-               5: ("Aspiration", "0", 0, "7:00")},
+               5: ("Grain", "20 ms", 50, "12:00")},
     },
     {
         "name": "Prince", "page": "Set 1", "side": "LEFT",
         "tag": "Clenched teeth",
         "flavour": "Formants well below Wukong under a wider four-voice "
-                   "stack and a little breath, so it lands darker and "
+                   "stack, so it lands darker and "
                    "rougher. Reads as effort rather than power.",
         "m2": {0: ("F1", "741.6 Hz", 45, "11:30"),
                3: ("F2", "1066 Hz", 27, "9:41")},
         "m3": {0: ("F3", "2688.3 Hz", 40, "10:57"),
                3: ("Voices", "4", 44, "11:22"),
                4: ("Detune", "18 ct", 30, "10:00"),
-               5: ("Aspiration", "0.15", 19, "8:55")},
+               5: ("Grain", "20 ms", 50, "12:00")},
     },
     {
         "name": "Rice", "page": "Set 2", "side": "RIGHT",
@@ -195,7 +195,7 @@ CHARACTERS = [
         "m3": {0: ("F3", "3625 Hz", 71, "2:05"),
                3: ("Voices", "2", 19, "8:52"),
                4: ("Detune", "8 ct", 13, "8:20"),
-               5: ("Aspiration", "0.05", 10, "7:58")},
+               5: ("Grain", "20 ms", 50, "12:00")},
     },
     {
         "name": "Piccolo", "page": "Set 2", "side": "LEFT",
@@ -208,20 +208,20 @@ CHARACTERS = [
         "m3": {0: ("F3", "2528.8 Hz", 34, "10:25"),
                3: ("Voices", "5", 56, "12:37"),
                4: ("Detune", "26 ct", 43, "11:20"),
-               5: ("Aspiration", "0.3", 34, "10:20")},
+               5: ("Grain", "20 ms", 50, "12:00")},
     },
     {
         "name": "Boo", "page": None, "side": None,
         "tag": "Rubbery and hollow",
         "flavour": "A wide F1-to-F2 gap over a low F3, thickened by "
-                   "five detuned voices and the second-most breath "
-                   "here. A big soft body rather than an edge.",
+                   "five widely detuned voices. A big soft body "
+                   "rather than an edge.",
         "m2": {0: ("F1", "900 Hz", 58, "12:50"),
                3: ("F2", "1750 Hz", 60, "12:57")},
         "m3": {0: ("F3", "2900 Hz", 47, "11:40"),
                3: ("Voices", "5", 56, "12:37"),
                4: ("Detune", "24 ct", 40, "11:00"),
-               5: ("Aspiration", "0.35", 38, "10:49")},
+               5: ("Grain", "20 ms", 50, "12:00")},
     },
     {
         "name": "Fling", "page": None, "side": None,
@@ -234,7 +234,7 @@ CHARACTERS = [
         "m3": {0: ("F3", "3050 Hz", 52, "12:10"),
                3: ("Voices", "3", 31, "10:07"),
                4: ("Detune", "14 ct", 23, "9:20"),
-               5: ("Aspiration", "0.12", 16, "8:38")},
+               5: ("Grain", "20 ms", 50, "12:00")},
     },
     {
         "name": "Ki-Ki", "page": None, "side": None,
@@ -247,20 +247,20 @@ CHARACTERS = [
         "m3": {0: ("F3", "3350 Hz", 62, "1:10"),
                3: ("Voices", "2", 19, "8:52"),
                4: ("Detune", "8 ct", 13, "8:20"),
-               5: ("Aspiration", "0.1", 15, "8:27")},
+               5: ("Grain", "20 ms", 50, "12:00")},
     },
     {
         "name": "Master", "page": None, "side": None,
         "tag": "Old and gravelled",
         "flavour": "The lowest F1 and F3 of the eight, the widest "
-                   "detune and the most breath of any card. Dark, "
+                   "detune of any card. Dark, "
                    "frayed, faintly ridiculous.",
         "m2": {0: ("F1", "640 Hz", 37, "10:39"),
                3: ("F2", "1080 Hz", 28, "9:45")},
         "m3": {0: ("F3", "2400 Hz", 30, "10:00"),
                3: ("Voices", "4", 44, "11:22"),
                4: ("Detune", "30 ct", 50, "12:00"),
-               5: ("Aspiration", "0.45", 48, "11:46")},
+               5: ("Grain", "20 ms", 50, "12:00")},
     },
 ]
 
@@ -276,7 +276,7 @@ CHARGE = [
                            "punch ~0.75 s"], "Middle",
            "Tone", ["brighter", "darker", "off"], "Middle"),
     ("T3", "Decay", ["fast", "slow", "off (instant)"], "Middle",
-           "Aspiration", ["high", "low", "off"], "Middle"),
+           "Size", ["full", "half", "off"], "Middle"),
 ]
 
 TOG_ROWS = ["Up", "Middle", "Down"]
@@ -630,7 +630,7 @@ def flow_svg():
     s.append(box(31, 4.5, 23, "dry, untouched"))
 
     chain = [("gate", "T3"), ("pitch track", None), ("FOF voice", None),
-             ("drive", "K5"), ("tone", "K6"), ("vocal vol", "K4")]
+             ("tone", "K4"), ("vocal vol", "K1")]
     y = 12.6
     for i, (label, knob) in enumerate(chain):
         s.append(box(2, y, BW, label, knob))
@@ -639,7 +639,7 @@ def flow_svg():
         y += 2.0
     # voice into the mix
     mix_y = y + 1.4
-    s.append(box(2, mix_y, BW, "mix", "K1"))
+    s.append(box(2, mix_y, BW, "mix", "K2"))
     # dry down the right and back into the mix
     s.append(path('M 42.5 10.5 V %.1f H %.1f' % (mix_y + 3.0, BW + 2.6)))
     s.append(path('M %.1f %.1f V %.1f' % (SPINE, mix_y + BH, mix_y + BH + 2.6)))
@@ -735,7 +735,7 @@ def build_pages(toc_rows=""):
         'solid: Wukong is engaged.</li>'
         '<li>Play single notes, cleanly, one at a time. The voice follows '
         'your pitch.</li>'
-        '<li>Nothing screaming? Turn <strong>knob 1 (Mix)</strong> '
+        '<li>Nothing screaming? Turn <strong>knob 2 (Mix)</strong> '
         'clockwise and set the <strong>right toggle to the middle</strong>.'
         '</li>'
         '<li>Now stomp <strong>both</strong> footswitches at once and hold. '
@@ -778,10 +778,34 @@ def build_pages(toc_rows=""):
         '<th>Menu 3</th></tr>' + KNOB_ROWS + '</table>'
         '<p class="small">Menu 3: <strong>K4</strong> steps through the '
         'eight voice counts in eight equal bands, so it always lands on a '
-        'whole number. Turn <strong>K6</strong> fully anticlockwise and the '
-        'aspiration switches <strong>off</strong>: the last sliver before '
-        '7:00 reads as a hard zero, so there is no breath in the voice at '
-        'all rather than a residual trickle.</p>',
+        'whole number. <strong>K6</strong> has a detent at <strong>12:00'
+        '</strong> that reads as exactly 20 ms, the grain length every '
+        'character ships with, so centring it always returns you to the '
+        'factory texture.</p>',
+        "y", "The controls"))
+
+    P.append(page(
+        '<h2 style="margin-top:0">What the menu 1 knobs do</h2>'
+        '<p><strong>Vocal vol</strong> (K1) is how loud the synthesised '
+        'voice is on its own. <strong>Mix</strong> (K2) crossfades it '
+        'against your untouched dry signal: 7:00 is the guitar alone, '
+        '5:00 is the voice alone. <strong>Master</strong> (K3) is the '
+        'level of the pair leaving the pedal. All three are unity at '
+        '12:00.</p>'
+        '<p><strong>Tone</strong> (K4) tilts the <em>voice</em> dark '
+        'below 12:00 and bright above it, and never touches the dry. It '
+        'has a detent at 12:00 that is exactly flat.</p>'
+        '<p><strong>Glide</strong> (K5) is how long the voice takes to '
+        'reach each new note, 0 to 300 ms. The taper is steep: the first '
+        'two thirds of the travel covers 0 to 100 ms, so the whole usable '
+        'range of slurs sits below 2:00.</p>'
+        '<p><strong>Vocal size</strong> (K6) scales all three formants '
+        'together, which is acoustically vocal tract length: the same '
+        'character shouting the same vowel out of a physically bigger '
+        'body. At <strong>7:00</strong> it is the character exactly as '
+        'written, which is what every card in section 8 assumes. At '
+        '<strong>5:00</strong> every formant is halved, the deepest it '
+        'goes.</p>',
         "y", "The controls"))
 
     P.append(page(
@@ -858,10 +882,11 @@ def build_pages(toc_rows=""):
         'apart they are tuned, in cents. Together they are the thickness '
         'of the voice: one voice is bare and focused, eight spread wide is '
         'a crowd of one person.</p>'
-        '<p><strong>Aspiration</strong> is breath. It is not noise: there '
-        'is no hiss generator anywhere in this pedal. It is two extra '
-        'inharmonic tones inside the voice itself, which is why it tears '
-        'rather than hisses.</p>',
+        '<p><strong>Grain</strong> is how long each grain of the voice '
+        'lasts, from 4 to 40 ms. It sets texture rather than pitch: short '
+        'grains are buzzy and rough, long ones smooth and vocal. There is '
+        'no noise generator anywhere in this pedal, so every one of these '
+        'controls shapes the voice itself.</p>',
         "y", "The three menus"))
 
     # ---- memory ---------------------------------------------------------
@@ -909,14 +934,13 @@ def build_pages(toc_rows=""):
         '<h1><span class="num">6</span>Charge mode</h1>'
         '<p>With a voice engaged and <strong>no menu latched</strong>, '
         'stomp <strong>both</strong> footswitches together and hold. The '
-        'scream charges: gain swells, pitch sweeps, breath tears into the '
-        'voice, and '
+        'scream charges: gain swells, pitch sweeps, the voice grows, and '
         'the LEDs alternate faster and faster as it builds. Release and it '
         'winds down.</p>'
         '<p>At a <strong>full charge every row you have switched on reaches '
         'the top of its range</strong>: the gain is all the way up, the '
-        'pitch has swept two octaves, and the breath has torn right into '
-        'the voice. On the amount rows, gain and aspiration, the middle '
+        'pitch has swept two octaves, and the voice has grown to its '
+        'deepest. On the amount rows, gain and size, the middle '
         'position gets you halfway there from wherever the voice already '
         'sits and the up position takes it the whole way. Tone is a '
         'direction rather than an amount, so both of its positions go the '
@@ -1111,7 +1135,7 @@ def build_pages(toc_rows=""):
     P.append(page(
         '<h1><span class="num">10</span>When it misbehaves</h1>'
         '<h3>No scream, just my guitar</h3>'
-        '<p>Check an LED is solid. Then <strong>knob 1 (Mix)</strong>: at '
+        '<p>Check an LED is solid. Then <strong>knob 2 (Mix)</strong>: at '
         '7:00 you hear only dry signal. Then the <strong>gate</strong> '
         '(T3): on <em>high</em> with low-output pickups the voice may '
         'never open. Try the middle.</p>'
@@ -1135,7 +1159,7 @@ def build_pages(toc_rows=""):
         '<p>Formant bandwidths set too wide will do that. The cards give '
         'the factory values: 7:55, 8:04 and 8:09.</p>'
         '<h3>The scream lags my playing</h3>'
-        '<p>Check <strong>glide</strong> (knob 2). At 5:00 it takes 300 ms '
+        '<p>Check <strong>glide</strong> (knob 5). At 5:00 it takes 300 ms '
         'to reach each new note. At 7:00 it is instant.</p>',
         "y", "Troubleshooting"))
 

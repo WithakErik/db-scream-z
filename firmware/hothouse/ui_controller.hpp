@@ -338,7 +338,7 @@ class UiController {
     return 1;
   }
   // Toggle move while a menu is latched edits the global charge config.
-  // Menu 2: gain/time/decay. Menu 3: pitch/tone/aspiration.
+  // Menu 2: gain/time/decay. Menu 3: pitch/tone/size.
   void set_charge_field(int toggle, TogglePos pos) {
     const uint8_t v = charge_val(pos);
     uint8_t* f;
@@ -349,7 +349,7 @@ class UiController {
     else
       f = toggle == 0 ? &config_.pitch
         : toggle == 1 ? &config_.tone
-                      : &config_.aspir;
+                      : &config_.size;
     *f = v;  // dirtiness is judged at menu exit vs persisted_config_
   }
   static Menu menu_of(Side s) {

@@ -80,7 +80,11 @@ v12). It contains, top to bottom:
    the lab's; it lives in `tools/gen_presets.py` STACK. Unison was retired
    2026-09-01 and grain_ms 2026-09-02, both under the store v6 bump; both
    are now pinned in main.cpp's `to_fof_params()` instead, so only
-   detune_cents remains in STACK now.
+   detune_cents remains in STACK now. Store v7 (2026-09-03) changed only
+   the factory charge config (Birit Spomb / rise / brighter / full); the
+   layout is unchanged and the bump exists because main.cpp only restores
+   defaults on a version mismatch, so without it a pedal keeps its v6
+   charge config forever.
    The character vibrato left presets.hpp at commit 37ed8bf (Aug 31) and moved to render.cpp,
    then was removed on 2026-09-01 when the vibrato LFO itself was retired; `firmware/host/render.cpp` no longer
    reproduces the v12 milestone reference renders either, an accepted
@@ -97,8 +101,9 @@ Also in the lab file but NOT wanted in firmware: the vowel filter engine
 (user explicitly wants NO effects chain in the pedal), and the per-channel
 diagnostics (replace with nothing; LEDs suffice).
 
-Architecture: audio callback at 48 kHz, block size 4-48 (start with
-libDaisy defaults, then minimise). All parameter smoothing already exists
+Architecture: audio callback at 48 kHz, block size 128 (was the libDaisy
+default 48 until 2026-09-03; raised because the pitch tracker's
+once-per-window burst needs a block it fits in, section 9). All parameter smoothing already exists
 inside the engine (glide, gate slew, leveler slew). Static allocation
 only; grain tables rebuilt only on character/param change, OUTSIDE the
 audio callback (flag + rebuild in main loop, double-buffer the tables).
@@ -124,7 +129,8 @@ section 11 explains the history.
 | Grain floor 16 Hz | -3 octave transpose clamping to 50 Hz |
 | MonkSynth grain: 20 ms, 3 damped sinusoids, cosine window (1.8 ms attack, release from 13 ms), exp(-pi*BW*i/sr) decay, BW = 32.5/47.5/62.5 | the voice sounding wrong in ways nobody wants to rediscover |
 | NO noise sources anywhere in the voice path. The engine's aspiration (2 inharmonic sines) is the nearest thing and the pedal pins it to 0: main.cpp never passes it through. Removed from the controls 2026-09-01 after it was measured as the on-hardware "static", +22.6 dB in the 3-6 kHz band at 0.3 with no change in broadband level | the rejected hiss |
-| Unison pinned to 3, not reachable from any control. Retired 2026-09-01 after stacks above 3 were heard as a ringmod-like artifact on hardware, audible even at mix 0 where the voice path is multiplied by zero | per-block grain accumulation cost scaling with voice count |
+| Unison pinned to 3, not reachable from any control. Retired 2026-09-01 after stacks above 3 were heard as a ringmod-like artifact on hardware, audible even at mix 0 where the voice path is multiplied by zero. Briefly dropped to 1 on 2026-09-02 and reverted the same day, see section 9 | per-block grain accumulation cost scaling with voice count |
+| `DBSCREAMZ_MAX_UNISON=3` on the firmware build, so the grain tables hold exactly the pinned stack. `build_grains()` fills all `kMaxUnison` voices on every rebuild but `process_block` reads only the first `p.unison`, so voices 3..7 were built and never read until 2026-09-02. The HOST default stays 8 to match the frozen JS `MAX_UNISON`, and `main.cpp`'s `static_assert(kPinnedUnison <= kMaxUnison)` ties the two | 75 KB of SRAM spent on tables nothing reads, and grain rebuilds 8/3 more expensive than needed |
 | Grain length pinned to 20 ms, not reachable from any control. Retired 2026-09-02 to free knob 6; every character and beast already stored exactly 20 | per-block cost scales with grain length as well as voice count |
 
 ## 5. Ear-approved defaults (v12) - bake as firmware constants
@@ -222,9 +228,135 @@ session, in C++ form.
   as a ringmod-like artifact, still present at mix 0 where the voice is
   multiplied by zero, which is what pointed at cost rather than signal.
   Unison is pinned to 3 for that reason (main.cpp `to_fof_params`).
-  **None of this was ever measured with a CpuLoadMeter.** The headroom
-  here is an estimate and always has been, so do not lean on it when
-  adding per-sample work; measure first. That measurement remains open.
+
+  **2026-09-02: the estimate is no longer the only evidence.** A day spent
+  chasing a high-note crackle on the host ruled out three candidates that
+  had nothing to do with per-block cost:
+
+  - **The voice is not clipping.** Rendering `--set followPitch=0` and
+    sweeping `targetF0` from 100 Hz to 2 kHz, peak output stays between
+    0.08 and 0.25 and *falls* with pitch. The `/sqrt(overlap)` division at
+    `fof_engine.hpp:227-228` plus the leveler holds it flat.
+  - **The doubles are not emulated.** libDaisy builds
+    `-mfpu=fpv5-d16 -mfloat-abi=hard`, so the `pow`/`log2`/`sin` in the
+    synth loop run on the hardware FPU.
+  - **The pitch tracker does not break down up there.** Synthetic tones
+    from 110 Hz to 1320 Hz track with zero standard deviation and zero
+    octave jumps, including above the detector's stated 1300 Hz ceiling.
+    Total render time across that range rises only ~20%, so the
+    `bacf_period_detector::autocorrelate()` nested loop over `num_edges()`
+    is not the quadratic burst it looks like on paper.
+    **(2026-09-03: this last inference was wrong, see below. The tracker
+    does not break down; it just gets expensive.)**
+
+  The engine renders clean at every pitch, which leaves the audio ISR
+  deadline (a 1 ms budget at `kBlockSize` 48 / 48 kHz) as the surviving
+  hypothesis, plus `post_chain.hpp:34`, which has 4x of available gain
+  above a 0.25-peak signal and no limiter anywhere.
+
+  The CpuLoadMeter in `main.cpp` closes the measurement that this section
+  had listed as open since the project began. It logs the WORST block per
+  second, not the average, because one block over budget is one audible
+  dropout, and it logs the tracked f0 at that block so the pitch
+  dependence is visible directly. Do not go back to estimating.
+
+  **2026-09-03: measured, and the crackle IS a deadline miss.** The meter,
+  on hardware, playing up the neck:
+
+  ```
+  cpu avg 41.5%  worst 51.3%   worst@ 110 Hz
+  cpu avg 50.9%  worst 131.9%  worst@ 660 Hz
+  cpu avg 54.8%  worst 91.3%   worst@ 879 Hz
+  cpu avg 57.8%  worst 112.9%  worst@ 1047 Hz
+  ```
+
+  Base cost is ~50% of the block. On top of it, once every `window/2` =
+  688 samples (14.3 ms), `bacf_period_detector::autocorrelate()` runs
+  inside ONE sample's call: for every pair of qualifying rising edges
+  within half a window it runs a bitstream ACF over 20 32-bit words, and
+  the firmware build calls libgcc `__popcountsi2` for every word (no
+  POPCNT on Cortex-M7; `build/main.lst`). Edges grow linearly with f0, so
+  pairs grow quadratically. Counted on the host with an instrumented copy
+  of the header, fed `guitar_long.wav` the way the pedal feeds it:
+
+  | input | worst window: ACF calls | words |
+  |---|---|---|
+  | real DI, as recorded (~100-300 Hz) | 75 | 1,500 |
+  | real DI, +1 octave | 212 | 4,240 |
+  | real DI, +2 octaves (up to 1.1 kHz) | **646** | **12,920** |
+  | synthetic 1320 Hz + 2 harmonics | 11 | 220 |
+
+  ~35 cycles a word makes the worst burst ~0.9 ms on its own, which is
+  the 60-80 points the meter shows above the base. Why the 09-02 host
+  check missed it: `autocorrelate()` returns early on a perfect match
+  (`count == 0`), which a clean synthetic tone hits at once (last row,
+  30x less work than a real guitar); a total-time average amortises the
+  burst over 688 samples; and x86 has hardware popcount. The same early
+  exit is why the crackle is "semi-deterministic": a window that happens
+  to correlate perfectly costs almost nothing, so the same note is fine
+  one time and over budget the next.
+
+  Fix, in three independent steps, each measured with the meter:
+
+  1. **DONE 2026-09-03: memoise the per-sample transcendentals**
+     (`fof_engine.hpp` synth loop, `pitch_math.hpp octave_multiplier`).
+     `pow(2, octave)` is hoisted per block; the LFO `sin` is skipped when
+     it cannot contribute; and `pow(2, semis/12)`, `quantize_hz`, and
+     `amp_comp_gain` are each cached on their exact input per voice.
+     With vibrato off and the glide settled (cur_f0_ converges EXACTLY
+     onto f0 within ~35 ms at glide 0) the steady-state loop runs zero
+     transcendentals per sample. Verified bit-identical against a
+     snapshot of the previous engine on `guitar_long.wav` across 12
+     param sets (octave, glide, vibrato on/off/switching, detune, unison
+     1 and 3, quantize and follow_pitch flips); host loop time halved.
+     **Revised the same day:** the first version keyed the quantize memo
+     on the exact `f`, and the meter showed it only paid off on clean
+     sustained notes (avg 24% at 128 samples one run, 50% the next, same
+     code). On the real DI it MISSED 50-74% of voice-samples: every
+     tracker update, bend or finger vibrato restarts the glide and each
+     restart misses for ~35 ms. `quantize_hz` only depends on the
+     1/32-semitone bin, so the memo is now keyed on the bin, with the
+     bin's Hz interval shrunk 1e-9 relative each side so the fast path
+     can never disagree with the log2 path (`pitch_math.hpp
+     quantize_bin / quantize_bin_hz`). Misses on the DI: 0.5-1.8%.
+     Verified bit-identical against the pre-memo snapshot, 36 cases
+     (12 param sets x DI at x1/x2/x4 speed). Host loop 415 -> 92 ms.
+     Vibrato ON now costs 4 transcendentals a sample (the LFO sin plus
+     one pow per voice for `semis`; folding that across voices would not
+     be bit-exact), down from 10. A charge sweep is just a long glide
+     and is covered by the bin memo like any other pitch motion.
+  2. **DONE 2026-09-03 (awaiting the hardware number): inline popcount**
+     via `firmware/engine/q_shim/q/detail/count_bits.hpp`, a shim ahead
+     of q on both Makefiles' include paths (the pattern
+     `host/third_party/q/utility/bitset.hpp` already uses). Replaces the
+     per-word `bl __popcountsi2` (libgcc byte-table loop, 4 loads +
+     call/return) with 12 inline ALU instructions; verified from the
+     M7 assembly that GCC 13 does not fold the idiom back into the
+     builtin. Bit-exact by definition; `test_count_bits` checks every
+     16-bit pattern against the builtin AND that the shim is the header
+     bitstream_acf actually picks up. **Measured:** the burst (worst
+     minus avg at 1.1 kHz) went from ~28 points of the 2.67 ms block to
+     ~18. That run's avg was 20 points HIGHER than the run before it at
+     every pitch, which was not the shim (it only runs inside the burst)
+     but the exact-f quantize memo missing on a played-like-a-guitar
+     take; see the step 1 revision above.
+  3. **DONE 2026-09-03: `kBlockSize` 48 -> 128** (main.cpp). The burst
+     lands at most once per block, so a 2.67 ms deadline absorbs it.
+     ~1.7 ms more latency. This is the margin for the vibrato-on and
+     charge-sweep cases step 1 cannot help. Taken before step 2 because
+     the step 1 hardware numbers showed the WORST block had only moved
+     5-10 points (avg fell 41% -> 24%, worst 113% -> 108% at 1050 Hz):
+     the tracker publishes its new f0 in the same sample the burst runs
+     in, and any f0 change restarts the glide, which misses the memo for
+     ~35 ms, so the burst block is also a full-cost block.
+     **Measured after steps 1 and 3** (percent of the 2.67 ms block):
+     worst 35-45% below 500 Hz, 69% at 1105 Hz, 73% at 1155 Hz, and the
+     crackle is gone. The remaining exposure is vibrato ON or a charge
+     sweep at the top of the neck, where the memo misses every sample:
+     estimated ~82% from the pre-memo base cost, so still under budget
+     but with the least margin the pedal has. Step 2 is what buys that
+     margin back.
+
   The vibrato LFO restored 2026-09-02 costs one `std::sin` per sample,
   shared across the whole stack rather than one per voice. Against the
   pedal as it stood on 2026-09-01 that is one more transcendental per

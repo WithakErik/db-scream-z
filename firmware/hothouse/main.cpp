@@ -20,9 +20,12 @@
 //   (beast_presets.hpp). Session only, never written to QSPI.
 // Bypass = milestone 1 passthrough; engage ramps in over 10 ms.
 
+#include <cmath>   // std::isfinite, guarding the CPU report against NaN
+
 #include "daisy_seed.h"
 #include "hothouse.h"
 #include "util/PersistentStorage.h"
+#include "util/CpuLoadMeter.h"
 
 #include "fof_engine.hpp"
 #include "post_chain.hpp"
@@ -32,6 +35,7 @@
 
 using clevelandmusicco::Hothouse;
 using daisy::AudioHandle;
+using daisy::CpuLoadMeter;
 using daisy::Led;
 using daisy::PersistentStorage;
 using daisy::SaiHandle;
@@ -43,6 +47,30 @@ FofEngine* eng = nullptr;
 PostChain* post = nullptr;
 PersistentStorage<VoiceStore>* storage = nullptr;
 UiController ui;
+
+// ---- CPU load instrumentation (2026-09-02) --------------------------------
+// FIRMWARE.md section 9 has said since the start that the per-block cost
+// budget "was never measured with a CpuLoadMeter" and that "that measurement
+// remains open". Three fixes have now been aimed at a high-note crackle on
+// the strength of that unmeasured estimate. This closes it.
+//
+// The number that matters is NOT the average: at kBlockSize 128 / 48 kHz each
+// callback has a 2.67 ms deadline (1 ms at the 48 it measured at first), and
+// ONE block over budget is one audible dropout. So the worst block is logged, along with the tracked f0 at the
+// moment it happened, because the whole hypothesis is that cost rises with
+// pitch. If the crackle is a deadline miss, worst-block load will sit near
+// or above 100% exactly when f0 is high.
+//
+// Cost when idle: two System::GetTick() reads and a handful of floats per
+// block. The USB serial log is written from the MAIN LOOP only, never from
+// the audio IRQ.
+CpuLoadMeter cpu_meter;
+// Written by the audio IRQ, read and cleared by the main loop. A torn read
+// across that boundary would cost one wrong diagnostic line and nothing
+// else, and both are naturally-aligned 32-bit scalars on Cortex-M7, so no
+// locking. Deliberately not volatile-qualified beyond that.
+volatile float cpu_worst_load = 0.0f;
+volatile float cpu_worst_f0 = 0.0f;
 
 // The grain tables are trimmed on this target (Makefile: MAX_GRAIN_LEN).
 // Grain length is no longer knob-driven: the knob (and map_grain, and its
@@ -58,7 +86,36 @@ static_assert(kMaxGrainLen >= 1920,
               "kMaxGrainLen must cover the 20 ms grain pin at 48 kHz, kept "
               "at 2x headroom");
 
-static constexpr size_t kBlockSize = 48;
+// The pinned voice count, named so the assert below can tie it to the grain
+// tables. build_grains() fills all kMaxUnison voices on every rebuild and
+// process_block only ever reads the first p.unison of them, so the two
+// numbers being equal is what stops the pedal building tables it never
+// reads: that was 5 of 8 voices (75 KB of SRAM) until 2026-09-02.
+//
+// fof_engine.hpp:170 clamps the requested stack to kMaxUnison, so exceeding
+// it could never overrun the tables; it would silently give you fewer voices
+// than the pin asks for, which is worse. This turns that into a build error.
+static constexpr int kPinnedUnison = 3;
+static_assert(kPinnedUnison <= kMaxUnison,
+              "to_fof_params pins more voices than the grain tables hold; "
+              "raise DBSCREAMZ_MAX_UNISON in the Makefile to match");
+
+// 128, not the libDaisy/Hothouse default of 48 (2026-09-03). The pitch
+// tracker's autocorrelate() burst runs inside ONE sample once per 688-sample
+// window, so it lands in at most one block whatever the block size; at 48
+// samples it had a 1 ms deadline and the CpuLoadMeter measured the block
+// it landed in at 100-132% above ~650 Hz (FIRMWARE.md section 9), which was
+// the high-note crackle. At 128 the same burst has 2.67 ms to fit in. The
+// per-sample work scales with the block and the burst does not, so this
+// buys margin rather than merely moving the line. Costs ~1.7 ms of
+// latency. 128 is also the block the lab reference and host/render.cpp
+// use, and the top of process_block's supported range (n <= 128).
+//
+// Everything else in the callback is per-sample (the engage ramp) or
+// millisecond-timed (UI gestures, charge ramp, switch debounce), and
+// Hothouse::SetAudioBlockSize re-derives the knob smoothing rate, so the
+// coarser tick changes nothing but latency.
+static constexpr size_t kBlockSize = 128;
 // Engage/bypass crossfade over 10 ms: click-free transition (spec sec 7).
 static constexpr float kRampStep = 1.0f / (0.010f * 48000.0f);
 static float ramp = 0.0f;  // 0 = bypass output, 1 = processed output
@@ -90,15 +147,34 @@ static FofParams to_fof_params(const VoiceParams& v) {
   p.a1 = v.a1; p.a2 = v.a2; p.a3 = v.a3;
   // Unison is pinned for the same reason aspiration is: fof_engine.hpp is a
   // transcription of the frozen lab engine and keeps its unison support, so
-  // the pedal switches it off here rather than cutting the engine. 3 is the
-  // engine's own long-standing default (FofParams::unison) and what every
-  // character ran before the menu 3 knob existed; it is also what
+  // the pedal switches it off here rather than cutting the engine.
+  //
+  // 3 is the engine's own long-standing default (FofParams::unison) and what
+  // every character ran before the menu 3 knob existed; it is also what
   // tools/ref_render.js and host/render.cpp render at, so the golden
-  // reference renders stay valid. Stacks above 3 were the "ringmod" heard
-  // on hardware 2026-09-01, audible even at mix 0 where the voice path is
+  // reference renders stay valid. Stacks above 3 were the "ringmod" heard on
+  // hardware 2026-09-01, audible even at mix 0 where the voice path is
   // multiplied by zero, which is what ruled the voice path out and left
   // per-block cost as the cause.
-  p.unison = 3;
+  //
+  // 2026-09-02: briefly dropped to 1 chasing the high-note crackle, then put
+  // back. Three separate causes were ruled OUT on the host that day, none of
+  // them the stack: peak output never exceeds 0.25 anywhere from 100 Hz to
+  // 2 kHz and does NOT rise with pitch (so the voice is not clipping);
+  // libDaisy builds -mfpu=fpv5-d16 -mfloat-abi=hard (so the doubles in the
+  // synth loop are hardware, not emulated); and the BACF tracker holds f0
+  // with zero deviation and zero octave jumps from 110 Hz to 1320 Hz. The
+  // engine renders clean at every pitch, so the artifact is not in this
+  // math. 1 also silently killed knob 6, because detune multiplies `spread`
+  // and a single voice sits at spread 0 (fof_engine.hpp:209).
+  //
+  // What actually shrank on 2026-09-02 was the grain TABLES, not the stack:
+  // DBSCREAMZ_MAX_UNISON trims them from 8 voices to kPinnedUnison, which is
+  // where the 75 KB and the 8/3 cheaper rebuild came from. See the Makefile.
+  //
+  // The per-block cost theory behind all of this has never been measured.
+  // The CpuLoadMeter below is that measurement.
+  p.unison = kPinnedUnison;
   p.detune_cents = v.detune_cents;
   // Vibrato. The store and the knobs are in CENTS, FofParams::vib_depth is
   // in SEMITONES: this division is the only place that boundary is crossed
@@ -134,8 +210,26 @@ static FofParams to_fof_params(const VoiceParams& v) {
   return p;
 }
 
+// Closes out the CPU measurement for this block. Called on EVERY exit path
+// from AudioCallback, including the bypass early-return: a block that skips
+// the engine is the cheap baseline this whole measurement is compared
+// against, so dropping it would bias the numbers toward the engine.
+static inline void end_block_metering() {
+  cpu_meter.OnBlockEnd();
+  // GetMaxCpuLoad() is monotonically non-decreasing between Reset() calls, so
+  // it growing means THIS block is the new worst one and the f0 read below is
+  // the pitch that produced it. NaN (the post-Reset value, before any block
+  // has completed) fails this compare and is skipped, which is what we want.
+  const float mx = cpu_meter.GetMaxCpuLoad();
+  if (mx > cpu_worst_load) {
+    cpu_worst_load = mx;
+    cpu_worst_f0 = static_cast<float>(eng->live_f0());
+  }
+}
+
 void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out,
                    size_t size) {
+  cpu_meter.OnBlockStart();
   hw.ProcessAllControls();
   ui.tick(read_inputs());
 
@@ -158,6 +252,7 @@ void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out,
   if (target == 0.0f && ramp <= 0.0f) {
     // Milestone 1 passthrough, verbatim: the bypass branch.
     for (size_t i = 0; i < size; ++i) out[0][i] = out[1][i] = in[0][i];
+    end_block_metering();
     return;
   }
 
@@ -178,6 +273,7 @@ void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out,
   }
   for (size_t i = n; i < size; ++i)
     out[0][i] = out[1][i] = in[0][i];  // dead when n == size (m2-4 note)
+  end_block_metering();
 }
 
 int main() {
@@ -237,7 +333,15 @@ int main() {
   eng->set_params(to_fof_params(ui.edit_buffer()));
   eng->rebuild_grains_if_dirty();  // first tables built before audio starts
 
+  // CPU metering. Init BEFORE StartAudio so the first callback already has
+  // its tick scaling. StartLog(false) does NOT wait for a host to attach, so
+  // a pedal with nothing plugged into the USB port boots and plays exactly as
+  // before; the lines are simply discarded.
+  cpu_meter.Init(48000.0f, static_cast<int>(kBlockSize));
+  hw.seed.StartLog(false);
+
   hw.StartAudio(AudioCallback);
+  uint32_t cpu_log_ms = System::GetNow();
 
   while (true) {
     // Grain rebuilds ONLY here, never in the audio IRQ (FIRMWARE.md
@@ -262,6 +366,41 @@ int main() {
       active.charge = ui.charge_config();
       if (!beast_mode) storage->Save();
       ui.config_save_done();
+    }
+
+    // CPU report, once a second, from the main loop (never the audio IRQ).
+    // Printed as integer tenths of a percent on purpose: libDaisy's logger
+    // has no %f, it offers the FLT_FMT/FLT_VAR decomposition macros instead
+    // (hid/logger.h), and plain integers are less to get wrong.
+    //
+    // Reading this: "avg" is the smoothed steady-state load and "worst" is
+    // the single most expensive block since the previous line. Sustained
+    // worst near or above 1000 (100.0%) IS the dropout, and "worst@" is the
+    // f0 it happened at. If worst climbs with pitch, the overload hypothesis
+    // is confirmed and the cost is pitch-driven; if worst is flat and well
+    // under budget at the pitches that crackle, the cause is NOT CPU and the
+    // search moves to the post chain and the codec.
+    const uint32_t now_ms = System::GetNow();
+    if (now_ms - cpu_log_ms >= 1000) {
+      cpu_log_ms = now_ms;
+      // GetAvgCpuLoad() is NAN between a Reset() and the next completed
+      // block, and casting a NaN to int is undefined. In practice a second
+      // of audio has always run by here, but this is diagnostic code that
+      // must never be the thing that takes the pedal down.
+      const float raw_avg = cpu_meter.GetAvgCpuLoad();
+      const float avg = std::isfinite(raw_avg) ? raw_avg : 0.0f;
+      const float worst = cpu_worst_load;
+      hw.seed.PrintLine("cpu avg %d.%d%%  worst %d.%d%%  worst@ %d Hz",
+                        static_cast<int>(avg * 100.0f),
+                        static_cast<int>(avg * 1000.0f) % 10,
+                        static_cast<int>(worst * 100.0f),
+                        static_cast<int>(worst * 1000.0f) % 10,
+                        static_cast<int>(cpu_worst_f0));
+      // Clear both so the next line's worst is that second's worst, not the
+      // session's. Without this the peak latches on the first bad block and
+      // the log stops telling you anything.
+      cpu_meter.Reset();
+      cpu_worst_load = 0.0f;
     }
 
     const LedState l = ui.leds(System::GetNow());

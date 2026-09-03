@@ -201,6 +201,14 @@ Key properties, all verified:
   the engine's own 3. Grain length followed 2026-09-02, when the freed
   knobs 4 and 5 became vibrato rate and depth, so the pedal has the LFO
   back, and detune moved down to knob 6.)
+  (2026-09-02: the pin briefly went to 1 chasing a high-note crackle and
+  went straight back to 3 the same day. The host renders cleared the
+  voice path of all three suspects, and unison 1 silently killed knob 6
+  as a bonus, since detune multiplies `spread` and one voice sits at
+  spread 0. What DID change that day is the grain TABLES:
+  DBSCREAMZ_MAX_UNISON trims them from 8 voices to the pinned 3, giving
+  back 75 KB of SRAM that build_grains() was filling and nothing was
+  reading. See FIRMWARE.md section 9.)
 
 **Measured spectral flatness 2.3e-5 to 1.2e-4.** For comparison, the dry
 guitar measures 2e-4 and the rejected noise-based version measured 0.06-0.09.

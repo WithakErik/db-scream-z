@@ -22,10 +22,16 @@ export function toFofParams(v) {
     f1: v.f1, f2: v.f2, f3: v.f3,
     bw1: v.bw1, bw2: v.bw2, bw3: v.bw3,
     a1: v.a1, a2: v.a2, a3: v.a3,
-    // Unison pinned to the engine default for the same reason aspiration is
-    // pinned to 0: fof-processor.js keeps its unison support, the pedal just
-    // stops driving it. Stacks above 3 were the ringmod-like artifact heard
-    // on hardware 2026-09-01.
+    // Unison pinned for the same reason aspiration is pinned to 0:
+    // fof-processor.js keeps its unison support, the pedal just stops
+    // driving it.
+    //
+    // Stacks above 3 were the ringmod-like artifact heard on hardware
+    // 2026-09-01. Briefly dropped to 1 on 2026-09-02 chasing a high-note
+    // crackle and put straight back: the host renders ruled the voice path
+    // out (peak never exceeds 0.25 from 100 Hz to 2 kHz and does not rise
+    // with pitch), and 1 also silently killed the detune knob, since
+    // detuneCents multiplies `spread` and a single voice sits at spread 0.
     unison: 3, detuneCents: v.detune_cents,
     // Vibrato. The store and the knobs are in CENTS, this file's vibDepth is
     // in SEMITONES: this division is the only place that boundary is

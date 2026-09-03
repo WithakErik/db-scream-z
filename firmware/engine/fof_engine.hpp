@@ -54,6 +54,13 @@ class FofEngine {
     // vibPhase[0] = 2*PI*0/8 = 0, so the faithful port of the used state
     // is a scalar starting at 0.
     for (int u = 0; u < kMaxUnison; u++) vphase_[u] = 0.0;
+    for (int u = 0; u < kMaxUnison; u++) {
+      semis_key_[u] = ac_key_[u] = NAN;
+      semis_mul_[u] = quant_out_[u] = ac_out_[u] = 0.0;
+      // Empty interval: f < +inf is always true, so the first lookup misses.
+      quant_lo_[u] = INFINITY;
+      quant_hi_[u] = -INFINITY;
+    }
     for (int s = 0; s < 2; s++)
       for (int u = 0; u < kMaxUnison; u++)
         for (int k = 0; k < kMaxGrainLen; k++) grain_sets_[s][u][k] = 0.0f;
@@ -178,6 +185,30 @@ class FofEngine {
     // even at glideMs = 0 (the default).
     const double glide_coef =
         std::exp(-1 / (std::max(1.0, p.glide_ms) * 0.001 * sr_));
+    // Per block, not per sample: octave_shift cannot change inside a block.
+    const double oct_mul = octave_multiplier(p);
+
+    // ---- Per-sample transcendental memo (2026-09-03) ----------------------
+    // The CpuLoadMeter measured this loop at ~50% of the 1 ms block budget
+    // at 48 samples, before the pitch tracker's once-per-window
+    // autocorrelate burst lands on top (FIRMWARE.md section 9). Most of
+    // that base cost was ~10 double transcendentals per sample (pow / log2
+    // / pow per voice, sin for the LFO, pow for the octave) recomputing
+    // values whose inputs had not changed: with vibrato off, `semis` is a
+    // per-voice constant, and cur_f0_ converges EXACTLY onto the tracked f0
+    // within ~35 ms at glide 0 (the (cur - target) residual decays below
+    // half an ulp and the sum rounds to target), after which `f` only moves
+    // when the tracker moves it, once per 14 ms window at most.
+    //
+    // Each memo below is a pure function cached on its exact input, so the
+    // output is bit-identical to recomputing it: this is an optimisation of
+    // cost only, the JS transcription is unchanged. Keys start at NaN so
+    // the first sample always misses. Verified bit-exact against a
+    // snapshot of the pre-memo engine over guitar_long.wav for octave
+    // shifts, glide, vibrato on/off/switching, detune, and unison 1 and 3.
+    //
+    // What still costs: while vibrato is ON or a glide is in flight, every
+    // sample misses and the loop is as expensive as it was.
 
     for (int i = 0; i < n; i++) {
       // ---- JS lines 948-962: live front end, then tracker, then reads ----
@@ -190,7 +221,7 @@ class FofEngine {
       const double amp = fe_.live_amp() * 0.5;       // line 962, 0.5 headroom
 
       // JS lines 974-976: register map + portamento
-      const double target = register_map(raw_f0, p);
+      const double target = register_map(raw_f0, p, oct_mul);
       cur_f0_ = target + (cur_f0_ - target) * glide_coef;
 
       // ONE common vibrato LFO for the whole unison stack, so it is
@@ -202,7 +233,14 @@ class FofEngine {
       vib_phase_ = p.vib_rate > 0
                        ? vib_phase_ + (2 * M_PI * p.vib_rate) / sr_
                        : 0.0;
-      const double vib = p.vib_depth * std::sin(vib_phase_);
+      // sin is skipped when it cannot contribute. depth 0 gives
+      // 0 * sin = +/-0.0, and a parked phase gives depth * sin(0) = 0.0;
+      // either way `semis` below sums to the same value (x + -0.0 == x),
+      // and the only consumer of semis is pow(2, semis/12), where +0.0 and
+      // -0.0 both give exactly 1.0. So the shortcut is bit-exact.
+      const double vib = (p.vib_depth != 0.0 && vib_phase_ != 0.0)
+                             ? p.vib_depth * std::sin(vib_phase_)
+                             : 0.0;
 
       // ---- JS lines 992-1036: trigger grains per unison voice ----
       for (int u = 0; u < n_uni; u++) {
@@ -211,9 +249,31 @@ class FofEngine {
         const double v_gain = 1 - 0.45 * std::fabs(spread);   // side taper
 
         const double semis = (spread * p.detune_cents) / 100 + vib;
-        double f = cur_f0_ * std::pow(2.0, semis / 12.0);
+        if (semis != semis_key_[u]) {   // memo: pow(2, semis / 12)
+          semis_key_[u] = semis;
+          semis_mul_[u] = std::pow(2.0, semis / 12.0);
+        }
+        double f = cur_f0_ * semis_mul_[u];
         f = std::min(std::max(f, 16.0), 2000.0);   // clamp BEFORE quantize
-        f = quantize_hz(f, p.quantize);
+        if (p.quantize) {
+          // memo: quantize_hz, keyed on the 1/32-semitone BIN. The output
+          // depends only on the bin, and [quant_lo_, quant_hi_] is that
+          // bin's Hz interval shrunk by 1e-9 relative on each side, so any
+          // f inside it is guaranteed to round to the cached bin: the
+          // log2 path's rounding error is ~1e-15 relative, five orders of
+          // magnitude inside the margin. Inside the interval this costs
+          // two compares; a miss (a bin crossing, i.e. every ~3 cents of
+          // pitch motion) costs one log2 and three pow. An exact-f key
+          // was measured missing 50-74% of samples on the real DI, since
+          // every tracker update restarts the glide.
+          if (f < quant_lo_[u] || f > quant_hi_[u]) {
+            const double idx = quantize_bin(f);
+            quant_out_[u] = quantize_bin_hz(idx);
+            quant_lo_[u] = quantize_bin_hz(idx - 0.5) * (1.0 + 1e-9);
+            quant_hi_[u] = quantize_bin_hz(idx + 0.5) * (1.0 - 1e-9);
+          }
+          f = quant_out_[u];
+        }
 
         vphase_[u] += f / sr_;
         if (vphase_[u] >= 1) {
@@ -226,7 +286,13 @@ class FofEngine {
           // process() calls, never mid-call).
           const double overlap_at_trig = std::max(1.0, (gl * f) / sr_);
           double gain = (0.55 * v_gain) / std::sqrt(overlap_at_trig);
-          if (p.amp_comp) gain *= amp_comp_gain(f);   // lines 1023-1027
+          if (p.amp_comp) {                            // lines 1023-1027
+            if (f != ac_key_[u]) {      // memo: amp_comp_gain (log2)
+              ac_key_[u] = f;
+              ac_out_[u] = amp_comp_gain(f);
+            }
+            gain *= ac_out_[u];
+          }
 
           const float* grain = grain_sets_[as][u];
           int w = owrite_;
@@ -301,6 +367,16 @@ class FofEngine {
   double vphase_[kMaxUnison];    // JS line 509
   double vib_phase_ = 0.0;       // JS vibPhase[0], line 513 with i = 0
   double cur_f0_ = 200.0;        // JS line 516
+
+  // Per-voice memo of the three per-sample transcendentals (see the note
+  // above the synth loop). No JS counterpart: pure caches, keyed on the
+  // exact input (the quantizer on its bin's Hz interval), initialised so
+  // the first lookup misses. Not reset by
+  // reset_live()/clear_output_state() on purpose: a cached pure function
+  // is valid forever.
+  double semis_key_[kMaxUnison], semis_mul_[kMaxUnison];
+  double quant_lo_[kMaxUnison], quant_hi_[kMaxUnison], quant_out_[kMaxUnison];
+  double ac_key_[kMaxUnison], ac_out_[kMaxUnison];
 
   double lv_fast_ = 0.0;         // JS line 519
   double lv_g_ = 1.0;            // JS line 919

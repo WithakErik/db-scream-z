@@ -29,7 +29,12 @@
 // this DOES change the block size, so a v5 block read as v6 would misread
 // every field after a1..a3; the bump is what stops that. Saved characters
 // factory-restore on first boot.
-inline constexpr uint32_t kVoiceStoreVersion = 6;
+// v7 (2026-09-03): same layout as v6; the factory charge config changed
+// (Birit Spomb / rise / brighter / full) and the bump is the only way the
+// new defaults reach a pedal that already has a v6 block in QSPI, because
+// main.cpp only restores defaults on a version mismatch. Saved characters
+// factory-restore on first boot.
+inline constexpr uint32_t kVoiceStoreVersion = 7;
 
 // Gate toggle thresholds, indexed low/medium/high. PLACEHOLDERS until the
 // milestone 3 on-hardware ear calibration (FIRMWARE.md gotcha 3): medium
@@ -88,11 +93,11 @@ inline constexpr uint32_t kDecayTimesMs[3] = {0, 1200, 300};
 inline ChargeConfig factory_charge_config() {
   ChargeConfig c{};
   c.gain = 1;   // on
-  c.time = 1;   // Hamekameka
+  c.time = 2;   // Birit Spomb
   c.decay = 1;  // slow
-  c.pitch = 1;  // fall
-  c.tone = 1;   // darker
-  c.size = 1;   // half
+  c.pitch = 2;  // rise
+  c.tone = 2;   // brighter
+  c.size = 2;   // full
   return c;
 }
 

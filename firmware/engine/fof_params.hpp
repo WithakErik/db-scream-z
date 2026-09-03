@@ -2,7 +2,23 @@
 #pragma once
 #include <cmath>
 
-inline constexpr int kMaxUnison = 8;
+// Overridable at compile time exactly like DBSCREAMZ_MAX_GRAIN_LEN below
+// (firmware/hothouse/Makefile passes -DDBSCREAMZ_MAX_UNISON=3, which trims
+// the 2 x kMaxUnison x kMaxGrainLen grain tables to fit the target's RAM
+// budget).
+//
+// The HOST default stays 8 on purpose. 8 is the frozen JS engine's
+// MAX_UNISON, and fof_engine.hpp:170 clamps the requested stack to this
+// constant, so lowering it here would silently make host/render.cpp
+// disagree with tools/ref_render.js for any --set unison above the new
+// cap and invalidate the golden reference renders. The firmware carries
+// the smaller table because its own pin (main.cpp to_fof_params) can
+// never ask for more; the static_assert there is what ties the two
+// together.
+#ifndef DBSCREAMZ_MAX_UNISON
+#define DBSCREAMZ_MAX_UNISON 8     // host default, matches JS MAX_UNISON
+#endif
+inline constexpr int kMaxUnison = DBSCREAMZ_MAX_UNISON;
 
 // Overridable at compile time (e.g. -DDBSCREAMZ_MAX_GRAIN_LEN=960 on firmware,
 // which trims the 8 x kMaxGrainLen grain tables to fit the target's RAM

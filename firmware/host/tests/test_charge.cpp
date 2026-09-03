@@ -16,19 +16,21 @@ int main() {
   const VoiceParams base = factory_voice(0);  // Wukong: vocal_size 0, tone 0,
                                               // octave 0, vocal_vol 1
 
-  // ---- store schema: v6 carries the factory charge config. The version is
+  // ---- store schema: v7 carries the factory charge config. The version is
   // pinned deliberately, so a schema change has to come here and be thought
   // about rather than silently passing. v6 dropped VoiceParams::unison when
-  // the voices control was retired (2026-09-01).
+  // the voices control was retired (2026-09-01); v7 (2026-09-03) changed the
+  // factory charge config with no layout change, bumped so a pedal with a
+  // v6 block in QSPI actually picks the new defaults up.
   {
     VoiceStore s = factory_store();
-    assert(s.version == 6 && kVoiceStoreVersion == 6);
+    assert(s.version == 7 && kVoiceStoreVersion == 7);
     assert(s.charge.gain == 1);   // on
-    assert(s.charge.time == 1);   // Hamekameka
+    assert(s.charge.time == 2);   // Birit Spomb
     assert(s.charge.decay == 1);  // slow
-    assert(s.charge.pitch == 1);  // fall
-    assert(s.charge.tone == 1);   // darker
-    assert(s.charge.size == 1);   // half
+    assert(s.charge.pitch == 2);  // rise
+    assert(s.charge.tone == 2);   // brighter
+    assert(s.charge.size == 2);   // full
     assert(s.charge.pad_[0] == 0 && s.charge.pad_[1] == 0);
   }
 

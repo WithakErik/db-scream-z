@@ -18,7 +18,11 @@
 // this DOES change the block size, so a v5 block read as v6 would misread
 // every field after a1..a3; the bump is what stops that. Saved characters
 // factory-restore on first boot.
-export const kVoiceStoreVersion = 6;
+// v7 (2026-09-03): same layout as v6; the factory charge config changed
+// (Birit Spomb / rise / brighter / full) and the bump is what makes a
+// returning browser (app.js loads the store only on a version match) pick
+// the new defaults up, exactly as the pedal does with its QSPI block.
+export const kVoiceStoreVersion = 7;
 
 // Gate toggle thresholds, indexed low/medium/high. Placeholders until the
 // on-hardware ear calibration; medium is the v12 ear-approved 0.02.
@@ -91,8 +95,10 @@ export function factoryVoice(presetIdx) {
   };
 }
 
+// Mirrors firmware/hothouse/voice_params.hpp factory_charge_config():
+// gain on, Birit Spomb, slow decay, pitch rise, brighter, full size.
 export function factoryChargeConfig() {
-  return { gain: 1, time: 1, decay: 1, pitch: 1, tone: 1, size: 1 };
+  return { gain: 1, time: 2, decay: 1, pitch: 2, tone: 2, size: 2 };
 }
 
 export function chargeConfigsEqual(a, b) {

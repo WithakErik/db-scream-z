@@ -266,19 +266,21 @@ CHARACTERS = [
     },
 ]
 
-# Charge mode: global, one setting for all voices (voice_params.hpp:53).
-# Toggle value mapping is uniform Up=2 / Middle=1 / Down=0, and the factory
-# configuration is every toggle centred.
+# Charge mode: global, one setting for all voices (voice_params.hpp
+# factory_charge_config). Toggle value mapping is uniform Up=2 / Middle=1 /
+# Down=0. Factory (store v7, 2026-09-03): gain on, Birit Spomb, slow decay
+# on menu 2; rise, brighter, full on menu 3. Keep in step with
+# voice_params.hpp and test_charge.cpp.
 CHARGE = [
     # (toggle, menu 2 role, m2 options up/mid/down, factory m2 position,
     #          menu 3 role, m3 options,             factory m3 position)
     ("T1", "Gain", ["Above 9000!", "on", "off"], "Middle",
-           "Pitch", ["rise 2 oct", "fall 2 oct", "off"], "Middle"),
+           "Pitch", ["rise 2 oct", "fall 2 oct", "off"], "Up"),
     ("T2", "Charge time", ["Birit Spomb ~6 s", "Hamekameka ~2.5 s",
-                           "punch ~0.75 s"], "Middle",
-           "Tone", ["brighter", "darker", "off"], "Middle"),
+                           "punch ~0.75 s"], "Up",
+           "Tone", ["brighter", "darker", "off"], "Up"),
     ("T3", "Decay", ["fast", "slow", "off (instant)"], "Middle",
-           "Size", ["full", "half", "off"], "Middle"),
+           "Size", ["full", "half", "off"], "Up"),
 ]
 
 TOG_ROWS = ["Up", "Middle", "Down"]
@@ -668,15 +670,22 @@ KNOB_ROWS = "".join(
        (CHARACTERS[0]["m3"].get(i) or MENU3_SHARED[i])[0])
     for i in range(6))
 
+def charge_row(t, role, options, factory_pos):
+    """One table row; the factory position's cell is bold so the tables
+    double as the defaults reference."""
+    cells = []
+    for opt, pos in zip(options, TOG_ROWS):
+        cells.append('<td><strong>%s</strong></td>' % opt if pos == factory_pos
+                     else '<td>%s</td>' % opt)
+    return '<tr><td><strong>%s</strong><br>%s</td>%s</tr>' % (
+        t, role, "".join(cells))
+
+
 CHARGE_ROWS_2 = "".join(
-    '<tr><td><strong>%s</strong><br>%s</td><td>%s</td><td>%s</td><td>%s</td>'
-    '</tr>' % (t, role, o[0], o[1], o[2])
-    for (t, role, o, _p, _r3, _o3, _p3) in CHARGE)
+    charge_row(t, role, o, p) for (t, role, o, p, _r3, _o3, _p3) in CHARGE)
 
 CHARGE_ROWS_3 = "".join(
-    '<tr><td><strong>%s</strong><br>%s</td><td>%s</td><td>%s</td><td>%s</td>'
-    '</tr>' % (t, role3, o3[0], o3[1], o3[2])
-    for (t, _r, _o, _p, role3, o3, _p3) in CHARGE)
+    charge_row(t, role3, o3, p3) for (t, _r, _o, _p, role3, o3, p3) in CHARGE)
 
 
 def build_pages(toc_rows=""):
@@ -961,9 +970,11 @@ def build_pages(toc_rows=""):
     P.append(page(
         '<h2 style="margin-top:0">Factory charge settings</h2>'
         '<div style="text-align:center">' + charge_face() + '</div>'
-        '<p style="margin-top:1.5mm">Every toggle centred. Each dot is '
-        'half orange and half blue because both menus want that switch in '
-        'the middle: orange on the right, blue on the left.</p>'
+        '<p style="margin-top:1.5mm">Out of the box it is the full '
+        'power-up. Orange (menu 2): gain on, Birit Spomb, slow decay. '
+        'Blue (menu 3): pitch rising, brighter, full size. Orange marks '
+        'right of each switch, blue left; the factory cell is bold in the '
+        'tables overleaf.</p>'
         '<p class="small">This configuration is <strong>global</strong>: '
         'one setting shared by every voice, kept across power cycles, and '
         'never touched by saving or recalling. That is why it is not on '
@@ -977,8 +988,10 @@ def build_pages(toc_rows=""):
         '<h3>' + swatch(3) + 'With menu 3 latched</h3>'
         '<table><tr><th></th><th>Up</th><th>Middle</th>'
         '<th>Down</th></tr>' + CHARGE_ROWS_3 + '</table>'
-        '<p class="small">Centred means the charge pitch <em>falls</em>. '
-        'For the rising power-up, latch menu 3 and flick T1 up.</p>',
+        '<p class="small">Factory positions are marked in bold. For a '
+        'charge that <em>falls</em> instead of rising, latch menu 3 and '
+        'centre T1; for a quicker build, latch menu 2 and centre or '
+        'drop T2.</p>',
         "y", "Charge mode"))
 
     # ---- how to read a card ---------------------------------------------
@@ -1180,8 +1193,8 @@ def build_pages(toc_rows=""):
         '<table>'
         '<tr><td>Platform</td><td>Cleveland Music Co. Hothouse, Daisy '
         'Seed3, 125B enclosure</td></tr>'
-        '<tr><td>Processing</td><td>48 kHz, 48-sample blocks, 480 MHz</td>'
-        '</tr>'
+        '<tr><td>Processing</td><td>48 kHz, 128-sample blocks (2.7 ms), '
+        '480 MHz</td></tr>'
         '<tr><td>Voice</td><td>FOF formant-grain synthesis, three '
         'formants, no noise sources</td></tr>'
         '<tr><td>Tracking</td><td>Cycfi Q bitstream autocorrelation, '

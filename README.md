@@ -166,11 +166,13 @@ Configure it with the toggles while a menu is latched:
 
 | Toggle | Menu 2 latched | Menu 3 latched |
 |---|---|---|
-| 1 | Gain: big / on / off | Pitch: rise 2 oct / fall 2 oct / off |
-| 2 | Time: ~6 s / ~2.5 s / ~0.75 s | Tone: brighter / darker / off |
-| 3 | Decay: fast / slow / instant | Vocal size: full / half / off |
+| 1 | Gain: big / **on** / off | Pitch: **rise 2 oct** / fall 2 oct / off |
+| 2 | Time: **~6 s** / ~2.5 s / ~0.75 s | Tone: **brighter** / darker / off |
+| 3 | Decay: fast / **slow** / instant | Vocal size: **full** / half / off |
 
-That config is global and survives a power cycle.
+Bold is the factory setting: out of the box it is the full power-up, a
+six-second rise of two octaves that brightens and grows as it builds. That
+config is global and survives a power cycle.
 
 > **Check for a lit LED before you stomp both.** Engaged, both stomps together
 > is charge mode. **Bypassed**, the identical gesture held for about two

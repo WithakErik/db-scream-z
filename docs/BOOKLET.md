@@ -102,9 +102,12 @@ latched:
 
 | Toggle | Menu 2 latched | Menu 3 latched |
 |---|---|---|
-| 1 | Gain: Above 9000! / on / off | Pitch: rise 2 oct / fall 2 oct / off |
-| 2 | Charge time: Birit Spomb ~6 s / Hamekameka ~2.5 s / punch ~0.75 s | Tone: brighter / darker / off |
-| 3 | Decay: fast / slow / off (instant) | Size: full / half / off |
+| 1 | Gain: Above 9000! / **on** / off | Pitch: **rise 2 oct** / fall 2 oct / off |
+| 2 | Charge time: **Birit Spomb ~6 s** / Hamekameka ~2.5 s / punch ~0.75 s | Tone: **brighter** / darker / off |
+| 3 | Decay: fast / **slow** / off (instant) | Size: **full** / half / off |
+
+Bold is the factory setting (the full power-up: a six-second, two-octave
+rise that brightens and grows as it builds).
 
 On the amount rows (gain and size) the middle position gets you
 HALFWAY from wherever the voice already sits to the top, and the up

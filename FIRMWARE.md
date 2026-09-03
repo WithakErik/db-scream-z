@@ -74,14 +74,21 @@ v12). It contains, top to bottom:
    glide, leveler, envelope follower, noise gate. Port each verbatim.
 3. Presets: `dbscreamz_lab/static/presets.json` -> generate a `presets.h`
    (4 characters: formants_hz[3]; f0 stats are legacy, only used by the
-   deprecated snap mode). As of store v3 the header also carries a
+   deprecated snap mode). As of store v3 the header also carried a
    per-character voice stack (unison / detune_cents / grain_ms) that
    does NOT come from presets.json, because that file is a frozen copy of
-   the lab's; it lives in `tools/gen_presets.py` STACK. The character
-   vibrato left presets.hpp at commit 37ed8bf (Aug 31) and moved to render.cpp,
+   the lab's; it lives in `tools/gen_presets.py` STACK. Unison was retired
+   2026-09-01 and grain_ms 2026-09-02, both under the store v6 bump; both
+   are now pinned in main.cpp's `to_fof_params()` instead, so only
+   detune_cents remains in STACK now.
+   The character vibrato left presets.hpp at commit 37ed8bf (Aug 31) and moved to render.cpp,
    then was removed on 2026-09-01 when the vibrato LFO itself was retired; `firmware/host/render.cpp` no longer
    reproduces the v12 milestone reference renders either, an accepted
-   cost of the removal (see the vocal size design spec section 7).
+   cost of the removal (see the vocal size design spec section 7). The
+   LFO itself returned to the engine 2026-09-02 as menu 3 knobs 4 and 5
+   (vibrato rate and depth), factory OFF for every character and beast;
+   render.cpp's renders stay unreconciled with v12, since no stored voice
+   carries a nonzero vibrato to reproduce.
 4. The old YIN/causal tracker in the same file is DEAD CODE for firmware:
    do not port it. BACF replaced it (measured better on every metric).
 
@@ -105,7 +112,7 @@ section 11 explains the history.
 |---|---|
 | Per-grain gain = 0.55 * vGain / sqrt(overlap), overlap = grainLen*f/sr, computed AT TRIGGER TIME | low notes ~3 dB/octave louder; level spikes on pitch motion |
 | Side-voice gain taper: vGain = 1 - 0.45*abs(spread) | deep unison nulls -> +9 dB swells |
-| ONE common vibrato LFO for the whole unison stack (jitter on LFO rate). Historical: the vibrato LFO itself was removed from the engine 2026-09-01; kept here so the reasoning is not lost if it is ever reconsidered | staggered-phase frequency crossings -> intermittent spikes |
+| ONE common vibrato LFO for the whole unison stack, computed once per sample outside the unison loop. The LFO was deleted 2026-09-01 and restored 2026-09-02 with knobs on menu 3; the shared-phase rule was re-examined then and kept. Jitter was NOT restored | staggered-phase frequency crossings -> intermittent spikes |
 | Per-voice grain sinusoid phases, deterministic golden-ratio scatter, voice 0 = zero phase | coherent unison beating |
 | Target leveler BEFORE envelope multiply: 8 ms rectified tracker, g = 0.09/(lvl+1e-3), clamp 0.25-4, slew 10 ms down / 60 ms up | formant-comb loudness (+/-7.8 dB between notes) and residual wobble |
 | Envelope: 6 ms attack / 80 ms release, peak-normalised with FLOOR 0.05, output amp scaled x0.5 | silence-AGC (constant Ahhh from noise floor); WaveShaper-era clipping |
@@ -117,11 +124,15 @@ section 11 explains the history.
 | Grain floor 16 Hz | -3 octave transpose clamping to 50 Hz |
 | MonkSynth grain: 20 ms, 3 damped sinusoids, cosine window (1.8 ms attack, release from 13 ms), exp(-pi*BW*i/sr) decay, BW = 32.5/47.5/62.5 | the voice sounding wrong in ways nobody wants to rediscover |
 | NO noise sources anywhere in the voice path. The engine's aspiration (2 inharmonic sines) is the nearest thing and the pedal pins it to 0: main.cpp never passes it through. Removed from the controls 2026-09-01 after it was measured as the on-hardware "static", +22.6 dB in the 3-6 kHz band at 0.3 with no change in broadband level | the rejected hiss |
+| Unison pinned to 3, not reachable from any control. Retired 2026-09-01 after stacks above 3 were heard as a ringmod-like artifact on hardware, audible even at mix 0 where the voice path is multiplied by zero | per-block grain accumulation cost scaling with voice count |
+| Grain length pinned to 20 ms, not reachable from any control. Retired 2026-09-02 to free knob 6; every character and beast already stored exactly 20 | per-block cost scales with grain length as well as voice count |
 
 ## 5. Ear-approved defaults (v12) - bake as firmware constants
 
 ```
-grainMs 20 (knob-settable 4..40 as of store v4), unison 3, detuneCents 11,
+grainMs 20 and unison 3 both pinned (not reachable from any control),
+  detuneCents 11 still set per character, vibRate 0 and vibDepth 0 (both
+  knob-settable as of store v6: rate 0..50 Hz, depth 0..100 cents)
 aspiration 0 (pinned; not reachable from any control)
 octaveShift 0 (range -3..+3), followPitch on, quantize ON
 glideMs 0, ampComp ON (MonkSynth low-note boost), taperEnd on (user ran
@@ -130,8 +141,9 @@ gate 0.02 default - MUST be user-adjustable (knob or trim)
 inputGain: hardware analog gain replaces the lab's digital x4; gate
   threshold must be calibrated against the Hothouse input stage level
 vibrato per character from presets.json; vibJitter 0.10 (v12 lab baseline
-  only: the engine's vibrato LFO was removed 2026-09-01 and the pedal has
-  none)
+  only: no character stores a nonzero vibrato, and the engine's own LFO
+  restored 2026-09-02 has no jitter, so this baseline stays unreproduced
+  on the pedal)
 characters: Wukong 858/1234/3112 Hz, Rice 1000/1438/3625,
   Prince 742/1066/2688, Piccolo 698/1003/2529 (+ vib rate/depth each, v12
   lab baseline only)
@@ -148,10 +160,14 @@ headers). firmware/MILESTONE5.md is the on-device runbook.
 Summary: 4 voices (2 stomp slots x 2 memory sets, factory Wukong/Prince and
 Rice/Piccolo), one volatile edit buffer, three knob layers (default layer:
 vocal vol / mix / master / tone / glide / vocal size; RIGHT-stomp hold-menu:
-F1/F2; LEFT-stomp hold-menu: F3 + voice stack, meaning voices / detune /
-grain length; the pedal has no vibrato as of store v3, no aspiration as
-of v4, and no drive as of v5, which retired the drive knob and replaced it
-with vocal size in the same slot), toggles = octave / memory page /
+F1/F2; LEFT-stomp hold-menu: F3, vibrato rate, vibrato depth and detune;
+the pedal had no vibrato from store v3 (menu 3's bottom row was the voices
+stack instead), no aspiration as of v4, and no drive as of v5, which
+retired the drive knob and replaced it with vocal size in the same slot;
+store v6 retired voices (2026-09-01) and then grain length (2026-09-02) in
+turn, pinning them to 3 and 20 ms, and gave the two knobs they freed to
+vibrato rate and depth, restoring the LFO the pedal had lost since v3),
+toggles = octave / memory page /
 gate level, voice-only post chain (tilt tone), QSPI persistence
 via libDaisy PersistentStorage, save gesture = hold one stomp ~1 s then
 press the other while still holding (menus never save; in a menu the
@@ -194,13 +210,34 @@ session, in C++ form.
 
 ## 8. Budgets and expectations
 
-- CPU: engine ~7 MOPS + BACF (~8 ns/sample native) - single-digit
-  percent of the Seed3's 480+ MHz M7. No SDRAM needed.
+- CPU: engine ~7 MOPS + BACF (~8 ns/sample native). No SDRAM needed.
+  This bullet used to claim "single-digit percent of the Seed3's 480+ MHz
+  M7" flatly. That held for the 3-voice default but NOT across the range
+  the retired voices knob could reach, so it is amended rather than
+  deleted. Per-block cost scales with the unison count: every grain
+  trigger accumulates a full grain length into the overlap buffer once
+  per voice, so 8 voices at a 40 ms grain is roughly eight times the
+  work of the default, in bursts that land on whichever block the
+  triggers happen to align in. On 2026-09-01 high stacks were audible
+  as a ringmod-like artifact, still present at mix 0 where the voice is
+  multiplied by zero, which is what pointed at cost rather than signal.
+  Unison is pinned to 3 for that reason (main.cpp `to_fof_params`).
+  **None of this was ever measured with a CpuLoadMeter.** The headroom
+  here is an estimate and always has been, so do not lean on it when
+  adding per-sample work; measure first. That measurement remains open.
+  The vibrato LFO restored 2026-09-02 costs one `std::sin` per sample,
+  shared across the whole stack rather than one per voice. Against the
+  pedal as it stood on 2026-09-01 that is one more transcendental per
+  sample; against 2026-08-31 it is one FEWER, because `ec97ed6` removed
+  two (the LFO and its jitter oscillator) and only one came back. If the
+  ringmod artifact is ever heard again this LFO is a suspect too, and the
+  cheap fix is a lookup-table LFO rather than removing the control.
 - RAM: measured from the map file, not estimated. `.bss` links into
   SRAM (512 KB at 0x24000000), NOT the 128 KB DTCMRAM, and was 119 KB
   at MAX_GRAIN_LEN 1024. The grain tables dominate it at 64 bytes per
-  sample of length (2 sets x 8 voices x 4 bytes), so the 1920 the 40 ms
-  grain knob needs puts `.bss` near 175 KB, about a third of SRAM.
+  sample of length (2 sets x 8 voices x 4 bytes), so the 1920 kept as
+  deliberate 2x headroom over the 960-sample 20 ms grain pin (main.cpp)
+  puts `.bss` near 175 KB, about a third of SRAM.
   There is room; RAM has never been the binding budget here.
 - Flash IS the binding budget: `.text` was 121,696 of 131,072 bytes
   (92.8%) as of 2026-08-31. Grain tables are `.bss` and cost none of it,
@@ -313,7 +350,7 @@ alternation and the board enumerates as `0483:df11`.
 
 The bank lives in `firmware/hothouse/beast_presets.hpp`, deliberately
 outside the generated `firmware/engine/presets.hpp`: a `CharacterPreset`
-carries only formants, unison, detune and grain length, and these voices
+carries only formants and detune, and these voices
 need octave, glide and bandwidth to sound like anything. The engine is a
 pitch-tracked formant resynth, which is why all four are SUSTAINED calls;
 it does vowel-like animal voices well and percussive ones (a bark, a

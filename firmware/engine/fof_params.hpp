@@ -29,6 +29,13 @@ struct FofParams {           // live-path mirror of fof-processor.js this.p
   double grain_ms = 20;
   int    unison = 3;
   double detune_cents = 11;
+  // Vibrato. Restored 2026-09-02 after ec97ed6 deleted it as dead code;
+  // it now has knobs (menu 3, 4 and 5). Both default to 0 so no voice
+  // changes until one is turned. Depth is in SEMITONES, matching the JS
+  // this file mirrors; the knob and the store work in cents and
+  // to_fof_params() does the one conversion.
+  double vib_rate = 0.0;    // Hz, 0 = off (the phase parks)
+  double vib_depth = 0.0;   // semitones
   double aspiration = 0.0;
   bool   quantize = true;
   bool   amp_comp = true;

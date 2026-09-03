@@ -48,7 +48,9 @@ TOG_W = 4.0
 TOG_MARK_DX = 6.0   # marker sits this far right of the toggle centre
 TOG_DOT_R = 1.2
 
-# Menu identity, from the hand-tuned cards in manual/1_wukong.svg:
+# Menu identity, originally from the hand-tuned cards that used to live at
+# manual/1_wukong.svg (deleted 2026-09-02 once this generator superseded
+# them; see git history if the originals are ever wanted):
 # colour AND line style, so the menus stay separable in greyscale and for
 # colour-blind readers, and so coincident pointers interleave instead of
 # hiding each other. Menu 3's "0 1.2" dash with a round cap draws as dots.
@@ -161,93 +163,93 @@ CHARACTERS = [
     {
         "name": "Wukong", "page": "Set 1", "side": "RIGHT",
         "tag": "The default shout",
-        "flavour": "Mid-placed formants over the reference three-voice "
-                   "stack at the default grain. The straightest read "
-                   "of the effect: loud, open, clean. Start here.",
+        "flavour": "Mid-placed formants with a narrow detune. The "
+                   "straightest read of the effect: loud, open, clean. "
+                   "Start here.",
         "m2": {0: ("F1", "858.4 Hz", 55, "12:29"),
                3: ("F2", "1234 Hz", 35, "10:29")},
         "m3": {0: ("F3", "3111.7 Hz", 54, "12:22"),
-               3: ("Voices", "3", 31, "10:07"),
-               4: ("Detune", "11 ct", 18, "8:49"),
-               5: ("Grain", "20 ms", 50, "12:00")},
+               3: ("Vib", "0 Hz", 0, "7:00"),
+               4: ("Depth", "0 ct", 0, "7:00"),
+               5: ("Detune", "11 ct", 18, "8:49")},
     },
     {
         "name": "Prince", "page": "Set 1", "side": "LEFT",
         "tag": "Clenched teeth",
-        "flavour": "Formants well below Wukong under a wider four-voice "
-                   "stack, so it lands darker and "
+        "flavour": "Formants well below Wukong under a wider detune, so "
+                   "it lands darker and "
                    "rougher. Reads as effort rather than power.",
         "m2": {0: ("F1", "741.6 Hz", 45, "11:30"),
                3: ("F2", "1066 Hz", 27, "9:41")},
         "m3": {0: ("F3", "2688.3 Hz", 40, "10:57"),
-               3: ("Voices", "4", 44, "11:22"),
-               4: ("Detune", "18 ct", 30, "10:00"),
-               5: ("Grain", "20 ms", 50, "12:00")},
+               3: ("Vib", "0 Hz", 0, "7:00"),
+               4: ("Depth", "0 ct", 0, "7:00"),
+               5: ("Detune", "18 ct", 30, "10:00")},
     },
     {
         "name": "Rice", "page": "Set 2", "side": "RIGHT",
         "tag": "Clean and glassy",
-        "flavour": "The highest F3 of the eight over the thinnest stack "
-                   "in the factory set: two voices, barely detuned. "
+        "flavour": "The highest F3 of the eight over the narrowest "
+                   "detune in the factory set, barely spread. "
                    "Bright and hard-edged. Cuts without sounding strained.",
         "m2": {0: ("F1", "1000 Hz", 67, "1:40"),
                3: ("F2", "1437.5 Hz", 45, "11:27")},
         "m3": {0: ("F3", "3625 Hz", 71, "2:05"),
-               3: ("Voices", "2", 19, "8:52"),
-               4: ("Detune", "8 ct", 13, "8:20"),
-               5: ("Grain", "20 ms", 50, "12:00")},
+               3: ("Vib", "0 Hz", 0, "7:00"),
+               4: ("Depth", "0 ct", 0, "7:00"),
+               5: ("Detune", "8 ct", 13, "8:20")},
     },
     {
         "name": "Piccolo", "page": "Set 2", "side": "LEFT",
         "tag": "Low growl",
         "flavour": "The lowest formants in the factory set under the "
-                   "thickest factory stack, five voices spread wide. "
+                   "widest detune of the four, spread wide. "
                    "Thick and throaty rather than piercing.",
         "m2": {0: ("F1", "697.6 Hz", 41, "11:08"),
                3: ("F2", "1002.8 Hz", 24, "9:23")},
         "m3": {0: ("F3", "2528.8 Hz", 34, "10:25"),
-               3: ("Voices", "5", 56, "12:37"),
-               4: ("Detune", "26 ct", 43, "11:20"),
-               5: ("Grain", "20 ms", 50, "12:00")},
+               3: ("Vib", "0 Hz", 0, "7:00"),
+               4: ("Depth", "0 ct", 0, "7:00"),
+               5: ("Detune", "26 ct", 43, "11:20")},
     },
     {
         "name": "Boo", "page": None, "side": None,
         "tag": "Rubbery and hollow",
         "flavour": "A wide F1-to-F2 gap over a low F3, thickened by "
-                   "five widely detuned voices. A big soft body "
+                   "a wide detune. A big soft body "
                    "rather than an edge.",
         "m2": {0: ("F1", "900 Hz", 58, "12:50"),
                3: ("F2", "1750 Hz", 60, "12:57")},
         "m3": {0: ("F3", "2900 Hz", 47, "11:40"),
-               3: ("Voices", "5", 56, "12:37"),
-               4: ("Detune", "24 ct", 40, "11:00"),
-               5: ("Grain", "20 ms", 50, "12:00")},
+               3: ("Vib", "0 Hz", 0, "7:00"),
+               4: ("Depth", "0 ct", 0, "7:00"),
+               5: ("Detune", "24 ct", 40, "11:00")},
     },
     {
         "name": "Fling", "page": None, "side": None,
         "tag": "Light and quick",
         "flavour": "Between Wukong and Rice on every formant, with a "
-                   "modest three-voice stack so the edge stays on the "
+                   "modest detune so the edge stays on the "
                    "formants. The most usable of the eight under a band.",
         "m2": {0: ("F1", "880 Hz", 57, "12:40"),
                3: ("F2", "1600 Hz", 52, "12:14")},
         "m3": {0: ("F3", "3050 Hz", 52, "12:10"),
-               3: ("Voices", "3", 31, "10:07"),
-               4: ("Detune", "14 ct", 23, "9:20"),
-               5: ("Grain", "20 ms", 50, "12:00")},
+               3: ("Vib", "0 Hz", 0, "7:00"),
+               4: ("Depth", "0 ct", 0, "7:00"),
+               5: ("Detune", "14 ct", 23, "9:20")},
     },
     {
         "name": "Ki-Ki", "page": None, "side": None,
         "tag": "Small and furious",
-        "flavour": "The highest F2 of the eight and the thinnest stack "
+        "flavour": "The highest F2 of the eight and the narrowest detune "
                    "of the eight, all three formants crowded high with "
                    "nothing blunting them. Shrill, nasal, annoyed.",
         "m2": {0: ("F1", "950 Hz", 62, "1:15"),
                3: ("F2", "1800 Hz", 62, "1:11")},
         "m3": {0: ("F3", "3350 Hz", 62, "1:10"),
-               3: ("Voices", "2", 19, "8:52"),
-               4: ("Detune", "8 ct", 13, "8:20"),
-               5: ("Grain", "20 ms", 50, "12:00")},
+               3: ("Vib", "0 Hz", 0, "7:00"),
+               4: ("Depth", "0 ct", 0, "7:00"),
+               5: ("Detune", "8 ct", 13, "8:20")},
     },
     {
         "name": "Master", "page": None, "side": None,
@@ -258,9 +260,9 @@ CHARACTERS = [
         "m2": {0: ("F1", "640 Hz", 37, "10:39"),
                3: ("F2", "1080 Hz", 28, "9:45")},
         "m3": {0: ("F3", "2400 Hz", 30, "10:00"),
-               3: ("Voices", "4", 44, "11:22"),
-               4: ("Detune", "30 ct", 50, "12:00"),
-               5: ("Grain", "20 ms", 50, "12:00")},
+               3: ("Vib", "0 Hz", 0, "7:00"),
+               4: ("Depth", "0 ct", 0, "7:00"),
+               5: ("Detune", "30 ct", 50, "12:00")},
     },
 ]
 
@@ -776,12 +778,12 @@ def build_pages(toc_rows=""):
         '<h2>What the knobs do</h2>'
         '<table><tr><th></th><th>Menu 1</th><th>Menu 2</th>'
         '<th>Menu 3</th></tr>' + KNOB_ROWS + '</table>'
-        '<p class="small">Menu 3: <strong>K4</strong> steps through the '
-        'eight voice counts in eight equal bands, so it always lands on a '
-        'whole number. <strong>K6</strong> has a detent at <strong>12:00'
-        '</strong> that reads as exactly 20 ms, the grain length every '
-        'character ships with, so centring it always returns you to the '
-        'factory texture.</p>',
+        '<p class="small">Menu 3: <strong>K4</strong> (vibrato rate) is '
+        'cube-tapered over 0 to 50 Hz, so 6.25 Hz lands at <strong>12:00'
+        '</strong> and the musical singer\'s-vibrato range does not get '
+        'crammed into the bottom of the travel. Every character ships '
+        'with vibrato off, both <strong>K4</strong> and <strong>K5'
+        '</strong> fully anticlockwise.</p>',
         "y", "The controls"))
 
     P.append(page(
@@ -877,16 +879,15 @@ def build_pages(toc_rows=""):
         '<p><strong>Bandwidth</strong> is how wide each resonance is: '
         'narrow is more vocal, wide is more washed out. '
         '<strong>Amount</strong> is how much of that formant you get.</p>'
-        '<p><strong>Voices</strong> is how many copies of the scream sing '
-        'at once, one to eight, and <strong>Detune</strong> is how far '
-        'apart they are tuned, in cents. Together they are the thickness '
-        'of the voice: one voice is bare and focused, eight spread wide is '
-        'a crowd of one person.</p>'
-        '<p><strong>Grain</strong> is how long each grain of the voice '
-        'lasts, from 4 to 40 ms. It sets texture rather than pitch: short '
-        'grains are buzzy and rough, long ones smooth and vocal. There is '
-        'no noise generator anywhere in this pedal, so every one of these '
-        'controls shapes the voice itself.</p>',
+        '<p><strong>Vibrato rate</strong> and <strong>Vibrato depth</strong> '
+        'add a periodic wobble on top of the pitch you are already playing: '
+        'rate is how fast it cycles, 0 to 50 Hz, and depth is how far it '
+        'swings, 0 to 100 cents. Every character ships with both off.</p>'
+        '<p><strong>Detune</strong> spreads the engine\'s three voices '
+        'apart, up to 60 cents. Wider detune thickens and roughens the '
+        'scream; at 0 the three collapse to the bare, focused character. '
+        'There is no noise generator anywhere in this pedal, so every one '
+        'of these controls shapes the voice itself.</p>',
         "y", "The three menus"))
 
     # ---- memory ---------------------------------------------------------
@@ -1001,13 +1002,21 @@ def build_pages(toc_rows=""):
         'for the left.</p>',
         "y", "Reading a card"))
 
-    fling = next(c for c in CHARACTERS if c["name"] == "Fling")
     demo_a = [(m, clock_to_deg("12:00")) for m in (1, 2, 3)]
     demo_b = [(1, clock_to_deg("7:00")), (2, clock_to_deg("7:55")),
               (3, clock_to_deg("8:09"))]
-    demo_c = [(1, clock_to_deg("12:00")),
-              (2, clock_to_deg(fling["m2"][3][3])),
-              (3, clock_to_deg(fling["m3"][3][3]))]
+    # Deliberately hardcoded, like demo_b above: NOT wired to CHARACTERS.
+    # Vibrato shipped off for every character on 2026-09-02, which pins
+    # every card's menu-3 knob-4/5 pointer to the 7:00 stop regardless of
+    # what menu 1 or menu 2 want on that same knob, so no real knob on any
+    # real card can show three genuinely close-but-distinct pointers any
+    # more (the tightest non-identical triple in the actual data spans 29
+    # clock-minutes, over double the 14 claimed here). Keep this a fabricated
+    # worked example; wiring it back to a character's real values is what
+    # broke this figure last time and will again the next time a knob's
+    # factory value changes.
+    demo_c = [(1, clock_to_deg("12:00")), (2, clock_to_deg("12:07")),
+              (3, clock_to_deg("12:14"))]
     P.append(page(
         '<p style="margin-top:0">Every pointer sits at its exact position, '
         'including when menus agree. The line styles interleave, so where '
@@ -1022,8 +1031,9 @@ def build_pages(toc_rows=""):
         '<figcaption><strong>One apart, two close.</strong> Knob 2 on every '
         'card.</figcaption></figure>'
         '<figure>' + svg_knob_demo(demo_c) +
-        '<figcaption><strong>A tight cluster.</strong> Fling\'s knob 4, '
-        'inside 14 minutes.</figcaption></figure>'
+        '<figcaption><strong>A tight cluster.</strong> A worked example, '
+        'not any one card\'s knob: three positions inside 14 '
+        'minutes.</figcaption></figure>'
         '</div>'
         '<div class="note"><b>The table is the exact word</b>'
         'Pointers are drawn true, but a knob is a blunt instrument and two '
@@ -1087,7 +1097,7 @@ def build_pages(toc_rows=""):
         '<tr><td>Engage or bypass</td><td>Tap either footswitch</td></tr>'
         '<tr><td>Latch menu 2<br>(F1, F2)</td>'
         '<td>Hold RIGHT ~1 s: it latches while you hold</td></tr>'
-        '<tr><td>Latch menu 3<br>(F3, voice stack)</td>'
+        '<tr><td>Latch menu 3<br>(F3, vibrato)</td>'
         '<td>Hold LEFT ~1 s: it latches while you hold</td></tr>'
         '<tr><td>Jump to the other menu</td>'
         '<td>With one latched, tap the other footswitch</td></tr>'

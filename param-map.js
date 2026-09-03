@@ -7,26 +7,9 @@ import { MenuLayer } from './voice-params.js';
 export function mapLin(t, lo, hi) { return lo + (hi - lo) * t; }
 
 // Glide taper: cubic over 0..300 ms puts 100 ms at ~69% of the travel.
+// Vibrato rate reuses it over 0..50 Hz, which puts 6.25 Hz at 12 o'clock
+// and keeps the fast warble end from swallowing the musical range.
 export function mapCube(t, lo, hi) { return lo + (hi - lo) * t * t * t; }
-
-// Grain length: 4..40 ms, the lab's own slider range, with a center detent
-// band pinning exactly 20 ms - the value the engine baked in before this
-// knob existed, so the detent is what makes a factory voice reachable again
-// after a sweep. The two halves scale independently because the range is
-// asymmetric about its detent (16 ms below, 20 ms above).
-export function mapGrain(t) {
-  const dz = 0.1;
-  const x = (t - 0.5) * 2.0;
-  if (Math.abs(x) < dz) return 20.0;
-  const u = (Math.abs(x) - dz) / (1.0 - dz);
-  return x > 0.0 ? 20.0 + u * 20.0 : 20.0 - u * 16.0;
-}
-
-// Voice count: 1..8 in eight equal bands, so every count gets the same slice
-// of the travel and a knob at either stop lands on a legal value.
-export function mapVoices(t) {
-  return Math.min(8, Math.max(1, 1 + Math.floor(t * 8)));
-}
 
 // Tone: -1..+1 with a center detent band that maps to exactly 0. The center
 // must be bit-transparent and a real pot never reads exactly 0.5, so +/-10%
@@ -74,9 +57,14 @@ export function applyKnob(layer, k, t, vp) {
       case 0: vp.f3  = mapLin(t, 1500.0, 4500.0); break;
       case 1: vp.bw3 = mapLin(t, 5.0, 500.0); break;
       case 2: vp.a3  = mapLin(t, 0.0, 2.0); break;
-      case 3: vp.unison       = mapVoices(t); break;
-      case 4: vp.detune_cents = mapLin(t, 0.0, 60.0); break;
-      case 5: vp.grain_ms     = mapGrain(t); break;
+      // Vibrato returned to the pedal 2026-09-02, filling the slot the
+      // retired voices control left. Rate is cubic so 6.25 Hz lands at
+      // 12 o'clock; past ~15 Hz it stops reading as vibrato and becomes
+      // an FM warble, which is wanted and is why the range runs to 50.
+      case 3: vp.vib_rate_hz     = mapCube(t, 0.0, 50.0); break;
+      case 4: vp.vib_depth_cents = mapLin(t, 0.0, 100.0); break;
+      // Detune moved down from knob 5 when grain length was retired.
+      case 5: vp.detune_cents    = mapLin(t, 0.0, 60.0); break;
     }
   }
 }
@@ -87,15 +75,6 @@ export function applyKnob(layer, k, t, vp) {
 export function knobPositions(layer, vp) {
   const inv = (v, lo, hi) => Math.min(1, Math.max(0, (v - lo) / (hi - lo)));
   const invCube = (v, lo, hi) => Math.cbrt(inv(v, lo, hi));
-  const invGrain = (v) => {
-    const dz = 0.1;
-    if (v === 20) return 0.5;
-    const s = v > 20 ? 1 : -1;
-    const u = s > 0 ? (v - 20) / 20 : (20 - v) / 16;
-    return Math.min(1, Math.max(0, 0.5 + s * (u * (1 - dz) + dz) / 2));
-  };
-  // A voice count owns a whole band of travel; draw the knob at its centre.
-  const invVoices = (v) => (Math.min(8, Math.max(1, Math.round(v))) - 0.5) / 8;
   const invTone = (v) => {
     const dz = 0.1;
     if (v === 0) return 0.5;
@@ -112,15 +91,15 @@ export function knobPositions(layer, vp) {
             inv(vp.f2, 500, 2600), inv(vp.bw2, 5, 400), inv(vp.a2, 0, 2)];
   }
   return [inv(vp.f3, 1500, 4500), inv(vp.bw3, 5, 500), inv(vp.a3, 0, 2),
-          invVoices(vp.unison), inv(vp.detune_cents, 0, 60),
-          invGrain(vp.grain_ms)];
+          invCube(vp.vib_rate_hz, 0, 50), inv(vp.vib_depth_cents, 0, 100),
+          inv(vp.detune_cents, 0, 60)];
 }
 
 // Knob captions per layer, matching docs/BOOKLET.md.
 export const kKnobLabels = [
   ['Vocal', 'Mix', 'Master', 'Tone', 'Glide', 'Size'],
   ['F1', 'F1 bw', 'F1 amt', 'F2', 'F2 bw', 'F2 amt'],
-  ['F3', 'F3 bw', 'F3 amt', 'Voices', 'Detune', 'Grain'],
+  ['F3', 'F3 bw', 'F3 amt', 'Vib', 'Depth', 'Detune'],
 ];
 
 // Readouts for the value display under each knob.
@@ -136,6 +115,6 @@ export function knobValueText(layer, k, vp) {
             `${f(vp.f2)} Hz`, f(vp.bw2, 1), f(vp.a2, 2)][k];
   }
   return [`${f(vp.f3)} Hz`, f(vp.bw3, 1), f(vp.a3, 2),
-          f(vp.unison), `${f(vp.detune_cents, 1)} ct`,
-          `${f(vp.grain_ms, 1)} ms`][k];
+          `${f(vp.vib_rate_hz, 1)} Hz`, `${f(vp.vib_depth_cents)} ct`,
+          `${f(vp.detune_cents, 1)} ct`][k];
 }

@@ -43,25 +43,27 @@ export const kBeasts = [
   // body. Wide bandwidths blur the vowel into an animal, and the glide is
   // the slide a moo makes falling off its own note.
   { name: 'Cow',      f1: 420.0, f2: 800.0,  f3: 2400.0, bw1: 60.0, bw2: 90.0,  bw3: 120.0,
-    unison: 4, detune_cents: 14.0, glide_ms: 140.0, tone: -0.35, vocal_size: 0.5,   octave: -1 },
+    detune_cents: 14.0, glide_ms: 140.0, tone: -0.35, vocal_size: 0.5,   octave: -1 },
 
-  // Wolf: a pure sustained /u/, the stack doing the work. Six voices at
-  // 22 cents is the beating that makes one howl sound like several a
-  // valley away. The long glide swoops in.
+  // Wolf: a pure sustained /u/. The howl used to get its "several wolves
+  // a valley away" from six stacked voices beating against each other;
+  // the voices control was retired 2026-09-01, so the 22 cents of detune
+  // across the engine's three is what carries that now. The long glide
+  // swoops in.
   { name: 'Wolf',     f1: 350.0, f2: 850.0,  f3: 2600.0, bw1: 40.0, bw2: 55.0,  bw3: 80.0,
-    unison: 6, detune_cents: 22.0, glide_ms: 220.0, tone: 0.10,  vocal_size: 0.25,  octave: 0 },
+    detune_cents: 22.0, glide_ms: 220.0, tone: 0.10,  vocal_size: 0.25,  octave: 0 },
 
   // Whale: the lowest and most smeared voice in the bank, glide pinned at
   // its 300 ms ceiling so every note arrives by sliding. Three voices
   // spread wide beat slowly, like distance.
   { name: 'Whale',    f1: 300.0, f2: 700.0,  f3: 1800.0, bw1: 70.0, bw2: 100.0, bw3: 150.0,
-    unison: 3, detune_cents: 30.0, glide_ms: 300.0, tone: -0.20, vocal_size: 0.75,  octave: -1 },
+    detune_cents: 30.0, glide_ms: 300.0, tone: -0.20, vocal_size: 0.75,  octave: -1 },
 
   // Elephant: the outlier. Bright, tight and brassy rather than dark and
   // vocal, with barely any detune so the blast stays focused. Short
   // glide: a trumpet is an attack.
   { name: 'Elephant', f1: 700.0, f2: 1900.0, f3: 3200.0, bw1: 45.0, bw2: 60.0,  bw3: 90.0,
-    unison: 2, detune_cents: 7.0,  glide_ms: 45.0,  tone: 0.55,  vocal_size: 0.375, octave: 0 },
+    detune_cents: 7.0,  glide_ms: 45.0,  tone: 0.55,  vocal_size: 0.375, octave: 0 },
 ];
 
 // One beast as a full edit buffer. The key set matches factoryVoice()
@@ -73,11 +75,11 @@ export function beastVoice(idx) {
     f1: b.f1, f2: b.f2, f3: b.f3,
     bw1: b.bw1, bw2: b.bw2, bw3: b.bw3,
     a1: 1.0, a2: 1.0, a3: 1.0,
-    unison: b.unison, detune_cents: b.detune_cents,
-    // Not in the table: every beast wants the engine's long-standing
-    // default grain length, but the key must still be present because
-    // voicesEqual() and knobPositions() iterate factoryVoice()'s key set.
-    grain_ms: 20.0,
+    detune_cents: b.detune_cents,
+    // Not in the table: like the C++ bank, every beast wants vibrato off,
+    // and the keys must still be present because voicesEqual() and
+    // knobPositions() iterate factoryVoice()'s key set.
+    vib_rate_hz: 0.0, vib_depth_cents: 0.0,
     mix: 1.0,
     glide_ms: b.glide_ms,
     master_vol: 1.0,

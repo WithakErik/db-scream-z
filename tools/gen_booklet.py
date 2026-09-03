@@ -28,11 +28,15 @@ MENU2 = [("F1 Hz", "f1", 200, 1400), ("F1 bandwidth", "bw1", 5, 300),
          ("F1 amount", "a1", 0, 2), ("F2 Hz", "f2", 500, 2600),
          ("F2 bandwidth", "bw2", 5, 400), ("F2 amount", "a2", 0, 2)]
 MENU3 = [("F3 Hz", "f3", 1500, 4500), ("F3 bandwidth", "bw3", 5, 500),
-         ("F3 amount", "a3", 0, 2), ("Voices", "unison", 1, 8),
-         ("Detune cents", "detune_cents", 0, 60),
-         ("Grain ms", "grain_ms", 4, 40)]
+         ("F3 amount", "a3", 0, 2),
+         ("Vibrato rate Hz", "vib_rate_hz", 0, 50),
+         ("Vibrato depth cents", "vib_depth_cents", 0, 100),
+         ("Detune cents", "detune_cents", 0, 60)]
 V12 = {"bw1": 32.5, "bw2": 47.5, "bw3": 62.5,
-       "a1": 1.0, "a2": 1.0, "a3": 1.0}
+       "a1": 1.0, "a2": 1.0, "a3": 1.0,
+       # Vibrato ships off for every character, so every card prints both
+       # rows at the fully counter-clockwise stop.
+       "vib_rate_hz": 0.0, "vib_depth_cents": 0.0}
 # Menu 1 + toggle factory values (firmware/hothouse/voice_params.hpp
 # factory_voice(): every character ships with these unless its card
 # overrides them).
@@ -63,41 +67,40 @@ SLOTS = {"Wukong": "Set 1, RIGHT", "Prince": "Set 1, LEFT",
          "Rice": "Set 2, RIGHT", "Piccolo": "Set 2, LEFT"}
 
 # Booklet-only characters: not factory slots, dial by hand and save
-# wherever you like. Same keys as a parsed preset (f1/f2/f3/unison/
-# detune_cents/grain_ms) plus an optional "note" line shown on the card.
+# wherever you like. Same keys as a parsed preset (f1/f2/f3/detune_cents)
+# plus an optional "note" line shown on the card.
 #
-# The voice stack carries the bottom row of menu 3: thick and rough voices
-# take more stacked voices and wider detune; thin and piercing ones take
-# fewer and tighter. All eight are designed on paper from the character's
-# vocal quality, not measured, and are meant to be re-tuned by ear on
-# hardware.
+# Detune is all that is left of the bottom row's voice stack: thick, frayed
+# voices take a wider spread, thin and piercing ones take a tighter one.
+# Voice COUNT was retired on 2026-09-01 (every voice runs the engine's 3)
+# and grain length went with it (every card was already at the engine's 20
+# ms). The two knobs they freed are vibrato rate and depth, which ship at 0
+# for all eight and are the obvious place to re-voice these by ear.
 #
-# Every card ships at the engine's default 20 ms grain. Aspiration used to
-# be this row's third dimension and gave Boo and Master their "breath", but
-# it was removed on 2026-09-01 after its two 4-5 kHz sinusoids turned out to
-# be the static heard on hardware. Grain length replaced it on knob 6 and is
-# an obvious place to re-voice these eight by ear: shorter is buzzier and
-# rougher, longer is smoother and more vocal.
+# Aspiration used to be this row's third dimension and gave Boo and Master
+# their "breath", but it was removed on 2026-09-01 after its two 4-5 kHz
+# sinusoids turned out to be the static heard on hardware. All eight are
+# designed on paper from the character's vocal quality, not measured.
 EXTRA = {
     # Ear-picked 2026-08-27 (candidate B of three LPC-derived options)
     # from the Sparking! ZERO Fat Boo voice clips (Josh Martin):
     # F1/F2/F3 medians pushed bright. Thick and soft: a big loose body.
     "Boo": {"f1": 900.0, "f2": 1750.0, "f3": 2900.0,
-            "unison": 5, "detune_cents": 24.0, "grain_ms": 20.0},
+            "detune_cents": 24.0},
     # Designed by ear 2026-08-28 (no reference clips in the repo, unlike
     # Boo): values chosen from the character's vocal quality, tunable in
     # the lab. Fling = the brash blonde persona: hard bright female, a
-    # modest stack so the edge stays on the formants.
+    # modest detune so the edge stays on the formants.
     "Fling": {"f1": 880.0, "f2": 1600.0, "f3": 3050.0,
-              "unison": 3, "detune_cents": 14.0, "grain_ms": 20.0},
-    # Ki-Ki: shrill piercing female, everything pushed high. Thinnest
-    # stack in the booklet so nothing blunts the point of it.
+              "detune_cents": 14.0},
+    # Ki-Ki: shrill piercing female, everything pushed high. Narrowest
+    # detune in the booklet so nothing blunts the point of it.
     "Ki-Ki": {"f1": 950.0, "f2": 1800.0, "f3": 3350.0,
-              "unison": 2, "detune_cents": 8.0, "grain_ms": 20.0},
+              "detune_cents": 8.0},
     # Master: old raspy male, small dark tract. The widest detune of the
     # eight, for the frayed edge of an elderly voice.
     "Master": {"f1": 640.0, "f2": 1080.0, "f3": 2400.0,
-               "unison": 4, "detune_cents": 30.0, "grain_ms": 20.0},
+               "detune_cents": 30.0},
 }
 
 # Hand-maintained usage section. MUST mirror firmware/MILESTONE5.md
@@ -140,7 +143,7 @@ goes.
 Hold the RIGHT stomp: about 1 second in, MENU 2 latches under your foot
 (right LED blinks) and the knobs edit formants F1/F2. It does not wait
 for the release, and letting go changes nothing. Hold LEFT the same way
-for MENU 3 (F3 + the voice stack). While a menu is latched ONLY the blinking
+for MENU 3 (F3 + vibrato). While a menu is latched ONLY the blinking
 LED is lit: the other goes dark even if that was the engaged side. The
 sound keeps playing, its LED just steps aside so one blinking light is
 never mistaken for two lit ones. Tap the OTHER stomp to jump straight
@@ -148,19 +151,16 @@ to the other menu; tap the blinking side's own stomp to exit. After
 any menu change a knob is inert until you move it, so nothing ever
 jumps.
 
-Menu 3's bottom row is the VOICE STACK: how many copies of the voice
-sing at once (knob 4, one to eight), how far apart they are tuned
-(knob 5, up to 60 cents) and how long each grain of the voice lasts
-(knob 6, 4 to 40 ms). More voices and wider detune thicken the scream;
-one voice with no detune is the bare, focused version of the same
+Menu 3's bottom row is VIBRATO: how fast it cycles (knob 4, 0 to 50 Hz)
+and how far it swings (knob 5, 0 to 100 cents), plus detune (knob 6, up
+to 60 cents), which spreads the engine's three voices apart. Every
+character ships with vibrato off; wider detune thickens and roughens
+the scream, while at 0 the three voices collapse to the bare, focused
 character.
 
-Knob 4 steps: the travel is eight equal bands, one per voice count, so
-it lands on a whole number wherever you leave it. Knob 6 sets the
-texture: short grains are buzzy and rough, long ones smooth and vocal.
-It has a detent at 12:00 that reads as exactly 20 ms, which is the
-value every character ships with, so centring the knob always gets you
-back to the factory texture.
+Knob 4's travel is cube-tapered rather than straight-line: 6.25 Hz sits
+at 12:00, so the musical singer's-vibrato range does not get crammed
+into the bottom sixth of the travel.
 
 ### Toggles (left to right)
 
@@ -257,13 +257,12 @@ def clock(frac):
 def parse_presets():
     text = PRESETS.read_text()
     rx = re.compile(r'\{"(\w+)",\s*\{([\d.]+)f,\s*([\d.]+)f,\s*([\d.]+)f\},'
-                    r'\s*([\d.]+)f,\s*([\d.]+)f,\s*([\d.]+)f\}')
+                    r'\s*([\d.]+)f\}')
     out = {}
     for m in rx.finditer(text):
-        name, f1, f2, f3, un, dt, grain = m.groups()
+        name, f1, f2, f3, dt = m.groups()
         out[name] = {"f1": float(f1), "f2": float(f2), "f3": float(f3),
-                     "unison": float(un), "detune_cents": float(dt),
-                     "grain_ms": float(grain)}
+                     "detune_cents": float(dt)}
     assert len(out) == 4, f"expected 4 presets, parsed {len(out)}"
     return out
 
@@ -278,28 +277,12 @@ def row(label, value, lo, hi):
     return frow(label, value, (value - lo) / (hi - lo))
 
 
-# Grain length has a CENTRE detent that maps to exactly 20 ms (map_grain()
-# in param_map.hpp), so the factory texture stays reachable on a pot that
-# never reads exactly 0.5. Its two halves are also scaled independently,
-# because the 4..40 ms range is asymmetric about that detent (16 ms below,
-# 20 ms above), so a plain linear inverse would put every value in the wrong
-# place on the dial.
-GRAIN_DZ = 0.1
-
-
-def grain_frac(v):
-    if v == 20.0:
-        return 0.5
-    s = 1.0 if v > 20.0 else -1.0
-    u = (v - 20.0) / 20.0 if v > 20.0 else (20.0 - v) / 16.0
-    return 0.5 + s * (u * (1.0 - GRAIN_DZ) + GRAIN_DZ) / 2.0
-
-
-# The voice count is eight equal bands over 1..8 (map_voices() in
-# param_map.hpp), not a linear range: aim for the CENTRE of the band so a
-# knob set by eye lands on the right count with the most margin either side.
-def voices_frac(n):
-    return (min(8, max(1, int(round(n)))) - 0.5) / 8
+# Vibrato rate is CUBE-tapered over 0..50 Hz (map_cube() in param_map.hpp),
+# so a linear inverse would put every value in the wrong place on the dial.
+# The taper exists because 4..8 Hz singer's vibrato would otherwise sit in
+# the bottom sixth of the travel, unsettable on a real pot.
+def vib_rate_frac(v):
+    return (max(0.0, min(50.0, v)) / 50.0) ** (1.0 / 3.0)
 
 
 def card(name, p):
@@ -326,10 +309,8 @@ def card(name, p):
     lines += ["", "### Menu 3 (hold LEFT stomp): knobs 1-6",
               "", "| Param | Value | Travel | Clock |", "|---|---|---|---|"]
     for label, key, lo, hi in MENU3:
-        if key == "grain_ms":
-            lines.append(frow(label, vals[key], grain_frac(vals[key])))
-        elif key == "unison":
-            lines.append(frow(label, vals[key], voices_frac(vals[key])))
+        if key == "vib_rate_hz":
+            lines.append(frow(label, vals[key], vib_rate_frac(vals[key])))
         else:
             lines.append(row(label, vals[key], lo, hi))
     lines += ["",

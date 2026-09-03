@@ -16,10 +16,13 @@ int main() {
   const VoiceParams base = factory_voice(0);  // Wukong: vocal_size 0, tone 0,
                                               // octave 0, vocal_vol 1
 
-  // ---- store schema: v5 carries the factory charge config
+  // ---- store schema: v6 carries the factory charge config. The version is
+  // pinned deliberately, so a schema change has to come here and be thought
+  // about rather than silently passing. v6 dropped VoiceParams::unison when
+  // the voices control was retired (2026-09-01).
   {
     VoiceStore s = factory_store();
-    assert(s.version == 5 && kVoiceStoreVersion == 5);
+    assert(s.version == 6 && kVoiceStoreVersion == 6);
     assert(s.charge.gain == 1);   // on
     assert(s.charge.time == 1);   // Hamekameka
     assert(s.charge.decay == 1);  // slow

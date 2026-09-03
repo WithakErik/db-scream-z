@@ -59,8 +59,11 @@ address, and the rename also silently disabled Pages, which had to be
 re-enabled from the repo settings.) HTTPS, so
 getUserMedia works. The `ref_*.wav` reference clips are deliberately
 EXCLUDED from the public deploy (copyright); reference playback buttons are
-inert there. To redeploy after lab changes: copy the static files (minus
-ref audio) into a clone of that repo, commit, push; Pages rebuilds in ~1 min.
+inert there. **To redeploy, see `docs/PUBLISHING.md`.** (This used to read
+"copy the static files, minus ref audio, into a clone of that repo, commit,
+push". That was the process before `tools/publish.py`, which replaced the
+by-hand copy with an allowlist and a deny-scan, precisely because
+remembering to leave the reference audio out is not a guarantee.)
 
 **Things for the human to listen for, in order:**
 1. Latency feel: pick a note, does the voice land acceptably late?

@@ -22,7 +22,22 @@ export function toFofParams(v) {
     f1: v.f1, f2: v.f2, f3: v.f3,
     bw1: v.bw1, bw2: v.bw2, bw3: v.bw3,
     a1: v.a1, a2: v.a2, a3: v.a3,
-    unison: v.unison, detuneCents: v.detune_cents, grainMs: v.grain_ms,
+    // Unison pinned to the engine default for the same reason aspiration is
+    // pinned to 0: fof-processor.js keeps its unison support, the pedal just
+    // stops driving it. Stacks above 3 were the ringmod-like artifact heard
+    // on hardware 2026-09-01.
+    unison: 3, detuneCents: v.detune_cents,
+    // Vibrato. The store and the knobs are in CENTS, this file's vibDepth is
+    // in SEMITONES: this division is the only place that boundary is
+    // crossed anywhere in this page.
+    vibRate: v.vib_rate_hz, vibDepth: v.vib_depth_cents / 100,
+    // Grain length is pinned for the same reason unison and aspiration are:
+    // the engine keeps its support and the pedal stops driving it. 20 ms is
+    // the engine's own default (grainMs default in fof-processor.js), and
+    // every character and beast already stored exactly 20, so no voice
+    // changed when the knob was retired on 2026-09-02. Knob 6 is detune
+    // now, and the knob detune left is vibrato depth.
+    grainMs: 20,
     formantScale: formantScaleFrom(v.vocal_size),
     // No aspiration: fof-processor.js still carries the breath branch, so
     // the pedal switches it off here instead. Its two 4-5 kHz sinusoids,

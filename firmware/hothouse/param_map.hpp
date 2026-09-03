@@ -11,38 +11,12 @@ enum class MenuLayer : unsigned char { Menu1 = 0, Menu2 = 1, Menu3 = 2 };
 
 inline float map_lin(float t, float lo, float hi) { return lo + (hi - lo) * t; }
 
-// Glide taper (spec: "0-100 ms takes most of the travel"): cubic over
-// 0..300 ms puts 100 ms at ~69% of the knob's travel.
+// Cubic taper. Glide (spec: "0-100 ms takes most of the travel") over
+// 0..300 ms puts 100 ms at ~69% of the knob's travel. Vibrato rate reuses
+// it over 0..50 Hz, which puts 6.25 Hz at 12 o'clock and keeps the fast
+// warble end from swallowing the musical range.
 inline float map_cube(float t, float lo, float hi) {
   return lo + (hi - lo) * t * t * t;
-}
-
-// Grain length: 4..40 ms, the lab's own slider range (app.js line 537),
-// with a center detent band pinning exactly 20 ms. 20 is the value the
-// engine baked in before this knob existed (FofParams::grain_ms), so the
-// detent is what makes every character's factory voice reachable again
-// after a sweep. Same reason as the tone center detent: a real pot never
-// reads exactly 0.5.
-//
-// The two halves are scaled independently because the range is asymmetric
-// about its detent (16 ms below, 20 ms above); a single linear map would
-// put the detent at 22.2 ms instead of 20.
-inline float map_grain(float t) {
-  const float dz = 0.1f;
-  const float x = (t - 0.5f) * 2.0f;   // -1..+1
-  if (std::fabs(x) < dz) return 20.0f;
-  const float u = (std::fabs(x) - dz) / (1.0f - dz);   // 0..1 out from center
-  return x > 0.0f ? 20.0f + u * 20.0f : 20.0f - u * 16.0f;
-}
-
-// Voice count: 1..8 in eight equal bands, so every count gets the same
-// slice of the travel and a knob at either stop lands on a legal value.
-// The engine rounds and clamps this again (fof_engine.hpp nUni).
-inline float map_voices(float t) {
-  int n = 1 + static_cast<int>(t * 8.0f);
-  if (n < 1) n = 1;
-  if (n > 8) n = 8;
-  return static_cast<float>(n);
 }
 
 // Tone: -1..+1 with a center detent band that maps to exactly 0. The spec
@@ -98,9 +72,14 @@ inline void apply_knob(MenuLayer layer, int k, float t, VoiceParams& vp) {
         case 0: vp.f3  = map_lin(t, 1500.0f, 4500.0f); break;
         case 1: vp.bw3 = map_lin(t, 5.0f, 500.0f); break;
         case 2: vp.a3  = map_lin(t, 0.0f, 2.0f); break;
-        case 3: vp.unison       = map_voices(t); break;
-        case 4: vp.detune_cents = map_lin(t, 0.0f, 60.0f); break;
-        case 5: vp.grain_ms     = map_grain(t); break;
+        // Vibrato returned to the pedal 2026-09-02, filling the slot the
+        // retired voices control left. Rate is cubic so 6.25 Hz lands at
+        // 12 o'clock; past ~15 Hz it stops reading as vibrato and becomes
+        // an FM warble, which is wanted and is why the range runs to 50.
+        case 3: vp.vib_rate_hz     = map_cube(t, 0.0f, 50.0f); break;
+        case 4: vp.vib_depth_cents = map_lin(t, 0.0f, 100.0f); break;
+        // Detune moved down from knob 5 when grain length was retired.
+        case 5: vp.detune_cents    = map_lin(t, 0.0f, 60.0f); break;
       }
       break;
   }

@@ -20,7 +20,16 @@
 // The block is the same SIZE at every bump, so the version IS the only
 // guard: without it a v3 flash would read a saved aspiration of 0.3 back
 // as a 0.3 ms grain length, and the voice would collapse.
-inline constexpr uint32_t kVoiceStoreVersion = 5;
+// v6: the voices (unison) control retired on 2026-09-01, and grain length
+// followed it on 2026-09-02. Both are pinned in main.cpp's to_fof_params()
+// (3 voices, 20 ms), which moved no voice because every character and beast
+// already stored exactly those values. The two knobs grain's retirement
+// freed are vibrato rate and depth, which returned to the engine that same
+// day; detune moved to knob 6. Unlike v5
+// this DOES change the block size, so a v5 block read as v6 would misread
+// every field after a1..a3; the bump is what stops that. Saved characters
+// factory-restore on first boot.
+inline constexpr uint32_t kVoiceStoreVersion = 6;
 
 // Gate toggle thresholds, indexed low/medium/high. PLACEHOLDERS until the
 // milestone 3 on-hardware ear calibration (FIRMWARE.md gotcha 3): medium
@@ -43,9 +52,9 @@ struct VoiceParams {
   float f1, f2, f3;
   float bw1, bw2, bw3;
   float a1, a2, a3;
-  float unison;        // stacked voices, 1..8 (engine rounds and clamps)
-  float detune_cents;  // unison spread, 0..60 cents
-  float grain_ms;      // FOF grain length, 4..40 ms, 20 = the v12 default
+  float detune_cents;  // spread across the engine's 3 voices, 0..60 cents
+  float vib_rate_hz;      // vibrato rate, 0..50 Hz, 0 = off
+  float vib_depth_cents;  // vibrato depth, 0..100 cents
   float mix;           // 0 = 100% dry (bypass sound), 1 = 100% voice
   float glide_ms;      // 0..300
   float master_vol;    // 0..2, unity 1 (both paths)
@@ -116,8 +125,9 @@ inline int slot_index(Page p, Side s) {
 // plus the milestone 5 post-chain factory values: vocal_size 0, tone center,
 // volumes unity, mix full wet. Only Wukong still A/Bs against the
 // voice-only milestone renders (spec success criterion 1): it keeps the v12
-// reference stack, while the other three are voiced by their own unison
-// stack, and no character has vibrato any more.
+// reference stack, and every character now runs the engine's own 3 voices
+// and 20 ms grain, so detune is the only part of the stack that still tells
+// them apart. No character has vibrato at factory either.
 inline VoiceParams factory_voice(int preset_idx) {
   const CharacterPreset& c = kPresets[preset_idx];
   VoiceParams v{};
@@ -126,9 +136,9 @@ inline VoiceParams factory_voice(int preset_idx) {
   v.f3 = c.formants_hz[2];
   v.bw1 = 32.5f; v.bw2 = 47.5f; v.bw3 = 62.5f;
   v.a1 = v.a2 = v.a3 = 1.0f;
-  v.unison = c.unison;
   v.detune_cents = c.detune_cents;
-  v.grain_ms = c.grain_ms;
+  v.vib_rate_hz = 0.0f;
+  v.vib_depth_cents = 0.0f;
   v.mix = 1.0f;
   v.glide_ms = 0.0f;
   v.master_vol = 1.0f;

@@ -196,10 +196,13 @@ int main() {
     // case that prompted the amendment: R engaged, menu 3 latched
     assert(!c.right && !d.right);
     // knob 3 was rearmed at its physical 0.5; moving it to 0.9 crosses the
-    // pickup threshold, so the voice count takes over: 0.9 is the eighth of
-    // eight equal bands, so 8 voices.
+    // pickup threshold. This used to assert the edit buffer did not move at
+    // all, back when menu 3 knob 4 was inert; vibrato returned to that slot
+    // 2026-09-02, so the assertion is retargeted to check the pickup+apply
+    // path actually lands the new value (map_cube taper) rather than
+    // checking for continued inertness that no longer exists.
     s.in.knobs[3] = 0.9f; s.step();
-    assert(near(s.ui.edit_buffer().unison, 8.0f));
+    assert(near(s.ui.edit_buffer().vib_rate_hz, map_cube(0.9f, 0.0f, 50.0f)));
     s.tap(Side::Left);
     assert(s.ui.layer() == MenuLayer::Menu1);
   }
@@ -365,9 +368,9 @@ int main() {
     assert(s.ui.layer() == MenuLayer::Menu3);
     assert(!s.ui.save_pending());
     assert(s.ui.engaged() && s.ui.source() == EngagedSource::SlotR);  // no recall
-    s.in.knobs[3] = 0.52f;           // pickup rearmed on the switch: a small
-    s.step();                        // move stays inert (voice count untouched)
-    assert(near(s.ui.edit_buffer().unison, g_store.slots[0].unison));
+    s.in.knobs[5] = 0.52f;           // pickup rearmed on the switch: a small
+    s.step();                        // move stays inert (detune untouched)
+    assert(near(s.ui.edit_buffer().detune_cents, g_store.slots[0].detune_cents));
     s.tap(Side::Right);              // other side again: back to menu 2
     assert(s.ui.layer() == MenuLayer::Menu2);
     s.tap(Side::Right);              // own side (blinking): exit

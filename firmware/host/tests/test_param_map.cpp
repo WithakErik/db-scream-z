@@ -21,14 +21,20 @@ int main() {
   assert(near(s.slots[0].bw1, 32.5f) && near(s.slots[0].bw2, 47.5f) &&
          near(s.slots[0].bw3, 62.5f));    // v12 defaults
   assert(near(s.slots[0].a1, 1.f));
-  // Per-character voice stack (gen_presets.py STACK): Wukong keeps the v12
-  // reference 3 / 11, Piccolo is the thick end of the range. Every
-  // character carries the engine's long-standing 20 ms grain length, so
-  // exposing it on knob 6 moved nobody's voice.
-  assert(near(s.slots[0].unison, 3.f) && near(s.slots[0].detune_cents, 11.f) &&
-         near(s.slots[0].grain_ms, 20.0f));
-  assert(near(s.slots[3].unison, 5.f) && near(s.slots[3].detune_cents, 26.f) &&
-         near(s.slots[3].grain_ms, 20.0f));
+  // Per-character voice stack (gen_presets.py STACK). Voice COUNT left the
+  // data model on 2026-09-01 and grain length followed on 2026-09-02, so
+  // detune is the only part of the stack that still varies per character:
+  // Wukong keeps the v12 reference 11, Piccolo is the wide end. Grain is
+  // pinned to the engine's 20 ms in to_fof_params(), which moved no voice
+  // because every character and beast already stored exactly 20.
+  assert(near(s.slots[0].detune_cents, 11.f));
+  assert(near(s.slots[3].detune_cents, 26.f));
+  // Vibrato ships OFF for every character (design D4), so restoring the
+  // LFO cannot change a shipping voice until a knob is turned.
+  for (int i = 0; i < 4; ++i) {
+    assert(s.slots[i].vib_rate_hz == 0.0f);
+    assert(s.slots[i].vib_depth_cents == 0.0f);
+  }
   assert(near(s.slots[0].mix, 1.0f));     // factory full wet (plan: resolved items)
   assert(near(s.slots[0].master_vol, 1.0f) && near(s.slots[0].vocal_vol, 1.0f));
   assert(near(s.slots[0].vocal_size, 0.f) && near(s.slots[0].tone, 0.f));
@@ -127,52 +133,44 @@ int main() {
   apply_knob(MenuLayer::Menu3, 0, 1.0f, v);  assert(near(v.f3, 4500.f));
   apply_knob(MenuLayer::Menu3, 1, 1.0f, v);  assert(near(v.bw3, 500.f));
   apply_knob(MenuLayer::Menu3, 2, 0.0f, v);  assert(near(v.a3, 0.0f));
-  apply_knob(MenuLayer::Menu3, 4, 0.5f, v);  assert(near(v.detune_cents, 30.0f));
-  // Grain: center detent, so half travel is exactly the 20 ms default.
-  apply_knob(MenuLayer::Menu3, 5, 0.5f, v);  assert(v.grain_ms == 20.0f);
+  apply_knob(MenuLayer::Menu3, 3, 0.5f, v);
+  assert(near(v.vib_rate_hz, 6.25f));        // cubic: 12 o'clock is 6.25 Hz
+  apply_knob(MenuLayer::Menu3, 4, 0.5f, v);
+  assert(near(v.vib_depth_cents, 50.0f));    // linear
+  apply_knob(MenuLayer::Menu3, 5, 0.5f, v);
+  assert(near(v.detune_cents, 30.0f));       // moved here from knob 5
 
-  // ---- voices: eight equal bands over 1..8, both stops legal, monotonic
-  apply_knob(MenuLayer::Menu3, 3, 0.0f, v);    assert(v.unison == 1.0f);
-  apply_knob(MenuLayer::Menu3, 3, 1.0f, v);    assert(v.unison == 8.0f);
-  apply_knob(MenuLayer::Menu3, 3, 0.124f, v);  assert(v.unison == 1.0f);
-  apply_knob(MenuLayer::Menu3, 3, 0.126f, v);  assert(v.unison == 2.0f);
-  apply_knob(MenuLayer::Menu3, 3, 0.5f, v);    assert(v.unison == 5.0f);
+  // ---- vibrato rate: cubic taper (design D3). A linear 0..50 Hz map
+  // would bury 4..8 Hz singer's vibrato in the bottom sixth of the travel,
+  // which is not settable on a real pot; the cubic puts 6.25 Hz at 12
+  // o'clock and gives the whole top half to the warble and FM zone.
+  assert(map_cube(0.0f, 0.0f, 50.0f) == 0.0f);   // exact off at the stop
+  assert(near(map_cube(0.25f, 0.0f, 50.0f), 0.78125f));
+  assert(near(map_cube(0.5f,  0.0f, 50.0f), 6.25f));
+  assert(near(map_cube(0.75f, 0.0f, 50.0f), 21.09375f));
+  assert(near(map_cube(1.0f,  0.0f, 50.0f), 50.0f));
+  // Monotonic and in range across the whole travel.
   {
-    float prev = 0.0f;
+    float prev = -1.0f;
     for (int i = 0; i <= 100; ++i) {
-      apply_knob(MenuLayer::Menu3, 3, i / 100.0f, v);
-      assert(v.unison >= prev && v.unison >= 1.0f && v.unison <= 8.0f);
-      prev = v.unison;
+      const float r = map_cube(i / 100.0f, 0.0f, 50.0f);
+      assert(r >= prev && r >= 0.0f && r <= 50.0f);
+      prev = r;
     }
   }
-
-  // ---- grain length: 20 ms must be exactly reachable, because it is the
-  // value every factory character stores and the one the engine baked in
-  // before this knob existed. A real pot never reads exactly 0.5, so the
-  // whole detent band has to give 20, and the band must clear the
-  // knob-pickup threshold (0.02) so a centred knob cannot drift off it.
-  assert(map_grain(0.5f) == 20.0f);
-  assert(map_grain(0.55f) == 20.0f);   // inside the detent band
-  assert(map_grain(0.45f) == 20.0f);
-  assert(KnobPickup::kThreshold < 0.1f);
-  // Ends reach the lab's full 4..40 ms slider range, and the two halves
-  // are scaled independently so the detent lands on 20 rather than the
-  // 22.2 a single linear map would give.
-  assert(near(map_grain(0.0f), 4.0f));
-  assert(near(map_grain(1.0f), 40.0f));
-  assert(map_grain(0.56f) > 20.0f && map_grain(0.44f) < 20.0f);
-  {
-    float prev = 0.0f;
-    for (int i = 0; i <= 100; ++i) {
-      const float g = map_grain(i / 100.0f);
-      assert(g >= prev && g >= 4.0f && g <= 40.0f);
-      prev = g;
-    }
-  }
-  apply_knob(MenuLayer::Menu3, 5, 0.0f, v);   assert(near(v.grain_ms, 4.0f));
-  apply_knob(MenuLayer::Menu3, 5, 1.0f, v);   assert(near(v.grain_ms, 40.0f));
-  apply_knob(MenuLayer::Menu3, 4, 0.0f, v);   assert(near(v.detune_cents, 0.0f));
-  apply_knob(MenuLayer::Menu3, 4, 1.0f, v);   assert(near(v.detune_cents, 60.0f));
+  // Both stops of all three knobs land exactly where the booklet says.
+  apply_knob(MenuLayer::Menu3, 3, 0.0f, v);
+  assert(v.vib_rate_hz == 0.0f);             // exact: 0 Hz is vibrato OFF
+  apply_knob(MenuLayer::Menu3, 3, 1.0f, v);
+  assert(near(v.vib_rate_hz, 50.0f));
+  apply_knob(MenuLayer::Menu3, 4, 0.0f, v);
+  assert(v.vib_depth_cents == 0.0f);
+  apply_knob(MenuLayer::Menu3, 4, 1.0f, v);
+  assert(near(v.vib_depth_cents, 100.0f));
+  apply_knob(MenuLayer::Menu3, 5, 0.0f, v);
+  assert(near(v.detune_cents, 0.0f));
+  apply_knob(MenuLayer::Menu3, 5, 1.0f, v);
+  assert(near(v.detune_cents, 60.0f));
 
   printf("test_param_map OK\n");
   return 0;

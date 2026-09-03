@@ -34,14 +34,13 @@ int main() {
     // Formant amplitudes: the bank does not touch them.
     assert(v.a1 == 1.0f && v.a2 == 1.0f && v.a3 == 1.0f);
 
-    // Voice stack, per voice_params.hpp: 1..8 voices, 0..60 cents,
-    // 4..40 ms grain. The bank leaves grain at the engine default, but it
-    // must still be SET: beast_voice zero-initialises the block, and a
-    // grain of 0 ms would floor to a 16-sample grain in build_grains.
-    assert(v.unison >= 1.0f && v.unison <= 8.0f);
-    assert(v.unison == std::floor(v.unison));  // whole voices only
+    // Detune is all that is left of the per-beast stack: voice count was
+    // retired 2026-09-01 and grain length followed on 2026-09-02, both
+    // pinned in to_fof_params(). Vibrato is zero for every beast, which comes free
+    // from beast_voice()'s zero-init rather than from an assignment, so
+    // this assertion is what keeps that free ride honest.
     assert(v.detune_cents >= 0.0f && v.detune_cents <= 60.0f);
-    assert(v.grain_ms >= 4.0f && v.grain_ms <= 40.0f);
+    assert(v.vib_rate_hz == 0.0f && v.vib_depth_cents == 0.0f);
 
     // Post chain and routing.
     assert(v.mix >= 0.0f && v.mix <= 1.0f);
@@ -116,7 +115,7 @@ int main() {
     assert(cow.tone < 0.0f);    // and a dark one
 
     const VoiceParams wolf = beast_voice(kBeastWolf);
-    assert(wolf.unison >= 5.0f);    // the pack shimmer
+    assert(wolf.detune_cents >= 20.0f);  // what carries the pack shimmer now
     assert(wolf.glide_ms >= 150.0f);  // a howl swoops into its note
 
     const VoiceParams whale = beast_voice(kBeastWhale);

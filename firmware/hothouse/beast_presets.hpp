@@ -6,10 +6,10 @@
 // are untouched and a power cycle brings them back.
 //
 // Deliberately NOT routed through tools/gen_presets.py like
-// ../engine/presets.hpp is. A CharacterPreset carries only formants,
-// unison, detune and grain length, and these voices need octave, glide and
-// bandwidth to sound like anything: a cow is a cow because it is an
-// octave down and dark, not because of its formant triple alone. Keeping
+// ../engine/presets.hpp is. A CharacterPreset carries only formants and
+// detune, and these voices need octave, glide and bandwidth to sound like
+// anything: a cow is a cow because it is an octave down and dark, not
+// because of its formant triple alone. Keeping
 // the bank here means the generated file and the character path never
 // have to know it exists.
 //
@@ -50,7 +50,7 @@ inline constexpr int kBeastCount = 4;
 struct BeastPreset {
   float f1, f2, f3;
   float bw1, bw2, bw3;
-  float unison, detune_cents;
+  float detune_cents;
   float glide_ms, tone, vocal_size;
   int8_t octave;
 };
@@ -60,25 +60,27 @@ inline constexpr BeastPreset kBeasts[kBeastCount] = {
     // the body. Wide bandwidths blur the vowel into an animal, and the
     // glide is the slide a moo makes falling off its own note.
     {420.0f, 800.0f, 2400.0f, 60.0f, 90.0f, 120.0f,
-     4.0f, 14.0f, 140.0f, -0.35f, 0.5f, -1},
+     14.0f, 140.0f, -0.35f, 0.5f, -1},
 
-    // Wolf: a pure sustained /u/, the stack doing the work. Six voices
-    // at 22 cents is the beating that makes one howl sound like several
-    // a valley away. The long glide swoops in.
+    // Wolf: a pure sustained /u/. The howl used to get its "several wolves
+    // a valley away" from six stacked voices beating against each other;
+    // the voices control was retired 2026-09-01, so the 22 cents of detune
+    // across the engine's three is what carries that now. The long glide
+    // swoops in.
     {350.0f, 850.0f, 2600.0f, 40.0f, 55.0f, 80.0f,
-     6.0f, 22.0f, 220.0f, 0.10f, 0.25f, 0},
+     22.0f, 220.0f, 0.10f, 0.25f, 0},
 
     // Whale: the lowest and most smeared voice in the bank, with the
     // glide pinned at its 300 ms ceiling so every note arrives by
     // sliding. Three voices spread wide beat slowly, like distance.
     {300.0f, 700.0f, 1800.0f, 70.0f, 100.0f, 150.0f,
-     3.0f, 30.0f, 300.0f, -0.20f, 0.75f, -1},
+     30.0f, 300.0f, -0.20f, 0.75f, -1},
 
     // Elephant: the outlier. Bright, tight and brassy rather than dark
     // and vocal, with barely any detune so the blast stays focused.
     // Short glide: a trumpet is an attack.
     {700.0f, 1900.0f, 3200.0f, 45.0f, 60.0f, 90.0f,
-     2.0f, 7.0f, 45.0f, 0.55f, 0.375f, 0},
+     7.0f, 45.0f, 0.55f, 0.375f, 0},
 };
 
 // One beast as a full edit buffer. Everything the table does not name
@@ -93,13 +95,12 @@ inline VoiceParams beast_voice(int idx) {
   v.bw2 = b.bw2;
   v.bw3 = b.bw3;
   v.a1 = v.a2 = v.a3 = 1.0f;
-  v.unison = b.unison;
   v.detune_cents = b.detune_cents;
-  // Not in the table: every beast wants the engine's long-standing default
-  // (FofParams::grain_ms). It has to be assigned explicitly all the same,
-  // because VoiceParams v{} above zero-initialises it and a grain length of
-  // 0 ms would floor to a 16-sample grain in build_grains().
-  v.grain_ms = 20.0f;
+  // Vibrato is deliberately NOT assigned: `VoiceParams v{}` above
+  // zero-initialises both fields and 0 is exactly what every beast wants
+  // (design D4). That is the opposite of the grain length that used to sit
+  // here, where the zero-init was WRONG and the explicit assignment existed
+  // to correct it. Grain is pinned in to_fof_params() now.
   v.mix = 1.0f;
   v.glide_ms = b.glide_ms;
   v.master_vol = 1.0f;

@@ -6,7 +6,7 @@
 // FOOTSWITCH_2/LED_2 = RIGHT, verified against the Hothouse PCB netlists):
 //   Knobs 1-6 (menu 1): vocal vol, mix, master vol, tone, glide, vocal size
 //   RIGHT hold ~1 s   : latch menu 2 (F1/F2 formants), right LED blinks
-//   LEFT hold ~1 s    : latch menu 3 (F3, voices, detune, grain), left LED
+//   LEFT hold ~1 s    : latch menu 3 (F3, vibrato, detune), left LED
 //                       blinks
 //   Stomp taps        : recall/engage slots, tap again = bypass; while a
 //                       menu is latched the OTHER stomp's tap = SAVE
@@ -44,13 +44,19 @@ PostChain* post = nullptr;
 PersistentStorage<VoiceStore>* storage = nullptr;
 UiController ui;
 
-// The grain tables are trimmed on this target (Makefile: MAX_GRAIN_LEN) and
-// menu 3 knob 6 now reaches 40 ms, so the trim has to cover the top of that
-// travel or a full-clockwise grain would silently clamp short. Checked here
-// because this is the translation unit that carries the -D override; the
-// host builds keep their roomier 4800 default and clear it either way.
+// The grain tables are trimmed on this target (Makefile: MAX_GRAIN_LEN).
+// Grain length is no longer knob-driven: the knob (and map_grain, and its
+// 4..40 ms sweep) were retired on 2026-09-02, and to_fof_params() now pins
+// grain to a constant 20 ms (960 samples at 48 kHz). 1920 is kept as a
+// deliberately conservative bound rather than shrunk to the new 960-sample
+// requirement: it is double the pin's actual need, costs nothing at this
+// target's flash budget, and leaves headroom if the pin is ever loosened
+// again without a second look at this assert. Checked here because this is
+// the translation unit that carries the -D override; the host builds keep
+// their roomier 4800 default and clear it either way.
 static_assert(kMaxGrainLen >= 1920,
-              "kMaxGrainLen must cover map_grain's 40 ms maximum at 48 kHz");
+              "kMaxGrainLen must cover the 20 ms grain pin at 48 kHz, kept "
+              "at 2x headroom");
 
 static constexpr size_t kBlockSize = 48;
 // Engage/bypass crossfade over 10 ms: click-free transition (spec sec 7).
@@ -82,9 +88,30 @@ static FofParams to_fof_params(const VoiceParams& v) {
   p.f1 = v.f1; p.f2 = v.f2; p.f3 = v.f3;
   p.bw1 = v.bw1; p.bw2 = v.bw2; p.bw3 = v.bw3;
   p.a1 = v.a1; p.a2 = v.a2; p.a3 = v.a3;
-  p.unison = static_cast<int>(v.unison);
+  // Unison is pinned for the same reason aspiration is: fof_engine.hpp is a
+  // transcription of the frozen lab engine and keeps its unison support, so
+  // the pedal switches it off here rather than cutting the engine. 3 is the
+  // engine's own long-standing default (FofParams::unison) and what every
+  // character ran before the menu 3 knob existed; it is also what
+  // tools/ref_render.js and host/render.cpp render at, so the golden
+  // reference renders stay valid. Stacks above 3 were the "ringmod" heard
+  // on hardware 2026-09-01, audible even at mix 0 where the voice path is
+  // multiplied by zero, which is what ruled the voice path out and left
+  // per-block cost as the cause.
+  p.unison = 3;
   p.detune_cents = v.detune_cents;
-  p.grain_ms = v.grain_ms;
+  // Vibrato. The store and the knobs are in CENTS, FofParams::vib_depth is
+  // in SEMITONES: this division is the only place that boundary is crossed
+  // anywhere in the firmware.
+  p.vib_rate = v.vib_rate_hz;
+  p.vib_depth = v.vib_depth_cents / 100.0;
+  // Grain length is pinned for the same reason unison and aspiration are:
+  // the engine keeps its support and the pedal stops driving it. 20 ms is
+  // the engine's own default (FofParams::grain_ms), and every character and
+  // beast already stored exactly 20, so no voice changed when the knob was
+  // retired on 2026-09-02. Knob 6 is detune now, and the knob detune left
+  // is vibrato depth.
+  p.grain_ms = 20.0;
   // Aspiration is pinned rather than deleted: grain.hpp is a verbatim
   // transcription of the frozen lab engine (FIRMWARE.md section 9 gotcha 6)
   // and must keep its breath branch, so the pedal switches it off here

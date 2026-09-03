@@ -31,9 +31,12 @@ double preset_f0_hz(const std::string& name) {
   return 452.0;
 }
 
-// Vibrato was removed from the engine on 2026-09-01. The v12 milestone
-// reference renders can no longer be reproduced by this binary; that was
-// an accepted cost, see the vocal size design spec section 7.
+// Vibrato was restored to the engine on 2026-09-02 and to this binary's
+// --set keys the same day (vibRate, vibDepth, below). The v12 milestone
+// reference renders still cannot be reproduced, though: the per-character
+// vibrato tables that drove them are deliberately NOT restored, so every
+// character renders with vibrato at 0 unless a --set overrides it. That
+// was an accepted cost, see the vocal size design spec section 7.
 
 // --set keys are the JS param names (ref_render.js line 81 writes straight
 // into the worklet's `p`), mapped here onto the snake_cased FofParams fields.
@@ -51,6 +54,8 @@ bool apply_set(FofParams& p, const std::string& k, double v) {
   if (k == "grainMs") { p.grain_ms = v; return true; }
   if (k == "unison") { p.unison = static_cast<int>(jsRound(v)); return true; }
   if (k == "detuneCents") { p.detune_cents = v; return true; }
+  if (k == "vibRate") { p.vib_rate = v; return true; }
+  if (k == "vibDepth") { p.vib_depth = v; return true; }
   if (k == "aspiration") { p.aspiration = v; return true; }
   if (k == "quantize") { p.quantize = (v != 0); return true; }
   if (k == "ampComp") { p.amp_comp = (v != 0); return true; }
@@ -106,8 +111,9 @@ int main(int argc, char** argv) {
 
   // ---- v12 param set: app.js P defaults + applyPreset() baking ----
   // (ref_render.js lines 69-78; the character supplies formants only,
-  // formantScale is already baked into formants_hz. Vibrato was removed
-  // from the engine, see the note above.)
+  // formantScale is already baked into formants_hz. Vibrato is left at its
+  // zero default here, because the per-character vibrato tables are
+  // deliberately not restored, see the note above.)
   FofParams p;
   p.f1 = pr->formants_hz[0];
   p.f2 = pr->formants_hz[1];

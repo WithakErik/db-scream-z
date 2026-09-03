@@ -43,7 +43,7 @@ goes.
 Hold the RIGHT stomp: about 1 second in, MENU 2 latches under your foot
 (right LED blinks) and the knobs edit formants F1/F2. It does not wait
 for the release, and letting go changes nothing. Hold LEFT the same way
-for MENU 3 (F3 + the voice stack). While a menu is latched ONLY the blinking
+for MENU 3 (F3 + vibrato). While a menu is latched ONLY the blinking
 LED is lit: the other goes dark even if that was the engaged side. The
 sound keeps playing, its LED just steps aside so one blinking light is
 never mistaken for two lit ones. Tap the OTHER stomp to jump straight
@@ -51,19 +51,16 @@ to the other menu; tap the blinking side's own stomp to exit. After
 any menu change a knob is inert until you move it, so nothing ever
 jumps.
 
-Menu 3's bottom row is the VOICE STACK: how many copies of the voice
-sing at once (knob 4, one to eight), how far apart they are tuned
-(knob 5, up to 60 cents) and how long each grain of the voice lasts
-(knob 6, 4 to 40 ms). More voices and wider detune thicken the scream;
-one voice with no detune is the bare, focused version of the same
+Menu 3's bottom row is VIBRATO: how fast it cycles (knob 4, 0 to 50 Hz)
+and how far it swings (knob 5, 0 to 100 cents), plus detune (knob 6, up
+to 60 cents), which spreads the engine's three voices apart. Every
+character ships with vibrato off; wider detune thickens and roughens
+the scream, while at 0 the three voices collapse to the bare, focused
 character.
 
-Knob 4 steps: the travel is eight equal bands, one per voice count, so
-it lands on a whole number wherever you leave it. Knob 6 sets the
-texture: short grains are buzzy and rough, long ones smooth and vocal.
-It has a detent at 12:00 that reads as exactly 20 ms, which is the
-value every character ships with, so centring the knob always gets you
-back to the factory texture.
+Knob 4's travel is cube-tapered rather than straight-line: 6.25 Hz sits
+at 12:00, so the musical singer's-vibrato range does not get crammed
+into the bottom sixth of the travel.
 
 ### Toggles (left to right)
 
@@ -182,9 +179,9 @@ until moved), then save to any slot.
 | F3 Hz | 3111.7 | 54% | 12:22 |
 | F3 bandwidth | 62.5 | 12% | 8:09 |
 | F3 amount | 1 | 50% | 12:00 |
-| Voices | 3 | 31% | 10:07 |
+| Vibrato rate Hz | 0 | 0% | 7:00 |
+| Vibrato depth cents | 0 | 0% | 7:00 |
 | Detune cents | 11 | 18% | 8:49 |
-| Grain ms | 20 | 50% | 12:00 |
 
 Toggles: 1 Octave = Middle (0), 3 Gate = Middle (medium).
 
@@ -223,9 +220,9 @@ until moved), then save to any slot.
 | F3 Hz | 3625 | 71% | 2:05 |
 | F3 bandwidth | 62.5 | 12% | 8:09 |
 | F3 amount | 1 | 50% | 12:00 |
-| Voices | 2 | 19% | 8:52 |
+| Vibrato rate Hz | 0 | 0% | 7:00 |
+| Vibrato depth cents | 0 | 0% | 7:00 |
 | Detune cents | 8 | 13% | 8:20 |
-| Grain ms | 20 | 50% | 12:00 |
 
 Toggles: 1 Octave = Middle (0), 3 Gate = Middle (medium).
 
@@ -264,9 +261,9 @@ until moved), then save to any slot.
 | F3 Hz | 2688.3 | 40% | 10:57 |
 | F3 bandwidth | 62.5 | 12% | 8:09 |
 | F3 amount | 1 | 50% | 12:00 |
-| Voices | 4 | 44% | 11:22 |
+| Vibrato rate Hz | 0 | 0% | 7:00 |
+| Vibrato depth cents | 0 | 0% | 7:00 |
 | Detune cents | 18 | 30% | 10:00 |
-| Grain ms | 20 | 50% | 12:00 |
 
 Toggles: 1 Octave = Middle (0), 3 Gate = Middle (medium).
 
@@ -305,9 +302,9 @@ until moved), then save to any slot.
 | F3 Hz | 2528.8 | 34% | 10:25 |
 | F3 bandwidth | 62.5 | 12% | 8:09 |
 | F3 amount | 1 | 50% | 12:00 |
-| Voices | 5 | 56% | 12:37 |
+| Vibrato rate Hz | 0 | 0% | 7:00 |
+| Vibrato depth cents | 0 | 0% | 7:00 |
 | Detune cents | 26 | 43% | 11:20 |
-| Grain ms | 20 | 50% | 12:00 |
 
 Toggles: 1 Octave = Middle (0), 3 Gate = Middle (medium).
 
@@ -346,9 +343,9 @@ until moved), then save to any slot.
 | F3 Hz | 2900 | 47% | 11:40 |
 | F3 bandwidth | 62.5 | 12% | 8:09 |
 | F3 amount | 1 | 50% | 12:00 |
-| Voices | 5 | 56% | 12:37 |
+| Vibrato rate Hz | 0 | 0% | 7:00 |
+| Vibrato depth cents | 0 | 0% | 7:00 |
 | Detune cents | 24 | 40% | 11:00 |
-| Grain ms | 20 | 50% | 12:00 |
 
 Toggles: 1 Octave = Middle (0), 3 Gate = Middle (medium).
 
@@ -387,9 +384,9 @@ until moved), then save to any slot.
 | F3 Hz | 3050 | 52% | 12:10 |
 | F3 bandwidth | 62.5 | 12% | 8:09 |
 | F3 amount | 1 | 50% | 12:00 |
-| Voices | 3 | 31% | 10:07 |
+| Vibrato rate Hz | 0 | 0% | 7:00 |
+| Vibrato depth cents | 0 | 0% | 7:00 |
 | Detune cents | 14 | 23% | 9:20 |
-| Grain ms | 20 | 50% | 12:00 |
 
 Toggles: 1 Octave = Middle (0), 3 Gate = Middle (medium).
 
@@ -428,9 +425,9 @@ until moved), then save to any slot.
 | F3 Hz | 3350 | 62% | 1:10 |
 | F3 bandwidth | 62.5 | 12% | 8:09 |
 | F3 amount | 1 | 50% | 12:00 |
-| Voices | 2 | 19% | 8:52 |
+| Vibrato rate Hz | 0 | 0% | 7:00 |
+| Vibrato depth cents | 0 | 0% | 7:00 |
 | Detune cents | 8 | 13% | 8:20 |
-| Grain ms | 20 | 50% | 12:00 |
 
 Toggles: 1 Octave = Middle (0), 3 Gate = Middle (medium).
 
@@ -469,9 +466,9 @@ until moved), then save to any slot.
 | F3 Hz | 2400 | 30% | 10:00 |
 | F3 bandwidth | 62.5 | 12% | 8:09 |
 | F3 amount | 1 | 50% | 12:00 |
-| Voices | 4 | 44% | 11:22 |
+| Vibrato rate Hz | 0 | 0% | 7:00 |
+| Vibrato depth cents | 0 | 0% | 7:00 |
 | Detune cents | 30 | 50% | 12:00 |
-| Grain ms | 20 | 50% | 12:00 |
 
 Toggles: 1 Octave = Middle (0), 3 Gate = Middle (medium).
 

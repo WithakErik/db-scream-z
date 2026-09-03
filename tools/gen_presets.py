@@ -3,7 +3,7 @@
 
 The formants come from presets.json, which is a FROZEN copy of the lab's
 (tools/check_engine_copy.py hashes the two against each other), so nothing
-new may be added to it. The unison stack below therefore lives here: it is
+new may be added to it. The voice stack below therefore lives here: it is
 a pedal-side voicing choice, not lab data.
 """
 
@@ -11,23 +11,25 @@ import json
 import sys
 from pathlib import Path
 
-# Per-character voice stack, carried by menu 3 knobs 4-6. Ranges mirror the
-# lab's controls (voices 1-8, detune 0-60 cents, grain 4-40 ms) and
-# firmware/hothouse/param_map.hpp. Wukong keeps the v12 reference stack
-# (3 / 11 / 20) so the hero voice still matches the milestone renders; the
-# others are voiced by ear from their vocal quality and are meant to be
-# re-tuned on hardware.
+# Per-character voice stack, carried by menu 3 knob 6. Ranges mirror the
+# lab's controls (detune 0-60 cents) and firmware/hothouse/param_map.hpp.
+# Wukong keeps the v12 reference detune of 11 so the hero voice still
+# matches the milestone renders; the others are voiced by ear from their
+# vocal quality and are meant to be re-tuned on hardware.
 #
-# grain_ms is 20 for every character on purpose: 20 is the value the engine
-# has always baked in (FofParams::grain_ms), so making it a stored, knob-
-# reachable parameter changes no character's sound. It replaces aspiration,
-# which was removed after its two 4-5 kHz sinusoids turned out to be the
-# "static" heard on hardware (see the aspiration removal, 2026-09-01).
+# Voice COUNT used to live here too. It was retired on 2026-09-01: every
+# character now runs the engine's own default of 3, pinned in main.cpp's
+# to_fof_params(), so it is no longer per-character data.
+#
+# grain_ms left the data model on 2026-09-02, after the voices control.
+# It was 20 for every character, which is the value the engine has always
+# baked in (FofParams::grain_ms), so pinning it in to_fof_params() moved
+# nobody's voice and the knob it freed became vibrato depth.
 STACK = {
-    'Wukong':  {'unison': 3, 'detune_cents': 11.0, 'grain_ms': 20.0},
-    'Rice':    {'unison': 2, 'detune_cents': 8.0,  'grain_ms': 20.0},
-    'Prince':  {'unison': 4, 'detune_cents': 18.0, 'grain_ms': 20.0},
-    'Piccolo': {'unison': 5, 'detune_cents': 26.0, 'grain_ms': 20.0},
+    'Wukong':  {'detune_cents': 11.0},
+    'Rice':    {'detune_cents': 8.0},
+    'Prince':  {'detune_cents': 18.0},
+    'Piccolo': {'detune_cents': 26.0},
 }
 
 
@@ -55,9 +57,7 @@ def generate_header(presets):
         "struct CharacterPreset {",
         "  const char* name;",
         "  float formants_hz[3];   // baked (tract scale already applied), Hz",
-        "  float unison;           // stacked voices, 1..8",
-        "  float detune_cents;     // unison spread, 0..60 cents",
-        "  float grain_ms;         // FOF grain length, 4..40 ms",
+        "  float detune_cents;     // spread across the engine's 3 voices, 0..60 cents",
         "};",
         "inline constexpr CharacterPreset kPresets[4] = {",
     ]
@@ -67,7 +67,7 @@ def generate_header(presets):
     for name, data in presets.items():
         formants = data['formants_hz']
         if name not in STACK:
-            raise AssertionError(f"{name}: no unison stack entry in gen_presets.py STACK")
+            raise AssertionError(f"{name}: no voice stack entry in gen_presets.py STACK")
         stack = STACK[name]
 
         # Format each field
@@ -79,12 +79,12 @@ def generate_header(presets):
             'stack': stack,
             'formants_str': formants_str,
             'stack_str': ', '.join(format_float(stack[k]) for k in
-                                   ('unison', 'detune_cents', 'grain_ms')),
+                                   ('detune_cents',)),
         })
 
     # Build preset lines with careful spacing
     for item in preset_items:
-        # Format: {"<name>",    {formants}, unison, detune_cents, grain_ms},
+        # Format: {"<name>",    {formants}, detune_cents},
         line = f'  {{"{item["name"]}",    {{{item["formants_str"]}}}, {item["stack_str"]}}}'
         # Add comma after all items (including last)
         line += ','
@@ -106,17 +106,13 @@ def verify_roundtrip(presets, preset_items):
                     f"{item['name']}: formants[{i}] JSON={json_val} != emitted={emitted_val}"
                 )
 
-        # Check the unison stack against STACK, and that it stays in the
+        # Check the voice stack against STACK, and that it stays in the
         # ranges the menu 3 knobs can reach.
         s = item['stack']
         if s != STACK[item['name']]:
             raise AssertionError(f"{item['name']}: stack {s} != STACK {STACK[item['name']]}")
-        if not 1 <= s['unison'] <= 8:
-            raise AssertionError(f"{item['name']}: unison {s['unison']} outside 1..8")
         if not 0 <= s['detune_cents'] <= 60:
             raise AssertionError(f"{item['name']}: detune {s['detune_cents']} outside 0..60")
-        if not 4 <= s['grain_ms'] <= 40:
-            raise AssertionError(f"{item['name']}: grain_ms {s['grain_ms']} outside 4..40")
 
 
 def main():

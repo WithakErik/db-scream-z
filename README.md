@@ -98,7 +98,7 @@ Normally the six knobs are the default layer:
 Hold the RIGHT stomp: about a second in, **menu 2** latches under your foot,
 the right LED starts blinking, and the knobs now edit formants F1 and F2. It
 does not wait for you to let go, and letting go changes nothing. Hold LEFT
-the same way for **menu 3**, F3 and the voice stack. While a menu is latched, tap the
+the same way for **menu 3**, F3 and vibrato. While a menu is latched, tap the
 *other* stomp to jump straight to the other menu; tap the blinking side's own
 stomp to exit.
 
@@ -109,17 +109,18 @@ blinking light is never mistaken for two lit ones.
 After any layer change a knob is inert until you move it, so nothing ever
 jumps to wherever the knob happens to be pointing.
 
-Menu 3's bottom row is the **voice stack**: how many copies of the scream
-sing at once (knob 4, one to eight), how far apart they are tuned (knob 5,
-up to 60 cents), and how long each grain of the voice lasts (knob 6, 4 to
-40 ms). More voices and wider detune thicken the scream; one voice with no
-detune is the bare, focused version of the same character.
+Menu 3's bottom row is **vibrato**: how fast the pitch wobbles (knob 4), how
+far it swings (knob 5), and how far apart the character's three stacked
+voices are tuned (knob 6, up to 60 cents). Every voice ships with vibrato
+off.
 
-Knob 4 steps through the eight counts in eight equal bands, so it always
-lands on a whole number. Knob 6 sets texture rather than pitch: short grains
-are buzzy and rough, long ones smooth and vocal. It has a detent at 12:00
-that reads as exactly 20 ms, the length every voice ships with, so centring
-it always returns you to the factory texture.
+Knob 4 barely moves for its first half: off at the counter-clockwise stop,
+opening into a natural, singer's wobble around 12 o'clock. Past that it
+speeds up fast, ending in a fluttering, metallic warble no voice could do
+on its own. Knob 5 sets how far each wobble swings the pitch, from nothing
+up to a full semitone. Knob 6 spreads the three voices apart; wound to zero
+they collapse into the bare, focused version of the character, and opened
+up they thicken into a chorus.
 
 Back on the default layer, knob 6 is vocal size. It scales all three
 formants together, which is acoustically vocal tract length, so the voice

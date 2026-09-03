@@ -33,7 +33,9 @@ static void run(const FofParams& p, float* out, int blocks) {
 
 // Captured from the engine BEFORE the LFO was deleted, with vib_rate and
 // vib_depth at 0 (the firmware's own values). Deleting dead code must not
-// move a single sample.
+// move a single sample, and neither must restoring it: the LFO came back
+// on 2026-09-02 defaulting to 0, and these twelve samples are the proof
+// that no shipping voice changed until a knob moves.
 static const int kGoldenIdx[] = {9600,9737,9874,10011,10148,10285,
                                  10422,10559,10696,10833,10970,11107};
 static const float kGolden[] = {
@@ -46,6 +48,36 @@ int main() {
   static float buf[19200];
   run(base_params(), buf, 400);
   for (int k = 0; k < 12; k++) assert(buf[kGoldenIdx[k]] == kGolden[k]);
+
+  // ---- vibrato, restored 2026-09-02 ----
+  // Three properties, all exact-equality because adding a true 0.0 to
+  // `semis` is bit-exact: rate 0 is silence, depth 0 is silence, and the
+  // two together are audible. The rate-0 case is the one that matters
+  // most: the phase must be PARKED at 0, not frozen wherever it stopped,
+  // or a constant depth*sin(phase) detune would sit on the whole stack.
+  static float off[19200], depth_only[19200], rate_only[19200], both[19200];
+  run(base_params(), off, 400);
+
+  FofParams p = base_params();
+  p.vib_depth = 0.5;                 // 50 cents, rate still 0
+  run(p, depth_only, 400);
+  for (int i = 0; i < 19200; i++) assert(depth_only[i] == off[i]);
+
+  p = base_params();
+  p.vib_rate = 6.25;                 // 12 o'clock on the new knob, depth 0
+  run(p, rate_only, 400);
+  for (int i = 0; i < 19200; i++) assert(rate_only[i] == off[i]);
+
+  p = base_params();
+  p.vib_rate = 6.25;
+  p.vib_depth = 0.5;
+  run(p, both, 400);
+  bool moved = false;
+  for (int i = 0; i < 19200; i++) {
+    if (both[i] != off[i]) { moved = true; break; }
+  }
+  assert(moved);
+
   printf("test_fof_engine OK\n");
   return 0;
 }

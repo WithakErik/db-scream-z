@@ -9,7 +9,16 @@
 // the stack (voices + detune) together. v5: drive retired and replaced by
 // vocal_size in the same slot, and the sixth charge row is vocal size
 // rather than the unison stack.
-export const kVoiceStoreVersion = 5;
+// v6: the voices (unison) control retired on 2026-09-01, and grain length
+// followed it on 2026-09-02. Both are pinned in audio.js's toFofParams()
+// (3 voices, 20 ms), which moved no voice because every character and beast
+// already stored exactly those values. The two knobs grain's retirement
+// freed are vibrato rate and depth, which returned to the engine that same
+// day; detune moved to knob 6. Unlike v5
+// this DOES change the block size, so a v5 block read as v6 would misread
+// every field after a1..a3; the bump is what stops that. Saved characters
+// factory-restore on first boot.
+export const kVoiceStoreVersion = 6;
 
 // Gate toggle thresholds, indexed low/medium/high. Placeholders until the
 // on-hardware ear calibration; medium is the v12 ear-approved 0.02.
@@ -44,10 +53,10 @@ export const MenuLayer = { Menu1: 0, Menu2: 1, Menu3: 2 };
 // presets.json; the stack does not, because that file is a frozen copy of
 // the lab's.
 export const kPresets = [
-  { name: 'Wukong',  formants_hz: [858.4, 1234.0, 3111.7], unison: 3, detune_cents: 11.0, grain_ms: 20.0 },
-  { name: 'Rice',    formants_hz: [1000.0, 1437.5, 3625.0], unison: 2, detune_cents: 8.0,  grain_ms: 20.0 },
-  { name: 'Prince',  formants_hz: [741.6, 1066.0, 2688.3], unison: 4, detune_cents: 18.0, grain_ms: 20.0 },
-  { name: 'Piccolo', formants_hz: [697.6, 1002.8, 2528.8], unison: 5, detune_cents: 26.0, grain_ms: 20.0 },
+  { name: 'Wukong',  formants_hz: [858.4, 1234.0, 3111.7], detune_cents: 11.0 },
+  { name: 'Rice',    formants_hz: [1000.0, 1437.5, 3625.0], detune_cents: 8.0 },
+  { name: 'Prince',  formants_hz: [741.6, 1066.0, 2688.3], detune_cents: 18.0 },
+  { name: 'Piccolo', formants_hz: [697.6, 1002.8, 2528.8], detune_cents: 26.0 },
 ];
 
 export function cloneVoice(v) { return { ...v }; }
@@ -59,13 +68,18 @@ export function voicesEqual(a, b) {
 
 // Non-preset fields are the v12 defaults plus the milestone 5 post-chain
 // factory values: vocal_size 0, tone center, volumes unity, mix full wet.
+// Only Wukong still A/Bs against the voice-only milestone renders: it keeps
+// the v12 reference stack, and every character now runs the engine's own 3
+// voices and 20 ms grain, so detune is the only part of the stack that
+// still tells them apart. No character has vibrato at factory either.
 export function factoryVoice(presetIdx) {
   const c = kPresets[presetIdx];
   return {
     f1: c.formants_hz[0], f2: c.formants_hz[1], f3: c.formants_hz[2],
     bw1: 32.5, bw2: 47.5, bw3: 62.5,
     a1: 1.0, a2: 1.0, a3: 1.0,
-    unison: c.unison, detune_cents: c.detune_cents, grain_ms: c.grain_ms,
+    detune_cents: c.detune_cents,
+    vib_rate_hz: 0.0, vib_depth_cents: 0.0,
     mix: 1.0,
     glide_ms: 0.0,
     master_vol: 1.0,

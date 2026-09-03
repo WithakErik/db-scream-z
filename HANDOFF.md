@@ -189,10 +189,18 @@ Key properties, all verified:
   sinusoids (4951/3802 Hz), not white noise, but it is off by default.
   (Superseded for the PEDAL as of voice store v3: aspiration is a menu 3
   knob and a charge-mode row there. It is still two sinusoids, so the
-  no-noise property below is unaffected; the lab default stays 0.)
+  no-noise property below is unaffected; the lab default stays 0.
+  Superseded again as of store v4, 2026-09-01: aspiration left the
+  controls entirely and is pinned to 0 in main.cpp, unreachable from any
+  knob or charge row.)
 - Unison up to 8 detuned voices with staggered vibrato phase. The pedal
-  exposes the count and the detune on menu 3 knobs 4 and 5, and has no
-  vibrato of its own: it parks the LFO at 0 and thickens with the stack.
+  exposed the count and the detune on menu 3 knobs 4 and 5 as of voice
+  store v3, with no vibrato of its own: it parked the LFO at 0 and
+  thickened with the stack.
+  (Superseded again, store v6: unison was retired 2026-09-01, pinned to
+  the engine's own 3. Grain length followed 2026-09-02, when the freed
+  knobs 4 and 5 became vibrato rate and depth, so the pedal has the LFO
+  back, and detune moved down to knob 6.)
 
 **Measured spectral flatness 2.3e-5 to 1.2e-4.** For comparison, the dry
 guitar measures 2e-4 and the rejected noise-based version measured 0.06-0.09.
@@ -589,6 +597,34 @@ Listed because several cost real time and the human noticed all of them.
 
 7. **Killed the human's server** with an over-broad `pkill` aimed at my own
    test instance.
+
+8. **Nearly chased the wrong "static" twice.** On 2026-09-01 the human
+   reported clipping or static on hardware that appeared after a while.
+   Aspiration had been removed earlier the SAME DAY for sounding like
+   static, so the obvious move was to assume the fix had not taken. It had.
+   This was a different noise.
+
+   What actually settled it was one observation: the noise was still there
+   with **MIX at 0**. At mix 0 `post_chain.hpp` multiplies the voice by
+   zero, so the entire voice signal path, aspiration included, cannot reach
+   the output. That one fact ruled out everything downstream of the engine
+   in a single test. Bypass was clean and master at 0 was silent, which
+   ruled out the analog input and the output stage from the other side.
+   Dropping the voice count to 1 removed it.
+
+   **Root cause was never confirmed.** Two candidates survived: per-block
+   CPU cost scaling with unison (each grain trigger accumulates a full
+   grain length per voice), or the mix pot not reaching exactly 0 and
+   leaking a detuned stack at low level. Pinning unison to 3 makes it
+   unreachable either way, which is why the fix shipped without the
+   diagnosis being closed. **If it is ever heard again at mix 0, it is the
+   leak**, and the fix is a centre-detent-style deadzone on the mix map in
+   `param_map.hpp`, the same treatment tone already has.
+
+   The lesson is the method, not the fix: when a symptom matches something
+   you just fixed, find the test that PARTITIONS the system rather than
+   re-examining the thing you touched. Mix at 0 was free and took one
+   minute.
 
 ---
 

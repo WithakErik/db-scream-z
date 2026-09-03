@@ -467,6 +467,8 @@ class FofProcessor extends AudioWorkletProcessor {
       grainMs: 20,
       unison: 3,
       detuneCents: 11,
+      vibRate: 0,     // Hz, 0 = off (the phase parks)
+      vibDepth: 0,    // SEMITONES, not cents
       aspiration: 0.0,
       quantize: 1,
       ampComp: 1,   // MonkSynth's low-note boost: the human prefers it ON
@@ -507,6 +509,11 @@ class FofProcessor extends AudioWorkletProcessor {
     // per-unison-voice state
     this.vphase = new Float64Array(MAX_UNISON);   // grain trigger phase
     this.curF0 = 200;
+
+    // ONE common vibrato LFO for the whole unison stack. Restored
+    // 2026-09-02 with the knobs; see FIRMWARE.md's invariants table for
+    // why it is shared rather than per voice.
+    this.vibPhase = 0;
 
     // leveler state: fast/slow rectified-average trackers
     this.lvFast = 0;
@@ -968,6 +975,14 @@ class FofProcessor extends AudioWorkletProcessor {
       // portamento / glide
       this.curF0 = target + (this.curF0 - target) * glideCoef;
 
+      // Rate 0 means vibrato OFF, so the phase is PARKED at 0, not frozen
+      // where it stopped: a frozen phase would leave a constant detune on
+      // the whole stack instead of silence.
+      this.vibPhase = p.vibRate > 0
+        ? this.vibPhase + (2 * Math.PI * p.vibRate) / this.sr
+        : 0;
+      const vib = p.vibDepth * Math.sin(this.vibPhase);
+
       // ---- trigger grains per unison voice ----
       for (let u = 0; u < nUni; u++) {
         const spread = nUni === 1 ? 0 : (u / (nUni - 1)) * 2 - 1;
@@ -976,7 +991,7 @@ class FofProcessor extends AudioWorkletProcessor {
         // centre voice always dominates and deep nulls become impossible.
         const vGain = 1 - 0.45 * Math.abs(spread);
 
-        const semis = (spread * p.detuneCents) / 100;
+        const semis = (spread * p.detuneCents) / 100 + vib;
         let f = this.curF0 * Math.pow(2, semis / 12);
         // floor 16 Hz, not 50: transpose -3 octaves from low E is ~10-20 Hz,
         // where FOF degrades gracefully into separated grain pulses

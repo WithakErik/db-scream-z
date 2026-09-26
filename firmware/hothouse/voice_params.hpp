@@ -22,7 +22,7 @@
 // as a 0.3 ms grain length, and the voice would collapse.
 // v6: the voices (unison) control retired on 2026-09-01, and grain length
 // followed it on 2026-09-02. Both are pinned in main.cpp's to_fof_params()
-// (3 voices, 20 ms), which moved no voice because every character and beast
+// (3 voices, 20 ms), which moved no voice because every character
 // already stored exactly those values. The two knobs grain's retirement
 // freed are vibrato rate and depth, which returned to the engine that same
 // day; detune moved to knob 6. Unlike v5
@@ -34,7 +34,18 @@
 // new defaults reach a pedal that already has a v6 block in QSPI, because
 // main.cpp only restores defaults on a version mismatch. Saved characters
 // factory-restore on first boot.
-inline constexpr uint32_t kVoiceStoreVersion = 7;
+// v8 (2026-09-24): chord mode (chord mode design spec). One ChordParams
+// block APPENDED after `charge`, so every v7 field keeps its offset and a
+// v7 image read as v8 is a valid v7 prefix plus whatever QSPI held past
+// the old end. migrate_store() below keeps the prefix and replaces the
+// tail, so saved characters survive this bump, unlike v5..v7.
+// v9 (2026-09-25): three banks (three-banks spec). Freeform retired and
+// slots grew from 4 to 6 (Set 3 = Master / Ki-Ki). The new slots are
+// appended to the ARRAY, so charge and chord move to new offsets and a v8
+// image is NOT a valid v9 prefix past slot 3. migrate_store() reads v8 and
+// v7 images through the frozen VoiceStoreV8 below, so saved characters,
+// the charge config and (from v8) the chord setting all survive.
+inline constexpr uint32_t kVoiceStoreVersion = 9;
 
 // Gate toggle thresholds, indexed low/medium/high. PLACEHOLDERS until the
 // milestone 3 on-hardware ear calibration (FIRMWARE.md gotcha 3): medium
@@ -101,32 +112,22 @@ inline ChargeConfig factory_charge_config() {
   return c;
 }
 
-// The PersistentStorage block (spec section 6). PersistentStorage<T>
-// requires operator!= (see libDaisy util/PersistentStorage.h); memcmp is
-// valid because both structs have no hidden padding and pad_ is always 0.
-struct VoiceStore {
-  uint32_t version;
-  VoiceParams slots[4];  // 0 = Set1 R, 1 = Set1 L, 2 = Set2 R, 3 = Set2 L
-  ChargeConfig charge;   // global charge mode config (charge spec sec 7)
-  bool operator!=(const VoiceStore& o) const {
-    return std::memcmp(this, &o, sizeof(VoiceStore)) != 0;
-  }
-};
-static_assert(sizeof(VoiceStore) ==
-                  sizeof(uint32_t) + 4 * sizeof(VoiceParams) + sizeof(ChargeConfig),
-              "no hidden padding (memcmp operator!= depends on it)");
-
 enum class Side : unsigned char { Left, Right };
-enum class Page : unsigned char { Set1, Freeform, Set2 };
 
+// Toggle 2: Up = Set 1, Middle = Set 2, Down = Set 3 (three-banks spec;
+// Freeform, the old middle position, retired 2026-09-25).
+enum class Page : unsigned char { Set1, Set2, Set3 };
+
+// Every page has two slots: R = 2 * page, L = 2 * page + 1.
 inline int slot_index(Page p, Side s) {
-  if (p == Page::Set1) return s == Side::Right ? 0 : 1;
-  if (p == Page::Set2) return s == Side::Right ? 2 : 3;
-  return -1;  // Freeform: no slot
+  const int base = p == Page::Set1 ? 0 : p == Page::Set2 ? 2 : 4;
+  return base + (s == Side::Right ? 0 : 1);
 }
 
 // preset_idx indexes kPresets (presets.hpp): Wukong 0, Rice 1, Prince 2,
-// Piccolo 3. Non-preset fields are the v12 defaults (FIRMWARE.md section 5)
+// Piccolo 3, Master 4, Ki-Ki 5 (the last two are pedal-side, appended by
+// tools/gen_presets.py PEDAL_PRESETS).
+// Non-preset fields are the v12 defaults (FIRMWARE.md section 5)
 // plus the milestone 5 post-chain factory values: vocal_size 0, tone center,
 // volumes unity, mix full wet. Only Wukong still A/Bs against the
 // voice-only milestone renders (spec success criterion 1): it keeps the v12
@@ -156,7 +157,86 @@ inline VoiceParams factory_voice(int preset_idx) {
   return v;
 }
 
-// Set 1 = Wukong (R) / Prince (L); Set 2 = Rice (R) / Piccolo (L).
+// Chord mode's one saved setting (chord mode spec sections 3-4). There are
+// no slots: this block IS chord mode's edit buffer, auto-saved.
+// Ranges are applied by chord_map.hpp; the fields hold mapped values.
+struct ChordParams {
+  float vocal_vol;     // 0..2 (menu 1 knob 1)
+  float mix;           // 0..1 (menu 1 knob 2)
+  float master_vol;    // 0..2 (menu 1 knob 3)
+  float tone;          // -1..+1 (menu 1 knob 4)
+  float sensitivity;   // 0..8, 0 = fixed closed vowel (menu 1 knob 5)
+  float drive;         // 1..40 pre-gain (menu 1 knob 6)
+  float closed_vowel;  // 0..4: oo oh ah eh ee (chord menu knob 1)
+  float open_vowel;    // 0..4 (chord menu knob 2)
+  float vocal_size;    // 0..1 (chord menu knob 3)
+  float resonance;     // 0 soft .. 1 sharp (chord menu knob 4)
+  float attack_ms;     // 1..50 mouth attack (chord menu knob 5)
+  float release_ms;    // 20..500 mouth release (chord menu knob 6)
+  uint8_t gate_level;  // index into kGateLevels (toggle 3)
+  uint8_t pad_[3];     // always 0 (memcmp comparability)
+};
+static_assert(sizeof(ChordParams) == 12 * 4 + 4, "no hidden padding");
+
+// First-pass ear targets (spec section 4). The shared post-chain fields
+// and the gate come from factory_voice() so chord mode starts at the same
+// levels as a character.
+inline ChordParams factory_chord() {
+  const VoiceParams v = factory_voice(0);
+  ChordParams c{};
+  c.vocal_vol = v.vocal_vol;
+  c.mix = v.mix;
+  c.master_vol = v.master_vol;
+  c.tone = v.tone;
+  c.sensitivity = 3.0f;
+  c.drive = 10.0f;
+  c.closed_vowel = 0.0f;  // oo
+  c.open_vowel = 2.0f;    // ah
+  c.vocal_size = v.vocal_size;
+  c.resonance = 0.5f;
+  c.attack_ms = 10.0f;
+  c.release_ms = 150.0f;
+  c.gate_level = v.gate_level;
+  c.pad_[0] = c.pad_[1] = c.pad_[2] = 0;
+  return c;
+}
+
+// The PersistentStorage block (spec section 6). PersistentStorage<T>
+// requires operator!= (see libDaisy util/PersistentStorage.h); memcmp is
+// valid because both structs have no hidden padding and pad_ is always 0.
+struct VoiceStore {
+  uint32_t version;
+  VoiceParams slots[6];  // 0/1 = Set1 R/L, 2/3 = Set2 R/L, 4/5 = Set3 R/L
+  ChargeConfig charge;   // global charge mode config (charge spec sec 7)
+  ChordParams chord;     // chord mode's one setting (see migrate_store)
+  bool operator!=(const VoiceStore& o) const {
+    return std::memcmp(this, &o, sizeof(VoiceStore)) != 0;
+  }
+};
+static_assert(sizeof(VoiceStore) ==
+                  sizeof(uint32_t) + 6 * sizeof(VoiceParams) + sizeof(ChargeConfig) +
+                      sizeof(ChordParams),
+              "no hidden padding (memcmp operator!= depends on it)");
+
+// The v8 block exactly as it was laid out in QSPI. FROZEN: never edit it,
+// it describes bytes already written to shipped pedals. v7 is the same
+// layout without the chord tail. migrate_store() reads old images through
+// it because v9's extra slots moved charge and chord.
+struct VoiceStoreV8 {
+  uint32_t version;
+  VoiceParams slots[4];
+  ChargeConfig charge;
+  ChordParams chord;
+};
+static_assert(sizeof(VoiceStoreV8) ==
+                  sizeof(uint32_t) + 4 * sizeof(VoiceParams) + sizeof(ChargeConfig) +
+                      sizeof(ChordParams),
+              "v8 layout has no hidden padding");
+static_assert(sizeof(VoiceStoreV8) < sizeof(VoiceStore),
+              "a v8 image must fit inside the bytes a v9 Init() reads");
+
+// Set 1 = Wukong (R) / Prince (L); Set 2 = Rice (R) / Piccolo (L);
+// Set 3 = Master (R) / Ki-Ki (L).
 inline VoiceStore factory_store() {
   VoiceStore s{};
   s.version = kVoiceStoreVersion;
@@ -164,6 +244,32 @@ inline VoiceStore factory_store() {
   s.slots[1] = factory_voice(2);  // Prince
   s.slots[2] = factory_voice(1);  // Rice
   s.slots[3] = factory_voice(3);  // Piccolo
+  s.slots[4] = factory_voice(4);  // Master
+  s.slots[5] = factory_voice(5);  // Ki-Ki
   s.charge = factory_charge_config();
+  s.chord = factory_chord();
   return s;
+}
+
+// What main.cpp does with the block PersistentStorage::Init() read
+// (chord mode spec section 4). Pure, so host-testable; main.cpp only
+// saves on Migrated and calls RestoreDefaults() on Reset.
+enum class StoreLoad : unsigned char { Current, Migrated, Reset };
+
+inline StoreLoad migrate_store(VoiceStore& s) {
+  if (s.version == kVoiceStoreVersion) return StoreLoad::Current;
+  if (s.version == 8 || s.version == 7) {
+    // Reinterpret the old layout, then rebuild on a factory v9 so Set 3
+    // gets Master / Ki-Ki. v7 had no chord block: its bytes are QSPI
+    // garbage, so chord stays factory.
+    VoiceStoreV8 old;
+    std::memcpy(&old, &s, sizeof old);
+    s = factory_store();
+    for (int i = 0; i < 4; i++) s.slots[i] = old.slots[i];
+    s.charge = old.charge;
+    if (old.version == 8) s.chord = old.chord;
+    return StoreLoad::Migrated;
+  }
+  s = factory_store();
+  return StoreLoad::Reset;
 }

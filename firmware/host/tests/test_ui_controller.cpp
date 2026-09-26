@@ -1,10 +1,11 @@
 // test_ui_controller.cpp - milestone 5 control-surface state machine
 // (spec sections 2, 3, 4, 7). Task 5 covers boot, taps, recall/engage/
-// bypass, pages, freeform, toggles, menus + knob routing; Task 6 appends
+// bypass, pages (Set 1/2/3), toggles, menus + knob routing; Task 6 appends
 // the save flow and LED animation tests to this same file.
 #include <cassert>
 #include <cmath>
 #include <cstdio>
+#include <initializer_list>
 
 #include "ui_controller.hpp"
 
@@ -59,16 +60,20 @@ int main() {
     assert(!s.ui.take_engage_edge());
   }
 
-  // ---- boot with the page toggle on Freeform: edit buffer still loads
-  // Set 1 R (init falls back to Set1 because Freeform has no slot)
+  // ---- boot loads the CURRENT page's R slot: middle = Set 2, down = Set 3
   {
     UiInputs in = base_in();
-    in.t_page = TogglePos::Middle;  // Freeform at boot
+    in.t_page = TogglePos::Middle;
     in.now_ms = 1000;
     UiController ui;
     ui.init(&g_store, in);
-    assert(ui.page() == Page::Freeform);
-    assert(near(ui.edit_buffer().f1, g_store.slots[0].f1));  // Set 1 R, Wukong
+    assert(ui.page() == Page::Set2);
+    assert(near(ui.edit_buffer().f1, g_store.slots[2].f1));  // Rice
+    in.t_page = TogglePos::Down;
+    UiController ui3;
+    ui3.init(&g_store, in);
+    assert(ui3.page() == Page::Set3);
+    assert(near(ui3.edit_buffer().f1, g_store.slots[4].f1));  // Master
   }
 
   // ---- tap right on Set 1: recall + engage Wukong; tap again: bypass
@@ -95,7 +100,7 @@ int main() {
     assert(s.ui.source() == EngagedSource::SlotL);
     assert(near(s.ui.edit_buffer().f1, g_store.slots[1].f1));  // Prince
     assert(s.ui.take_engage_edge());
-    s.in.t_page = TogglePos::Down;  // Set 2; paging never changes audio
+    s.in.t_page = TogglePos::Middle;  // Set 2; paging never changes audio
     s.step();
     assert(near(s.ui.edit_buffer().f1, g_store.slots[1].f1));  // unchanged
     s.tap(Side::Right);
@@ -104,25 +109,26 @@ int main() {
     assert(!s.ui.take_engage_edge());  // engaged -> engaged: no edge
   }
 
-  // ---- freeform: tap engages the edit buffer as-is, both LEDs solid
+  // ---- Set 3 (toggle down): RIGHT = Master (slot 4), LEFT = Ki-Ki (slot 5)
   {
     Sim s;
-    s.tap(Side::Right);                       // Wukong engaged (pickup rearmed
-    assert(s.ui.take_engage_edge());          // consume the recall edge
-    s.in.knobs[1] = 0.8f; s.step();           // at 0.5; 0.8 crosses the
-    assert(near(s.ui.edit_buffer().mix, 0.8f));  // threshold, mix takes over)
-    s.in.t_page = TogglePos::Middle;          // Freeform
+    s.in.t_page = TogglePos::Down;
     s.step();
-    s.tap(Side::Left);                        // engaged -> bypass
-    assert(!s.ui.engaged());
-    assert(!s.ui.take_engage_edge());         // bypass sets no edge
-    s.tap(Side::Right);                       // bypassed -> engage freeform
-    assert(s.ui.source() == EngagedSource::Freeform);
-    assert(s.ui.take_engage_edge());          // freeform engage fires the edge
-    assert(!s.ui.take_engage_edge());         // exactly once
-    assert(near(s.ui.edit_buffer().mix, 0.8f));  // buffer kept as-is
+    s.tap(Side::Right);
+    assert(s.ui.source() == EngagedSource::SlotR);
+    assert(s.ui.take_engage_edge());
+    assert(near(s.ui.edit_buffer().f1, g_store.slots[4].f1));
+    assert(near(s.ui.edit_buffer().f1, 640.0f));  // Master
     LedState l = s.ui.leds(s.t);
-    assert(l.left && l.right);
+    assert(l.right && !l.left);
+    s.tap(Side::Left);                             // direct slot switch
+    assert(s.ui.source() == EngagedSource::SlotL);
+    assert(!s.ui.take_engage_edge());              // engaged -> engaged
+    assert(near(s.ui.edit_buffer().f1, 950.0f));   // Ki-Ki
+    l = s.ui.leds(s.t);
+    assert(l.left && !l.right);                    // never both solid
+    s.tap(Side::Left);
+    assert(!s.ui.engaged());                       // tap again = bypass
   }
 
   // ---- toggle override: recalled octave/gate win until the toggle MOVES
@@ -140,16 +146,19 @@ int main() {
     assert(s.ui.edit_buffer().gate_level == 2);  // high
   }
 
-  // ---- freeform-engaged: toggles always track live
+  // ---- no live tracking on any page: on the middle page (Freeform's old
+  // position) a recalled slot's octave survives a toggle that sits still
   {
     Sim s;
     s.in.t_page = TogglePos::Middle;
+    s.in.t_octave = TogglePos::Up;  // physical +1 before recall
     s.step();
-    s.tap(Side::Right);  // engage freeform
-    assert(s.ui.source() == EngagedSource::Freeform);
-    s.in.t_octave = TogglePos::Up;
+    s.tap(Side::Right);             // Rice, stored octave 0
+    s.step(10);
+    assert(s.ui.edit_buffer().octave == 0);
+    s.in.t_octave = TogglePos::Down;  // a move still writes
     s.step();
-    assert(s.ui.edit_buffer().octave == 1);
+    assert(s.ui.edit_buffer().octave == -1);
   }
 
   // ---- knob pickup: recall rearms; small move stays inert, big move takes over
@@ -419,7 +428,7 @@ int main() {
     g_store = factory_store();
     Sim s;
     s.tap(Side::Right);              // Wukong from Set 1 R
-    s.in.t_page = TogglePos::Down;   // page to Set 2 (audio unchanged)
+    s.in.t_page = TogglePos::Middle; // page to Set 2 (audio unchanged)
     s.step();
     s.press(Side::Right);            // hold RIGHT ...
     s.step(1200);
@@ -452,27 +461,36 @@ int main() {
     assert(s.ui.layer() == MenuLayer::Menu1);  // and latches no menu
   }
 
-  // ---- save rejected on Freeform page: flicker, no write, no latch
+  // ---- the save chord works on every page (Freeform's refusal is gone):
+  // held R on Up/Middle/Down writes slots 0/2/4, held L writes 1/3/5, and
+  // no LED flickers (there is no reject path left)
   {
+    const TogglePos pos[3] = {TogglePos::Up, TogglePos::Middle, TogglePos::Down};
+    for (int p = 0; p < 3; p++) {
+      for (Side held : {Side::Right, Side::Left}) {
+        g_store = factory_store();
+        Sim s;
+        s.in.t_page = pos[p];
+        s.step();
+        const Side other = held == Side::Right ? Side::Left : Side::Right;
+        s.press(held);
+        s.step(1200);
+        s.press(other);
+        assert(s.ui.save_pending());
+        assert(s.ui.save_slot() == 2 * p + (held == Side::Right ? 0 : 1));
+        LedState l = s.ui.leds(s.t + 5);
+        assert(!l.left && !l.right);  // bypassed, no menu, no flicker
+        g_store.slots[s.ui.save_slot()] = s.ui.save_snapshot();
+        s.release(other);
+        s.release(held);
+        s.step(5);
+        s.ui.save_done(s.t);
+        s.step();
+        assert(!s.ui.save_pending());
+        assert(s.ui.layer() == MenuLayer::Menu1);  // nothing latched
+      }
+    }
     g_store = factory_store();
-    Sim s;
-    s.in.t_page = TogglePos::Middle; // Freeform
-    s.step();
-    s.press(Side::Right);
-    s.step(1200);
-    s.press(Side::Left);             // save attempt
-    assert(!s.ui.save_pending());    // nothing written
-    // one short double-flicker: on, off, on inside 3 * kRejectFlickMs
-    LedState f0 = s.ui.leds(s.t + 5);
-    LedState f1 = s.ui.leds(s.t + UiController::kRejectFlickMs + 5);
-    LedState f2 = s.ui.leds(s.t + 2 * UiController::kRejectFlickMs + 5);
-    assert(f0.left && f0.right);
-    assert(!f1.left && !f1.right);
-    assert(f2.left && f2.right);
-    s.release(Side::Left);
-    s.release(Side::Right);
-    s.step(5);
-    assert(s.ui.layer() == MenuLayer::Menu1);  // nothing latched
   }
 
   // ---- a second save chord while one is pending does not clobber it
@@ -533,7 +551,8 @@ int main() {
   // ---- both-together while engaged charges; ramp, clamp, decay; the
   // long two-footed hold neither latches nor saves
   {
-    g_store = factory_store();  // charge: gain on, Hamekameka, slow decay
+    g_store = factory_store();  // charge: gain on, slow decay
+    g_store.charge.time = 1;  // Hamekameka 2500 ms: the timing below assumes it
     Sim s;
     s.tap(Side::Right);              // engage Wukong
     assert(near(s.ui.charge_level(), 0.0f));
@@ -744,7 +763,7 @@ int main() {
     assert(!s.ui.engaged());
     s.in.t_page = TogglePos::Down;   // NEW move outside the menu
     s.step();
-    assert(s.ui.page() == Page::Set2);  // now the page follows
+    assert(s.ui.page() == Page::Set3);  // now the page follows
   }
 
   // ==== Config persistence on menu exit (charge spec section 7) ====
@@ -839,6 +858,7 @@ int main() {
   // actionable feedback, the charge glow is decoration
   {
     g_store = factory_store();       // slow decay (1200 ms)
+    g_store.charge.time = 1;  // Hamekameka 2500 ms: the timing below assumes it
     Sim s;
     s.tap(Side::Right);              // engage Set 1 R
     s.press(Side::Left);

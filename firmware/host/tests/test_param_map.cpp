@@ -18,6 +18,8 @@ int main() {
   assert(near(s.slots[1].f1, 741.6f));    // Prince
   assert(near(s.slots[2].f1, 1000.0f));   // Rice
   assert(near(s.slots[3].f1, 697.6f));    // Piccolo
+  assert(near(s.slots[4].f1, 640.0f));    // Master
+  assert(near(s.slots[5].f1, 950.0f));    // Ki-Ki
   assert(near(s.slots[0].bw1, 32.5f) && near(s.slots[0].bw2, 47.5f) &&
          near(s.slots[0].bw3, 62.5f));    // v12 defaults
   assert(near(s.slots[0].a1, 1.f));
@@ -26,7 +28,7 @@ int main() {
   // detune is the only part of the stack that still varies per character:
   // Wukong keeps the v12 reference 11, Piccolo is the wide end. Grain is
   // pinned to the engine's 20 ms in to_fof_params(), which moved no voice
-  // because every character and beast already stored exactly 20.
+  // because every character already stored exactly 20.
   assert(near(s.slots[0].detune_cents, 11.f));
   assert(near(s.slots[3].detune_cents, 26.f));
   // Vibrato ships OFF for every character (design D4), so restoring the
@@ -49,7 +51,8 @@ int main() {
   assert(slot_index(Page::Set1, Side::Left) == 1);
   assert(slot_index(Page::Set2, Side::Right) == 2);
   assert(slot_index(Page::Set2, Side::Left) == 3);
-  assert(slot_index(Page::Freeform, Side::Right) == -1);
+  assert(slot_index(Page::Set3, Side::Right) == 4);
+  assert(slot_index(Page::Set3, Side::Left) == 5);
 
   // ---- gate levels: placeholders bracketing v12's 0.02
   assert(kGateLevels[0] < kGateLevels[1] && kGateLevels[1] < kGateLevels[2]);

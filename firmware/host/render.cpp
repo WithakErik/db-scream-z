@@ -5,15 +5,23 @@
 // applyPreset()), same 128-sample block loop with a zero-padded final block,
 // same `block,f0,amp` trace CSV.
 //
-//   ./render <in.wav> <out.wav> --character Wukong [--trace f.csv] [--set k=v ...]
+// Also renders chord mode (chord mode design spec): --chord starts from
+// factory_chord() through the same ChordParams -> ChordEngineParams bridge
+// chord_map.hpp gives main.cpp, with the lab's digital x4 input gain the
+// gate thresholds were tuned against, so a render here is what the
+// emulator and (at unity analog gain) the pedal play.
+//
+//   ./render <in.wav> <out.wav|-> (--character Wukong | --chord) [--trace f.csv] [--set k=v ...]
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
+#include "chord_map.hpp"
 #include "fof_engine.hpp"
 #include "presets.hpp"
 #include "wav_io.hpp"
@@ -84,100 +92,38 @@ const char* opt(int argc, char** argv, const char* name) {
   return nullptr;
 }
 
-}  // namespace
+// --chord: chord mode (chord mode design spec). Starts from the factory
+// chord setting through the same bridge main.cpp uses, with the lab's
+// digital x4 input gain the gate thresholds were tuned against, so a
+// render here is what the emulator and (at unity analog gain) the pedal
+// play. --set keys are chord-setting names, listed in apply_chord_set().
+bool apply_chord_set(ChordParams& c, ChordEngineParams& p, const std::string& k,
+                     double v) {
+  if (k == "drive") { c.drive = v; return true; }
+  if (k == "sensitivity") { c.sensitivity = v; return true; }
+  if (k == "closedVowel") { c.closed_vowel = v; return true; }
+  if (k == "openVowel") { c.open_vowel = v; return true; }
+  if (k == "resonance") { c.resonance = v; return true; }
+  if (k == "vocalSize") { c.vocal_size = v; return true; }
+  if (k == "attackMs") { c.attack_ms = v; return true; }
+  if (k == "releaseMs") { c.release_ms = v; return true; }
+  if (k == "mouthOpen") { p.mouth_open = (v != 0); return true; }
+  if (k == "gate") { p.gate = v; return true; }
+  if (k == "inputGain") { p.input_gain = v; return true; }
+  return false;
+}
 
-int main(int argc, char** argv) {
-  if (argc < 3) {
-    std::fprintf(stderr,
-                 "usage: render <in.wav> <out.wav|-> --character <Name> "
-                 "[--trace f.csv] [--set key=value ...]\n");
-    return 1;
-  }
-  const std::string in_path = argv[1];
-  const std::string out_path = argv[2];
-  const char* c_opt = opt(argc, argv, "--character");
-  const std::string character = c_opt ? c_opt : "Wukong";
-  const char* trace_path = opt(argc, argv, "--trace");
-
-  const CharacterPreset* pr = nullptr;
-  for (const auto& cp : kPresets)
-    if (character == cp.name) pr = &cp;
-  if (!pr) {
-    std::fprintf(stderr, "unknown --character '%s'; available:", character.c_str());
-    for (const auto& cp : kPresets) std::fprintf(stderr, " %s", cp.name);
-    std::fprintf(stderr, "\n");
-    return 1;
-  }
-
-  // ---- v12 param set: app.js P defaults + applyPreset() baking ----
-  // (ref_render.js lines 69-78; the character supplies formants only,
-  // formantScale is already baked into formants_hz. Vibrato is left at its
-  // zero default here, because the per-character vibrato tables are
-  // deliberately not restored, see the note above.)
-  FofParams p;
-  p.f1 = pr->formants_hz[0];
-  p.f2 = pr->formants_hz[1];
-  p.f3 = pr->formants_hz[2];
-  p.bw1 = 32.5; p.bw2 = 47.5; p.bw3 = 62.5;
-  p.a1 = 1.0; p.a2 = 1.0; p.a3 = 1.0;
-  p.formant_scale = 1.0;
-  p.grain_ms = 20;
-  p.unison = 3;
-  p.detune_cents = 11;
-  p.aspiration = 0.0;
-  p.target_f0 = preset_f0_hz(character);
-  p.octave_shift = 0;
-  p.follow_pitch = true;
-  p.quantize = true;
-  p.amp_comp = true;
-  p.glide_ms = 0;
-  p.taper_end = true;
-  p.leveler = true;
-  p.input_gain = 4.0;
-  p.gate = 0.02;
-  p.gain = 1.0;
-
-  for (int i = 1; i < argc - 1; i++) {
-    if (std::strcmp(argv[i], "--set") != 0) continue;
-    const std::string kv = argv[i + 1];
-    const size_t eq = kv.find('=');
-    if (eq == std::string::npos) {
-      std::fprintf(stderr, "bad --set '%s' (expected key=value)\n", kv.c_str());
-      return 1;
-    }
-    const std::string k = kv.substr(0, eq);
-    const double v = std::atof(kv.substr(eq + 1).c_str());
-    if (!apply_set(p, k, v)) {
-      if (is_unmodelled_key(k)) {
-        std::fprintf(stderr,
-                     "warning: --set %s is not modelled by the live firmware "
-                     "path; ignored\n", k.c_str());
-      } else {
-        std::fprintf(stderr, "unknown --set key '%s'\n", k.c_str());
-        return 1;
-      }
-    }
-  }
-
-  WavData input;
-  try {
-    input = wav_read_mono(in_path);
-  } catch (const std::exception& e) {
-    std::fprintf(stderr, "%s\n", e.what());
-    return 1;
-  }
-  const int sr = input.sample_rate;
+// Runs the shared 128-sample block loop (zero-padded final block, same as
+// ref_render.js) for either engine. pre_block runs before process_block
+// each iteration (FofEngine needs rebuild_grains_if_dirty(); ChordEngine
+// needs nothing). trace_row returns the (f0, amp) pair for the CSV; chord
+// mode has no f0 so it reports 0.
+template <typename Engine, typename PreBlock, typename TraceRow>
+std::vector<float> run_blocks(Engine& eng, const WavData& input,
+                              PreBlock pre_block, TraceRow trace_row,
+                              std::string* trace) {
   const int N = static_cast<int>(input.samples.size());
-
-  // grains_[8][4800] is too big for the stack; heap-allocate the engine.
-  auto eng = std::make_unique<FofEngine>(static_cast<double>(sr));
-  eng->set_params(p);
-  eng->reset_live();   // ref_render.js line 87: onMsg({type:'live', on:1})
-
   std::vector<float> out(N, 0.0f);
-  std::string trace;
-  if (trace_path) trace = "block,f0,amp\n";
-
   float blk[128], oblk[128];
   for (int b = 0; b * 128 < N; b++) {
     const int s0 = b * 128;
@@ -189,17 +135,175 @@ int main(int argc, char** argv) {
     for (int k = 0; k < 128; k++) oblk[k] = 0.0f;
     for (int k = 0; k < n; k++) blk[k] = input.samples[s0 + k];
 
-    eng->rebuild_grains_if_dirty();
-    eng->process_block(blk, oblk, 128);
+    pre_block(eng);
+    eng.process_block(blk, oblk, 128);
 
     for (int k = 0; k < n; k++) out[s0 + k] = oblk[k];
 
-    if (trace_path) {
+    if (trace) {
+      const std::pair<double, double> tr = trace_row(eng);
       char row[96];
-      std::snprintf(row, sizeof(row), "%d,%.17g,%.17g\n", b, eng->live_f0(),
-                    eng->live_amp());
-      trace += row;
+      std::snprintf(row, sizeof(row), "%d,%.17g,%.17g\n", b, tr.first, tr.second);
+      *trace += row;
     }
+  }
+  return out;
+}
+
+}  // namespace
+
+int main(int argc, char** argv) {
+  if (argc < 3) {
+    std::fprintf(stderr,
+                 "usage: render <in.wav> <out.wav|-> (--character <Name> | "
+                 "--chord) [--trace f.csv] [--set key=value ...]\n");
+    return 1;
+  }
+  const std::string in_path = argv[1];
+  const std::string out_path = argv[2];
+  const char* trace_path = opt(argc, argv, "--trace");
+
+  bool chord = false;
+  for (int i = 1; i < argc; i++)
+    if (!std::strcmp(argv[i], "--chord")) chord = true;
+
+  WavData input;
+  try {
+    input = wav_read_mono(in_path);
+  } catch (const std::exception& e) {
+    std::fprintf(stderr, "%s\n", e.what());
+    return 1;
+  }
+  const int sr = input.sample_rate;
+  const int N = static_cast<int>(input.samples.size());
+
+  std::vector<float> out;
+  std::string trace;
+  if (trace_path) trace = "block,f0,amp\n";
+  std::string label;
+
+  if (chord) {
+    // --chord ignores --character: build the factory chord setting through
+    // the same bridge chord_map.hpp gives main.cpp, then let --set override
+    // it (chord-setting keys first, then reapply any gate/inputGain/
+    // mouthOpen override so it survives the rebuild below).
+    label = "chord";
+    ChordParams c = factory_chord();
+    ChordEngineParams p = to_chord_engine_params(c, false, 4.0);
+
+    for (int i = 1; i < argc - 1; i++) {
+      if (std::strcmp(argv[i], "--set") != 0) continue;
+      const std::string kv = argv[i + 1];
+      const size_t eq = kv.find('=');
+      if (eq == std::string::npos) {
+        std::fprintf(stderr, "bad --set '%s' (expected key=value)\n", kv.c_str());
+        return 1;
+      }
+      const std::string k = kv.substr(0, eq);
+      const double v = std::atof(kv.substr(eq + 1).c_str());
+      if (!apply_chord_set(c, p, k, v)) {
+        std::fprintf(stderr, "unknown --set key '%s'\n", k.c_str());
+        return 1;
+      }
+    }
+    // Rebuild p from the (possibly --set-edited) ChordParams, keeping
+    // whichever mouthOpen/inputGain the pass above set; to_chord_engine_params
+    // recomputes p.gate from c.gate_level, so a raw --set gate=<threshold>
+    // must be reapplied to win over that recomputation.
+    p = to_chord_engine_params(c, p.mouth_open, p.input_gain);
+    for (int i = 1; i < argc - 1; i++) {
+      if (std::strcmp(argv[i], "--set") != 0) continue;
+      const std::string kv = argv[i + 1];
+      const size_t eq = kv.find('=');
+      const std::string k = kv.substr(0, eq);
+      if (k == "gate" || k == "inputGain" || k == "mouthOpen")
+        apply_chord_set(c, p, k, std::atof(kv.substr(eq + 1).c_str()));
+    }
+
+    ChordEngine eng(static_cast<double>(sr));
+    eng.set_params(p);
+    eng.clear_output_state();
+
+    out = run_blocks(
+        eng, input, [](ChordEngine&) {},
+        [](ChordEngine& e) { return std::make_pair(0.0, e.live_amp()); },
+        trace_path ? &trace : nullptr);
+  } else {
+    const char* c_opt = opt(argc, argv, "--character");
+    const std::string character = c_opt ? c_opt : "Wukong";
+    label = character;
+
+    const CharacterPreset* pr = nullptr;
+    for (const auto& cp : kPresets)
+      if (character == cp.name) pr = &cp;
+    if (!pr) {
+      std::fprintf(stderr, "unknown --character '%s'; available:", character.c_str());
+      for (const auto& cp : kPresets) std::fprintf(stderr, " %s", cp.name);
+      std::fprintf(stderr, "\n");
+      return 1;
+    }
+
+    // ---- v12 param set: app.js P defaults + applyPreset() baking ----
+    // (ref_render.js lines 69-78; the character supplies formants only,
+    // formantScale is already baked into formants_hz. Vibrato is left at its
+    // zero default here, because the per-character vibrato tables are
+    // deliberately not restored, see the note above.)
+    FofParams p;
+    p.f1 = pr->formants_hz[0];
+    p.f2 = pr->formants_hz[1];
+    p.f3 = pr->formants_hz[2];
+    p.bw1 = 32.5; p.bw2 = 47.5; p.bw3 = 62.5;
+    p.a1 = 1.0; p.a2 = 1.0; p.a3 = 1.0;
+    p.formant_scale = 1.0;
+    p.grain_ms = 20;
+    p.unison = 3;
+    p.detune_cents = 11;
+    p.aspiration = 0.0;
+    p.target_f0 = preset_f0_hz(character);
+    p.octave_shift = 0;
+    p.follow_pitch = true;
+    p.quantize = true;
+    p.amp_comp = true;
+    p.glide_ms = 0;
+    p.taper_end = true;
+    p.leveler = true;
+    p.input_gain = 4.0;
+    p.gate = 0.02;
+    p.gain = 1.0;
+
+    for (int i = 1; i < argc - 1; i++) {
+      if (std::strcmp(argv[i], "--set") != 0) continue;
+      const std::string kv = argv[i + 1];
+      const size_t eq = kv.find('=');
+      if (eq == std::string::npos) {
+        std::fprintf(stderr, "bad --set '%s' (expected key=value)\n", kv.c_str());
+        return 1;
+      }
+      const std::string k = kv.substr(0, eq);
+      const double v = std::atof(kv.substr(eq + 1).c_str());
+      if (!apply_set(p, k, v)) {
+        if (is_unmodelled_key(k)) {
+          std::fprintf(stderr,
+                       "warning: --set %s is not modelled by the live firmware "
+                       "path; ignored\n", k.c_str());
+        } else {
+          std::fprintf(stderr, "unknown --set key '%s'\n", k.c_str());
+          return 1;
+        }
+      }
+    }
+
+    // grains_[8][4800] is too big for the stack; heap-allocate the engine.
+    auto eng = std::make_unique<FofEngine>(static_cast<double>(sr));
+    eng->set_params(p);
+    eng->reset_live();   // ref_render.js line 87: onMsg({type:'live', on:1})
+
+    out = run_blocks(
+        *eng, input, [](FofEngine& e) { e.rebuild_grains_if_dirty(); },
+        [](FofEngine& e) {
+          return std::make_pair(e.live_f0(), e.live_amp());
+        },
+        trace_path ? &trace : nullptr);
   }
 
   if (out_path != "-") wav_write_mono(out_path, sr, out);
@@ -214,6 +318,6 @@ int main(int argc, char** argv) {
   for (int i = 0; i < N; i++) peak = std::max(peak, (double)std::fabs(out[i]));
   if (!std::isfinite(peak)) { std::fprintf(stderr, "NON-FINITE OUTPUT\n"); return 1; }
   std::printf("rendered %s: %d samples @ %d Hz, peak %.3f\n",
-              character.c_str(), N, sr, peak);
+              label.c_str(), N, sr, peak);
   return 0;
 }

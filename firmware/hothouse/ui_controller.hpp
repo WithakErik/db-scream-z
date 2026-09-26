@@ -40,7 +40,7 @@
 #include "voice_params.hpp"
 
 enum class TogglePos : unsigned char { Up, Middle, Down };
-enum class EngagedSource : unsigned char { None, SlotR, SlotL, Freeform };
+enum class EngagedSource : unsigned char { None, SlotR, SlotL };
 
 struct UiInputs {
   bool left_down, right_down;          // debounced, physical left/right
@@ -58,13 +58,11 @@ class UiController {
   static constexpr uint32_t kHoldMs = 1000;        // latch threshold
   static constexpr uint32_t kMenuBlinkMs = 250;    // menu blink half-period
   static constexpr uint32_t kSaveBlinkMs = 150;    // save confirm half-period
-  static constexpr uint32_t kRejectFlickMs = 60;   // reject flicker phase
 
   void init(const VoiceStore* store, const UiInputs& in) {
     store_ = store;
     page_ = page_from(in.t_page);
-    const Page load = page_ == Page::Freeform ? Page::Set1 : page_;
-    edit_ = store_->slots[slot_index(load, Side::Right)];
+    edit_ = store_->slots[slot_index(page_, Side::Right)];
     src_ = EngagedSource::None;
     engaged_slot_ = -1;
     menu_ = Menu::None;
@@ -74,7 +72,6 @@ class UiController {
     config_save_pending_ = false;
     config_save_ack_ = false;
     confirm_start_ = 0;
-    reject_start_ = 0;
     last_octave_ = in.t_octave;
     last_page_ = in.t_page;
     last_gate_ = in.t_gate;
@@ -172,7 +169,7 @@ class UiController {
 
     // ---- toggles (m5 spec sec 7 + charge spec sec 4 and 8) ----
     // Outside menus: a page move selects the page; octave/gate moves
-    // (or freeform live-tracking) write the edit buffer. Inside a
+    // write the edit buffer. Inside a
     // latched menu: toggle MOVES edit the global charge config instead,
     // and page/octave/gate are untouched. The page is move-event-driven
     // so a config edit can never page-switch on menu exit.
@@ -188,11 +185,8 @@ class UiController {
       // fall through to the re-baseline below: no move this tick
     } else if (menu_ == Menu::None) {
       if (in.t_page != last_page_) page_ = page_from(in.t_page);
-      const bool freeform_live = src_ == EngagedSource::Freeform;
-      if (in.t_octave != last_octave_ || freeform_live)
-        edit_.octave = octave_from(in.t_octave);
-      if (in.t_gate != last_gate_ || freeform_live)
-        edit_.gate_level = gate_from(in.t_gate);
+      if (in.t_octave != last_octave_) edit_.octave = octave_from(in.t_octave);
+      if (in.t_gate != last_gate_) edit_.gate_level = gate_from(in.t_gate);
     } else {
       if (in.t_octave != last_octave_) set_charge_field(0, in.t_octave);
       if (in.t_page != last_page_) set_charge_field(1, in.t_page);
@@ -285,11 +279,6 @@ class UiController {
       const bool on = ((now_ms - confirm_start_) / kSaveBlinkMs) % 2 == 0;
       return {on, on};  // 3 simultaneous blinks
     }
-    if (reject_start_ != 0 && now_ms - reject_start_ < 3 * kRejectFlickMs) {
-      const uint32_t ph = (now_ms - reject_start_) / kRejectFlickMs;
-      const bool on = ph != 1;  // on-off-on: one short double-flicker
-      return {on, on};
-    }
     if (charge_level_ > 0.0f && menu_ == Menu::None) {
       // Charge animation overrides the normal language while active,
       // except when a menu is latched: the blink is actionable feedback,
@@ -297,8 +286,8 @@ class UiController {
       return {charge_led_flip_, !charge_led_flip_};
     }
     LedState l;
-    l.left = src_ == EngagedSource::SlotL || src_ == EngagedSource::Freeform;
-    l.right = src_ == EngagedSource::SlotR || src_ == EngagedSource::Freeform;
+    l.left = src_ == EngagedSource::SlotL;
+    l.right = src_ == EngagedSource::SlotR;
     const bool blink = (now_ms / kMenuBlinkMs) % 2 == 0;
     // A latched menu owns BOTH LEDs (amended 2026-08-28): the menu's side
     // blinks and the other goes dark, even when that side is the engaged
@@ -317,8 +306,8 @@ class UiController {
 
   static Page page_from(TogglePos t) {
     if (t == TogglePos::Up) return Page::Set1;
-    if (t == TogglePos::Down) return Page::Set2;
-    return Page::Freeform;
+    if (t == TogglePos::Down) return Page::Set3;
+    return Page::Set2;
   }
   static int8_t octave_from(TogglePos t) {
     if (t == TogglePos::Up) return 1;
@@ -393,12 +382,8 @@ class UiController {
   // Save chord: second press edge while `held` has been down past kHoldMs.
   // Menus never save (spec amendment 2026-08-27); the target slot side is
   // the held side, matching the old latched-menu save mapping.
-  void on_save_chord(Side held, const UiInputs& in) {
+  void on_save_chord(Side held, const UiInputs&) {
     if (menu_ != Menu::None || save_pending_ || config_save_pending_) return;
-    if (page_ == Page::Freeform) {
-      reject_start_ = in.now_ms;  // "pick a page first"
-      return;
-    }
     save_slot_ = slot_index(page_, held);
     save_snap_ = edit_;
     save_pending_ = true;  // main loop persists, then save_done()
@@ -452,16 +437,6 @@ class UiController {
     charging_ = false;
     charge_level_ = 0.0f;
     // No menu latched: engage / bypass / recall.
-    if (page_ == Page::Freeform) {
-      if (src_ != EngagedSource::None) {
-        src_ = EngagedSource::None;  // engaged -> bypass
-        engaged_slot_ = -1;
-      } else {
-        src_ = EngagedSource::Freeform;  // edit buffer as-is, no load
-        engage_edge_ = true;
-      }
-      return;
-    }
     const int target = slot_index(page_, side);
     if (src_ != EngagedSource::None && engaged_slot_ == target) {
       src_ = EngagedSource::None;  // tap again = bypass
@@ -513,7 +488,7 @@ class UiController {
   uint32_t charge_led_ms_ = 0;
 
   // ISR writes, main loop reads (leds()): single-writer ISR-to-main.
-  volatile uint32_t confirm_start_ = 0, reject_start_ = 0;
+  volatile uint32_t confirm_start_ = 0;
 
   TogglePos last_octave_ = TogglePos::Middle, last_gate_ = TogglePos::Middle;
   TogglePos last_page_ = TogglePos::Up;

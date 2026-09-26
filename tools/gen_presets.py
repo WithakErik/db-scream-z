@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Generate firmware/engine/presets.hpp from dbscreamz_lab/static/presets.json
+plus the pedal-side PEDAL_PRESETS below.
 
 The formants come from presets.json, which is a FROZEN copy of the lab's
 (tools/check_engine_copy.py hashes the two against each other), so nothing
@@ -30,7 +31,31 @@ STACK = {
     'Rice':    {'detune_cents': 8.0},
     'Prince':  {'detune_cents': 18.0},
     'Piccolo': {'detune_cents': 26.0},
+    'Master':  {'detune_cents': 30.0},
+    'Ki-Ki':   {'detune_cents': 8.0},
 }
+
+# Pedal-side characters, appended AFTER presets.json's four so kPresets
+# indices 0..3 keep their meaning. presets.json is a frozen copy of the
+# lab's (tools/check_engine_copy.py hashes it), so characters only the
+# pedal ships live here instead. Values are the booklet recipes they were
+# promoted from when Freeform retired and Set 3 arrived (three-banks spec,
+# 2026-09-25): Master = old raspy male, small dark tract; Ki-Ki = shrill
+# piercing female, everything pushed high.
+PEDAL_PRESETS = {
+    'Master': {'formants_hz': [640.0, 1080.0, 2400.0]},
+    'Ki-Ki':  {'formants_hz': [950.0, 1800.0, 3350.0]},
+}
+
+
+def all_presets():
+    """presets.json's characters in file order, then PEDAL_PRESETS."""
+    presets = read_presets_json()
+    for name in PEDAL_PRESETS:
+        if name in presets:
+            raise AssertionError(f"{name}: in both presets.json and PEDAL_PRESETS")
+    presets.update(PEDAL_PRESETS)
+    return presets
 
 
 def format_float(value):
@@ -59,7 +84,7 @@ def generate_header(presets):
         "  float formants_hz[3];   // baked (tract scale already applied), Hz",
         "  float detune_cents;     // spread across the engine's 3 voices, 0..60 cents",
         "};",
-        "inline constexpr CharacterPreset kPresets[4] = {",
+        f"inline constexpr CharacterPreset kPresets[{len(presets)}] = {{",
     ]
 
     # Collect preset items in JSON key order
@@ -120,7 +145,7 @@ def main():
     output_path = script_dir / 'firmware' / 'engine' / 'presets.hpp'
 
     # Read presets
-    presets = read_presets_json()
+    presets = all_presets()
 
     # Generate header
     header_content, preset_items = generate_header(presets)

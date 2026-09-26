@@ -33,13 +33,11 @@ export class UiController {
   static kHoldMs = 1000;        // latch threshold
   static kMenuBlinkMs = 250;    // menu blink half-period
   static kSaveBlinkMs = 150;    // save confirm half-period
-  static kRejectFlickMs = 60;   // reject flicker phase
 
   init(store, input) {
     this.store = store;
     this.page = UiController.pageFrom(input.t_page);
-    const load = this.page === Page.Freeform ? Page.Set1 : this.page;
-    this.edit = cloneVoice(store.slots[slotIndex(load, Side.Right)]);
+    this.edit = cloneVoice(store.slots[slotIndex(this.page, Side.Right)]);
     this.src = EngagedSource.None;
     this.engagedSlot = -1;
     this.menu = Menu.None;
@@ -52,7 +50,6 @@ export class UiController {
     this.configSavePending = false;
     this.configSaveAck = false;
     this.confirmStart = 0;
-    this.rejectStart = 0;
     this.lastOctave = input.t_octave;
     this.lastPage = input.t_page;
     this.lastGate = input.t_gate;
@@ -147,8 +144,8 @@ export class UiController {
     this.rightDown = input.right_down;
 
     // ---- toggles ----
-    // Outside menus: a page move selects the page; octave/gate moves (or
-    // freeform live-tracking) write the edit buffer. Inside a latched menu:
+    // Outside menus: a page move selects the page; octave/gate moves
+    // write the edit buffer. Inside a latched menu:
     // toggle MOVES edit the global charge config instead. The page is
     // move-event-driven so a config edit can never page-switch on exit.
     // A toggle only counts as MOVED when the menu did not change on this
@@ -163,10 +160,9 @@ export class UiController {
       // fall through to the re-baseline below: no move this tick
     } else if (this.menu === Menu.None) {
       if (input.t_page !== this.lastPage) this.page = UiController.pageFrom(input.t_page);
-      const freeformLive = this.src === EngagedSource.Freeform;
-      if (input.t_octave !== this.lastOctave || freeformLive)
+      if (input.t_octave !== this.lastOctave)
         this.edit.octave = UiController.octaveFrom(input.t_octave);
-      if (input.t_gate !== this.lastGate || freeformLive)
+      if (input.t_gate !== this.lastGate)
         this.edit.gate_level = UiController.gateFrom(input.t_gate);
     } else {
       if (input.t_octave !== this.lastOctave) this.setChargeField(0, input.t_octave);
@@ -245,8 +241,8 @@ export class UiController {
   // The emulator's stand-in for the save chord. On the pedal you hold one
   // stomp past kHoldMs and press the other while still holding; one mouse
   // pointer cannot do that, so the page offers a button per side instead.
-  // It enters at exactly the same place the chord does, so the menu guard,
-  // the save-window guard and the Freeform rejection all still apply.
+  // It enters at exactly the same place the chord does, so the menu guard
+  // and the save-window guard still apply.
   requestSave(side, nowMs) {
     this.onSaveChord(side, { now_ms: nowMs });
   }
@@ -258,12 +254,6 @@ export class UiController {
       const on = Math.trunc((nowMs - this.confirmStart) / UiController.kSaveBlinkMs) % 2 === 0;
       return { left: on, right: on };   // 3 simultaneous blinks
     }
-    if (this.rejectStart !== 0 &&
-        nowMs - this.rejectStart < 3 * UiController.kRejectFlickMs) {
-      const ph = Math.trunc((nowMs - this.rejectStart) / UiController.kRejectFlickMs);
-      const on = ph !== 1;   // on-off-on: one short double-flicker
-      return { left: on, right: on };
-    }
     if (this.chargeLevel > 0.0 && this.menu === Menu.None) {
       // The charge animation overrides the normal language while active,
       // except when a menu is latched: the blink is actionable feedback,
@@ -271,8 +261,8 @@ export class UiController {
       return { left: this.chargeLedFlip, right: !this.chargeLedFlip };
     }
     const l = {
-      left: this.src === EngagedSource.SlotL || this.src === EngagedSource.Freeform,
-      right: this.src === EngagedSource.SlotR || this.src === EngagedSource.Freeform,
+      left: this.src === EngagedSource.SlotL,
+      right: this.src === EngagedSource.SlotR,
     };
     const blink = Math.trunc(nowMs / UiController.kMenuBlinkMs) % 2 === 0;
     // A latched menu owns BOTH LEDs (amended 2026-08-28): the menu's side
@@ -287,8 +277,8 @@ export class UiController {
 
   static pageFrom(t) {
     if (t === TogglePos.Up) return Page.Set1;
-    if (t === TogglePos.Down) return Page.Set2;
-    return Page.Freeform;
+    if (t === TogglePos.Down) return Page.Set3;
+    return Page.Set2;
   }
   static octaveFrom(t) {
     if (t === TogglePos.Up) return 1;
@@ -354,10 +344,6 @@ export class UiController {
   // Menus never save; the target slot side is the held side.
   onSaveChord(held, input) {
     if (this.menu !== Menu.None || this.savePending || this.configSavePending) return;
-    if (this.page === Page.Freeform) {
-      this.rejectStart = input.now_ms;   // "pick a page first"
-      return;
-    }
     this.saveSlotIdx = slotIndex(this.page, held);
     this.saveSnap = cloneVoice(this.edit);
     this.savePending = true;   // host persists, then saveDone()
@@ -409,16 +395,6 @@ export class UiController {
     this.charging = false;
     this.chargeLevel = 0.0;
     // No menu latched: engage / bypass / recall.
-    if (this.page === Page.Freeform) {
-      if (this.src !== EngagedSource.None) {
-        this.src = EngagedSource.None;   // engaged -> bypass
-        this.engagedSlot = -1;
-      } else {
-        this.src = EngagedSource.Freeform;   // edit buffer as-is, no load
-        this.engageEdge = true;
-      }
-      return;
-    }
     const target = slotIndex(this.page, side);
     if (this.src !== EngagedSource.None && this.engagedSlot === target) {
       this.src = EngagedSource.None;   // tap again = bypass

@@ -10,71 +10,76 @@
 
 import {
   Side, TogglePos, EngagedSource,
-  factoryStore, kVoiceStoreVersion, voiceName, cloneVoice,
+  factoryStore, kVoiceStoreVersion, voiceName, cloneVoice, migrateStore,
 } from './voice-params.js';
 import { kKnobLabels, knobValueText, knobPositions } from './param-map.js';
 import { applyCharge, kChargeLabels } from './charge.js';
 import { UiController, Menu } from './ui-controller.js';
 import { Faceplate } from './faceplate.js';
 import { AudioEngine, encodeWav } from './audio.js';
-import { beastStore, kBeasts } from './beast-presets.js';
+import { ChordUiController } from './chord-ui.js';
+import {
+  chordKnobPositions, kChordKnobLabels, chordKnobValueText, applyChargeChord,
+} from './chord-map.js';
 
 const STORE_KEY = 'dbscreamz.voicestore.v3';
 
-// ---- beast mode -------------------------------------------------------
-// The pedal's hidden bank is entered by holding both footswitches THROUGH
-// power-up. A page has no power cycle and a pointer cannot hold two
-// stomps, so the browser's equivalent of "a thing decided at boot" is the
-// URL it was loaded with: ?beast (or #beast). See beast-presets.js.
+// ---- chord mode ---------------------------------------------------------
+// The pedal's chord mode is entered by holding both footswitches THROUGH
+// power-up (chord mode design spec section 1). A page has no power cycle
+// and a pointer cannot hold two stomps, so the browser's stand-in for "a
+// thing decided at boot" is the URL it was loaded with: ?chord (or #chord).
 //
-// Everything downstream follows the firmware: the store is swapped, and
-// persist() below refuses to write, exactly as main.cpp skips its QSPI
-// commit. Saved characters survive; a plain reload brings them back.
-const beastMode = (() => {
+// Unlike the old hidden bank this replaced, chord mode is not a separate
+// store: it is a second control surface (ChordUiController) laid over the
+// same store, reading and auto-saving store.chord instead of store.slots.
+// The characters are untouched either way.
+const chordMode = (() => {
   try {
     const u = new URL(window.location.href);
-    return u.searchParams.has('beast') || u.hash.toLowerCase() === '#beast';
+    return u.searchParams.has('chord') || u.hash.toLowerCase() === '#chord';
   } catch { return false; }
 })();
 
 // ---- the QSPI stand-in -----------------------------------------------
-// The pedal keeps four slots and the charge config in QSPI flash, written
-// only on save. localStorage is the same contract: survives a reload,
-// never touched except by a save.
+// The pedal keeps six slots, the charge config and the chord setting in
+// QSPI flash, written only on save. localStorage is the same contract:
+// survives a reload, never touched except by a save.
 function loadStore() {
   try {
     const raw = localStorage.getItem(STORE_KEY);
     if (raw) {
       const s = JSON.parse(raw);
-      if (s && s.version === kVoiceStoreVersion) return s;
+      if (s && [kVoiceStoreVersion, 8, 7].includes(s.version)) {
+        const result = migrateStore(s);
+        if (result === 'reset') return factoryStore();
+        if (result === 'migrated') persist(s);
+        return s;
+      }
     }
   } catch { /* private mode, cleared data, corrupt JSON: fall through */ }
   return factoryStore();
 }
 
 function persist(store) {
-  // Beast mode never commits, so a save there is a session sandbox: tweak
-  // a cow, save it, keep it until you reload. What it can never do is
-  // overwrite a character. This one guard covers every save path, the way
-  // `if (!beast_mode) storage->Save()` does in main.cpp.
-  if (beastMode) return;
   try { localStorage.setItem(STORE_KEY, JSON.stringify(store)); }
   catch { /* nothing we can do, and the session still works */ }
 }
 
 // ---- setup ------------------------------------------------------------
 const $ = (id) => document.getElementById(id);
-const store = beastMode ? beastStore() : loadStore();
+const store = loadStore();
 
-// Names the panel can put to a voice. The characters are always matched;
-// the animals only when they are the ones loaded.
-const vname = (v) => voiceName(v, beastMode ? kBeasts : []);
+// Names the panel can put to a voice. The characters are always matched.
+const vname = (v) => voiceName(v);
 const face = new Faceplate($('stage'));
 const ui = new UiController();
-const audio = new AudioEngine();
+const chordUi = new ChordUiController();
+const audio = new AudioEngine(chordMode);
 
 const now = () => performance.now();
 ui.init(store, face.inputs(now()));
+chordUi.init(store.chord, store.charge, face.inputs(now()));
 
 // ---- motorised pots ---------------------------------------------------
 // The pedal cannot move its own knobs, so after a layer change or a slot
@@ -94,7 +99,17 @@ function syncKnobsToLayer() {
   ui.pickup.rearm(face.knobPos);
 }
 
-syncKnobsToLayer();   // and at boot, so the panel reads true on arrival
+// Chord mode's version of the same affordance. There is no recall in chord
+// mode (one setting, no slots), so the only thing that ever changes the
+// layer is entering or leaving the chord menu.
+let lastChordLayer = chordUi.layer();
+function syncChordKnobsToLayer() {
+  face.knobPos = chordKnobPositions(chordUi.layer(), chordUi.chord());
+  chordUi.pickup.rearm(face.knobPos);
+}
+
+// and at boot, so the panel reads true on arrival
+if (chordMode) syncChordKnobsToLayer(); else syncKnobsToLayer();
 
 let note = '';
 let noteWarn = false;
@@ -103,10 +118,17 @@ function say(text, warn = false, ms = 4000) {
   note = text; noteWarn = warn; noteUntil = now() + ms;
 }
 
-if (beastMode) {
-  say('Beast mode. Set 1 is Cow and Wolf, Set 2 is Whale and Elephant. ' +
-      'Nothing here is saved, and your characters are untouched: reload ' +
-      'without ?beast to get them back.', false, 9000);
+if (chordMode) {
+  // Save and factory-restore have no chord-mode equivalent worth inventing
+  // (chord mode auto-saves silently, and its own reset is "clear site
+  // data"), so the controls that do not apply are hidden rather than left
+  // to do nothing when clicked.
+  $('saveL').hidden = true;
+  $('saveR').hidden = true;
+  $('reset').hidden = true;
+  say('Chord mode. Left stomp: on/off, hold for the chord menu. Right ' +
+      'stomp: hold to open the mouth. Load the page without ?chord to ' +
+      'get the characters back.', false, 9000);
 }
 
 let live = { f0: 0, gateOpen: false };
@@ -117,7 +139,7 @@ const chargeBtn = $('charge');
 chargeBtn.addEventListener('pointerdown', (e) => {
   chargeBtn.setPointerCapture(e.pointerId);
   chargeBtn.classList.add('held');
-  if (!ui.engaged()) {
+  if (!(chordMode ? chordUi.engaged() : ui.engaged())) {
     say('Charge needs a voice engaged. Bypassed, both stomps together is ' +
         'the firmware update gesture instead.', true);
     return;
@@ -137,18 +159,15 @@ $('saveL').addEventListener('click', () => ui.requestSave(Side.Left, now()));
 $('saveR').addEventListener('click', () => ui.requestSave(Side.Right, now()));
 
 $('reset').addEventListener('click', () => {
-  // In beast mode this restores the ANIMALS, not the characters. Resetting
-  // to the factory characters here would be a lie twice over: it would put
-  // voices on screen that this session is not running, and persist() would
-  // refuse to save them anyway.
-  const f = beastMode ? beastStore() : factoryStore();
+  // Hidden in chord mode (see the chordMode setup block above): chord mode's
+  // own reset has no factory-restore equivalent worth inventing here.
+  const f = factoryStore();
   store.version = f.version;
   store.slots = f.slots;
   store.charge = f.charge;
   persist(store);
   ui.init(store, face.inputs(now()));
-  say(beastMode ? 'Beast voices and charge settings restored.'
-                : 'Factory voices and charge settings restored.');
+  say('Factory voices and charge settings restored.');
 });
 
 // ---- audio source -----------------------------------------------------
@@ -236,13 +255,18 @@ renderBtn.addEventListener('click', async () => {
   try {
     // Render what you are hearing: the charge overlay included, frozen at
     // whatever the charge level is right now.
-    const voice = applyCharge(ui.editBuffer(), ui.chargeConfig(),
-                              ui.chargeLevel, ui.charging);
-    const buf = await audio.render(voice);
+    const [payload, filename] = chordMode
+      ? [applyChargeChord(chordUi.chord(), chordUi.chargeConfig(),
+                          chordUi.chargeLevel),
+         'dbscreamz-chord.wav']
+      : [applyCharge(ui.editBuffer(), ui.chargeConfig(),
+                    ui.chargeLevel, ui.charging),
+         `dbscreamz-${vname(ui.editBuffer()).toLowerCase()}.wav`];
+    const buf = await audio.render(payload);
     const url = URL.createObjectURL(encodeWav(buf));
     const a = document.createElement('a');
     a.href = url;
-    a.download = `dbscreamz-${vname(ui.editBuffer()).toLowerCase()}.wav`;
+    a.download = filename;
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 10000);
     say('Rendered.');
@@ -256,7 +280,7 @@ renderBtn.addEventListener('click', async () => {
 
 // ---- labels -----------------------------------------------------------
 const OCT = { [TogglePos.Up]: '+1', [TogglePos.Middle]: '0', [TogglePos.Down]: '-1' };
-const PAGE = { [TogglePos.Up]: 'Set 1', [TogglePos.Middle]: 'Freeform', [TogglePos.Down]: 'Set 2' };
+const PAGE = { [TogglePos.Up]: 'Set 1', [TogglePos.Middle]: 'Set 2', [TogglePos.Down]: 'Set 3' };
 const GATE = { [TogglePos.Up]: 'high', [TogglePos.Middle]: 'med', [TogglePos.Down]: 'low' };
 
 function toggleView() {
@@ -289,7 +313,6 @@ function toggleView() {
 function statusText() {
   const src = ui.source();
   const where = src === EngagedSource.None ? 'bypassed'
-    : src === EngagedSource.Freeform ? 'freeform'
     : `${vname(ui.editBuffer())} ${src === EngagedSource.SlotL ? 'L' : 'R'}`;
   const menu = ui.menuLatched() === Menu.Menu2 ? ' · menu 2'
     : ui.menuLatched() === Menu.Menu3 ? ' · menu 3' : '';
@@ -298,6 +321,14 @@ function statusText() {
   const f0 = live.f0 > 20 ? ` · ${live.f0.toFixed(1)} Hz` : '';
   const gate = live.gateOpen ? '' : ' · gated';
   return `<b>${where}</b>${menu}${chg}${f0}${gate}`;
+}
+
+function chordStatusText() {
+  const menu = chordUi.inMenu() ? ' · menu' : '';
+  const mouth = chordUi.mouthOpen() ? ' · mouth open' : '';
+  const chg = chordUi.chargeLevel > 0
+    ? ` · charge ${Math.round(chordUi.chargeLevel * 100)}%` : '';
+  return `<b>Chord mode</b>${menu}${mouth}${chg}`;
 }
 
 // ---- the loop ---------------------------------------------------------
@@ -316,6 +347,11 @@ function chargeTogglePositions() {
 
 function frame() {
   const t = now();
+  if (chordMode) {
+    tickChord(t);
+    requestAnimationFrame(frame);
+    return;
+  }
   // Hand the levers to the charge rows while a menu is latched, so they
   // show and edit the setting under them rather than sitting wherever
   // octave/page/gate left them. Must run before inputs().
@@ -335,8 +371,8 @@ function frame() {
     store.slots[ui.saveSlot()] = cloneVoice(ui.saveSnapshot());
     persist(store);
     ui.saveDone(t);
-    say(`Saved to ${ui.saveSlot() % 2 === 0 ? 'R' : 'L'} of ` +
-        `${ui.saveSlot() < 2 ? 'Set 1' : 'Set 2'}.`);
+    const pageName = ui.saveSlot() < 2 ? 'Set 1' : ui.saveSlot() < 4 ? 'Set 2' : 'Set 3';
+    say(`Saved to ${ui.saveSlot() % 2 === 0 ? 'R' : 'L'} of ${pageName}.`);
   }
   if (ui.configSavePending) {
     store.charge = { ...ui.chargeConfig() };
@@ -404,10 +440,83 @@ function defaultNote() {
     return 'Menu latched: the knobs edit formants, and the toggles now set ' +
            'charge mode. Tap the blinking side to exit.';
   if (!ui.engaged())
-    return 'Bypassed. Set the middle toggle to Set 1 or Set 2, then tap a stomp.';
+    return 'Bypassed. Tap a stomp to engage.';
   return 'Hold a stomp about a second to latch its menu. Both at once is ' +
          'CHARGE, which is the button below because one pointer cannot ' +
          'press two switches.';
+}
+
+// ---- chord mode's own loop ---------------------------------------------
+// A separate function rather than branches threaded through frame(): chord
+// mode has no pages, no slots and no charge-row toggle bank, so interleaving
+// it with the normal-mode body would replace clear per-mode logic with a
+// maze of conditionals for very little shared code.
+function tickChord(t) {
+  chordUi.tick(face.inputs(t));
+
+  // Auto-save handshake (chord mode design spec section 4): silent, no
+  // `say`, matching the pedal's own silent auto-save.
+  if (chordUi.savePending) {
+    store.chord = { ...chordUi.saveSnapshot() };
+    persist(store);
+    chordUi.saveDone();
+  }
+
+  if (chordUi.takeEngageEdge()) audio.engageEdge();
+
+  // A menu latch or exit: swing the knobs to match whatever the active
+  // layer now holds, same affordance as syncKnobsToLayer() in normal mode.
+  if (chordUi.layer() !== lastChordLayer) {
+    lastChordLayer = chordUi.layer();
+    syncChordKnobsToLayer();
+  }
+
+  // The charge overlay is a pure copy; the chord setting is never written.
+  const charging = chordUi.chargeLevel > 0;
+  const chord = applyChargeChord(chordUi.chord(), chordUi.chargeConfig(),
+                                 chordUi.chargeLevel);
+  audio.setChord(chord, chordUi.mouthOpen(), chordUi.engaged());
+
+  const layer = chordUi.layer();
+  // Same greying rule as normal mode: only when the knob genuinely is not
+  // pointing at the value shown.
+  const truePos = chordKnobPositions(layer, chordUi.chord());
+  const agrees = (i) => Math.abs(face.knobPos[i] - truePos[i]) < 0.005;
+  const shownPos = charging ? chordKnobPositions(layer, chord) : null;
+  face.render({
+    leds: chordUi.leds(t),
+    knobLabels: kChordKnobLabels[layer],
+    knobValues: [0, 1, 2, 3, 4, 5].map((i) => chordKnobValueText(layer, i, chord)),
+    knobPos: shownPos,
+    knobLive: [0, 1, 2, 3, 4, 5].map((i) => charging || chordUi.pickup.live(i) || agrees(i)),
+    // Toggles 1-2 do nothing in chord mode; toggle 3 is gate level, in or
+    // out of the chord menu (chord mode has no charge-row toggle bank).
+    toggleLabels: ['-', '-', 'Gate'],
+    toggleValues: ['-', '-', GATE[face.toggles[2]]],
+    chargeMenu: null,
+  });
+
+  chargeBtn.classList.toggle('armed', chordUi.engaged());
+  $('status').innerHTML = chordStatusText();
+  if (note && t > noteUntil) { note = ''; noteWarn = false; }
+  const noteEl = $('note');
+  if (noteEl.dataset.shown !== note) {
+    noteEl.dataset.shown = note;
+    noteEl.textContent = note || chordDefaultNote();
+    noteEl.classList.toggle('warn', noteWarn);
+  }
+}
+
+function chordDefaultNote() {
+  if (chordUi.inMenu())
+    return 'Chord menu latched: the knobs edit vowels, resonance and the ' +
+           'envelope. Tap the left stomp to exit.';
+  if (!chordUi.engaged())
+    return 'Bypassed. Tap the left stomp to engage chord mode.';
+  return 'Hold the left stomp about a second to latch the chord menu. ' +
+         'Hold the right stomp to open the mouth. Both at once is CHARGE, ' +
+         'which is the button below because one pointer cannot press two ' +
+         'switches.';
 }
 
 requestAnimationFrame(frame);

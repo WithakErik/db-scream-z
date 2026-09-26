@@ -3,7 +3,8 @@
 
 Every behavioural claim traces to firmware/hothouse/ (control map in
 main.cpp, gestures in ui_controller.hpp, pickup in knob_pickup.hpp, post
-chain in post_chain.hpp, charge defaults in voice_params.hpp).
+chain in post_chain.hpp, charge defaults in voice_params.hpp, chord mode's
+control surface in chord_ui.hpp and chord_map.hpp).
 Every preset number traces to docs/BOOKLET.md.
 
 Regenerate with:  python3 tools/gen_manual.py
@@ -190,8 +191,9 @@ CHARACTERS = [
         "name": "Rice", "page": "Set 2", "side": "RIGHT",
         "tag": "Clean and glassy",
         "flavour": "The highest F3 of the eight over the narrowest "
-                   "detune in the factory set, barely spread. "
-                   "Bright and hard-edged. Cuts without sounding strained.",
+                   "detune in the factory set (tied with Ki-Ki), barely "
+                   "spread. Bright and hard-edged. Cuts without sounding "
+                   "strained.",
         "m2": {0: ("F1", "1000 Hz", 67, "1:40"),
                3: ("F2", "1437.5 Hz", 45, "11:27")},
         "m3": {0: ("F3", "3625 Hz", 71, "2:05"),
@@ -202,8 +204,8 @@ CHARACTERS = [
     {
         "name": "Piccolo", "page": "Set 2", "side": "LEFT",
         "tag": "Low growl",
-        "flavour": "The lowest formants in the factory set under the "
-                   "widest detune of the four, spread wide. "
+        "flavour": "The lowest F2 of the eight, second only to Master on "
+                   "F1 and F3, under a wide detune, spread wide. "
                    "Thick and throaty rather than piercing.",
         "m2": {0: ("F1", "697.6 Hz", 41, "11:08"),
                3: ("F2", "1002.8 Hz", 24, "9:23")},
@@ -211,6 +213,33 @@ CHARACTERS = [
                3: ("Vib", "0 Hz", 0, "7:00"),
                4: ("Depth", "0 ct", 0, "7:00"),
                5: ("Detune", "26 ct", 43, "11:20")},
+    },
+    {
+        "name": "Master", "page": "Set 3", "side": "RIGHT",
+        "tag": "Old and gravelled",
+        "flavour": "The lowest F1 and F3 of the eight, the widest "
+                   "detune of any card. Dark, "
+                   "frayed, faintly ridiculous.",
+        "m2": {0: ("F1", "640 Hz", 37, "10:39"),
+               3: ("F2", "1080 Hz", 28, "9:45")},
+        "m3": {0: ("F3", "2400 Hz", 30, "10:00"),
+               3: ("Vib", "0 Hz", 0, "7:00"),
+               4: ("Depth", "0 ct", 0, "7:00"),
+               5: ("Detune", "30 ct", 50, "12:00")},
+    },
+    {
+        "name": "Ki-Ki", "page": "Set 3", "side": "LEFT",
+        "tag": "Small and furious",
+        "flavour": "The highest F2 of the eight and the narrowest detune "
+                   "of the eight (tied with Rice), all three formants "
+                   "crowded high with nothing blunting them. Shrill, "
+                   "nasal, annoyed.",
+        "m2": {0: ("F1", "950 Hz", 62, "1:15"),
+               3: ("F2", "1800 Hz", 62, "1:11")},
+        "m3": {0: ("F3", "3350 Hz", 62, "1:10"),
+               3: ("Vib", "0 Hz", 0, "7:00"),
+               4: ("Depth", "0 ct", 0, "7:00"),
+               5: ("Detune", "8 ct", 13, "8:20")},
     },
     {
         "name": "Boo", "page": None, "side": None,
@@ -228,8 +257,8 @@ CHARACTERS = [
     {
         "name": "Fling", "page": None, "side": None,
         "tag": "Light and quick",
-        "flavour": "Between Wukong and Rice on every formant, with a "
-                   "modest detune so the edge stays on the "
+        "flavour": "Wukong's F1 and F3 with F2 lifted well above it, "
+                   "under a modest detune so the edge stays on the "
                    "formants. The most usable of the eight under a band.",
         "m2": {0: ("F1", "880 Hz", 57, "12:40"),
                3: ("F2", "1600 Hz", 52, "12:14")},
@@ -237,32 +266,6 @@ CHARACTERS = [
                3: ("Vib", "0 Hz", 0, "7:00"),
                4: ("Depth", "0 ct", 0, "7:00"),
                5: ("Detune", "14 ct", 23, "9:20")},
-    },
-    {
-        "name": "Ki-Ki", "page": None, "side": None,
-        "tag": "Small and furious",
-        "flavour": "The highest F2 of the eight and the narrowest detune "
-                   "of the eight, all three formants crowded high with "
-                   "nothing blunting them. Shrill, nasal, annoyed.",
-        "m2": {0: ("F1", "950 Hz", 62, "1:15"),
-               3: ("F2", "1800 Hz", 62, "1:11")},
-        "m3": {0: ("F3", "3350 Hz", 62, "1:10"),
-               3: ("Vib", "0 Hz", 0, "7:00"),
-               4: ("Depth", "0 ct", 0, "7:00"),
-               5: ("Detune", "8 ct", 13, "8:20")},
-    },
-    {
-        "name": "Master", "page": None, "side": None,
-        "tag": "Old and gravelled",
-        "flavour": "The lowest F1 and F3 of the eight, the widest "
-                   "detune of any card. Dark, "
-                   "frayed, faintly ridiculous.",
-        "m2": {0: ("F1", "640 Hz", 37, "10:39"),
-               3: ("F2", "1080 Hz", 28, "9:45")},
-        "m3": {0: ("F3", "2400 Hz", 30, "10:00"),
-               3: ("Vib", "0 Hz", 0, "7:00"),
-               4: ("Depth", "0 ct", 0, "7:00"),
-               5: ("Detune", "30 ct", 50, "12:00")},
     },
 ]
 
@@ -285,6 +288,28 @@ CHARGE = [
 
 TOG_ROWS = ["Up", "Middle", "Down"]
 
+# Chord mode (firmware/hothouse/chord_map.hpp, chord_ui.hpp; the factory
+# values are voice_params.hpp factory_chord()). Two knob layers, no menu 3:
+# the main layer (left tap engages, right held opens the mouth) and the
+# chord menu (left hold ~1 s). Ranges are the ChordParams field comments;
+# factory values are what factory_chord() writes.
+CHORD_MAIN = [
+    ("Vocal vol", "0 to 2x", "unity (1.0)"),
+    ("Mix", "0 to 1, dry to full voice", "full voice (1.0)"),
+    ("Master vol", "0 to 2x", "unity (1.0)"),
+    ("Tone", "dark to bright, flat at centre", "flat (0)"),
+    ("Sensitivity", "0 (fixed closed vowel) to 8", "3.0"),
+    ("Drive", "1x to 40x, log taper", "10x"),
+]
+CHORD_MENU = [
+    ("Closed vowel", "oo, oh, ah, eh, ee", "oo"),
+    ("Open vowel", "oo, oh, ah, eh, ee", "ah"),
+    ("Vocal size", "as written to deepest", "as written (0)"),
+    ("Resonance", "soft to sharp", "mid (0.5)"),
+    ("Attack", "1 to 50 ms mouth attack", "10 ms"),
+    ("Release", "20 to 500 ms mouth release", "150 ms"),
+]
+
 
 def char_menu(ch, menu):
     """The six (label, value, travel, clock) entries for one menu."""
@@ -298,11 +323,10 @@ def char_menu(ch, menu):
 def char_toggles(ch):
     """Menu 1 toggle positions for a card: (label, value, [positions]).
 
-    T2 is always up OR down, never middle, for every character: a voice
-    can live in either Set, but Freeform (middle) has no slot to save to.
+    T2 can be any position: a voice can live in any of the three Sets.
     """
     return [("Octave", "0", ["Middle"]),
-            ("Memory page", "Set 1 or Set 2", ["Up", "Down"]),
+            ("Memory page", "Set 1, 2 or 3", ["Up", "Middle", "Down"]),
             ("Gate", "medium", ["Middle"])]
 
 
@@ -758,10 +782,12 @@ def build_pages(toc_rows=""):
         'Mute what you are not playing.</div>'
         '<p>Tap the same footswitch again to bypass. Tap the '
         '<strong>LEFT</strong> footswitch instead for the other voice on '
-        'this page (Prince). Flip the middle toggle <strong>down</strong> '
-        'for Set&nbsp;2: Rice on the right, Piccolo on the left.</p>'
-        '<p>Everything you change is live immediately and lost at power '
-        'off until you save it. Saving is in section 5.</p>',
+        'this page (Prince). Move the middle toggle to <strong>middle'
+        '</strong> for Set&nbsp;2 (Rice right, Piccolo left) or '
+        '<strong>down</strong> for Set&nbsp;3 (Master right, Ki-Ki '
+        'left).</p>'
+        '<p>Edits are live at once, and lost at power off or when you tap '
+        'a voice in, until you save (section 5).</p>',
         "y", "Quick start"))
 
     # ---- control surface ------------------------------------------------
@@ -801,11 +827,11 @@ def build_pages(toc_rows=""):
         'voice is on its own. <strong>Mix</strong> (K2) crossfades it '
         'against your untouched dry signal: 7:00 is the guitar alone, '
         '5:00 is the voice alone. <strong>Master</strong> (K3) is the '
-        'level of the pair leaving the pedal. All three are unity at '
-        '12:00.</p>'
+        'level of the pair leaving the pedal. Vocal vol and Master are '
+        'unity at 12:00; Mix there is an even blend.</p>'
         '<p><strong>Tone</strong> (K4) tilts the <em>voice</em> dark '
-        'below 12:00 and bright above it, and never touches the dry. It '
-        'has a detent at 12:00 that is exactly flat.</p>'
+        'below 12:00 and bright above it, and never touches the dry. '
+        'Anywhere from about 11:30 to 12:30 it is exactly flat.</p>'
         '<p><strong>Glide</strong> (K5) is how long the voice takes to '
         'reach each new note, 0 to 300 ms. The taper is steep: the first '
         'two thirds of the travel covers 0 to 100 ms, so the whole usable '
@@ -825,12 +851,15 @@ def build_pages(toc_rows=""):
         '<tr><td><strong>T1</strong><br>Octave</td><td>+1</td><td>0</td>'
         '<td>&minus;1</td></tr>'
         '<tr><td><strong>T2</strong><br>Page</td><td>Set 1</td>'
-        '<td>Freeform</td><td>Set 2</td></tr>'
+        '<td>Set 2</td><td>Set 3</td></tr>'
         '<tr><td><strong>T3</strong><br>Gate</td><td>high</td>'
         '<td>medium</td><td>low</td></tr></table>'
         '<p>That is with no menu latched. While a menu <em>is</em> latched '
         'the toggles configure Charge mode instead, and nothing else. See '
         'section 6.</p>'
+        '<p class="small">A toggle acts when you <em>move</em> it. A '
+        'voice you tap in brings its own saved octave and gate, whatever '
+        'the switches say, until you move one.</p>'
         '<p class="small">The gate decides how loud you must play before '
         'the voice speaks. High needs a firm attack and stays quiet '
         'between notes; low lets quiet playing through and hangs on '
@@ -904,17 +933,15 @@ def build_pages(toc_rows=""):
     P.append(page(
         '<h1><span class="num">5</span>Memory</h1>'
         '<p>The middle toggle picks a <strong>page</strong>. Each page has '
-        'two <strong>slots</strong>, one per footswitch. Four stored '
+        'two <strong>slots</strong>, one per footswitch. Six stored '
         'voices.</p>'
         '<table>'
         '<tr><th>T2</th><th>Page</th><th>Left</th><th>Right</th></tr>'
         '<tr><td>Up</td><td>Set 1</td><td>Prince</td><td>Wukong</td></tr>'
-        '<tr><td>Mid</td><td>Freeform</td><td colspan="2">no slots: the '
-        'footswitches engage and bypass whatever the knobs are set to right '
-        'now</td></tr>'
-        '<tr><td>Down</td><td>Set 2</td><td>Piccolo</td><td>Rice</td></tr>'
+        '<tr><td>Mid</td><td>Set 2</td><td>Piccolo</td><td>Rice</td></tr>'
+        '<tr><td>Down</td><td>Set 3</td><td>Ki-Ki</td><td>Master</td></tr>'
         '</table>'
-        '<p class="small">Those four are what it ships with. Save over any '
+        '<p class="small">Those six are what it ships with. Save over any '
         'of them: the recipes to dial them back are in section 8.</p>',
         "y", "Memory"))
 
@@ -928,9 +955,6 @@ def build_pages(toc_rows=""):
         '<p>The <strong>held</strong> side picks the slot. Hold RIGHT and '
         'press LEFT and you have saved to the <strong>right</strong> slot '
         'of the current page. Both LEDs blink three times.</p>'
-        '<div class="note"><b>Freeform cannot save</b>'
-        'It has no slot, so the save is refused and both LEDs give one '
-        'short double-flicker. Pick Set&nbsp;1 or Set&nbsp;2 first.</div>'
         '<p>Leave any latched menu before saving. Menus never save, and '
         'your edits survive the exit.</p>'
         '<p class="small">The held footswitch latches its own menu on the '
@@ -960,11 +984,11 @@ def build_pages(toc_rows=""):
         '<p><strong>Engaged is the whole condition.</strong> The same '
         'two-stomp hold while <em>bypassed</em> is the firmware-update '
         'gesture instead, so charge can never reach it and it can never '
-        'reach charge. See section 11.</p>'
+        'reach charge. See section 12.</p>'
         '<p class="small">Charge is configured on the '
         '<strong>toggles</strong>, while a menu is latched. Latch menu 2 '
         '(hold RIGHT) for the orange settings, menu 3 (hold LEFT) for the '
-        'blue ones. The knobs do nothing here.</p>',
+        'blue ones. The knobs are not part of charge.</p>',
         "y", "Charge mode"))
 
     P.append(page(
@@ -1016,7 +1040,7 @@ def build_pages(toc_rows=""):
         "y", "Reading a card"))
 
     demo_a = [(m, clock_to_deg("12:00")) for m in (1, 2, 3)]
-    demo_b = [(1, clock_to_deg("7:00")), (2, clock_to_deg("7:55")),
+    demo_b = [(1, clock_to_deg("5:00")), (2, clock_to_deg("7:55")),
               (3, clock_to_deg("8:09"))]
     # Deliberately hardcoded, like demo_b above: NOT wired to CHARACTERS.
     # Vibrato shipped off for every character on 2026-09-02, which pins
@@ -1059,14 +1083,13 @@ def build_pages(toc_rows=""):
         '<h2 style="margin-top:0">Toggles on a card</h2>'
         '<p>Toggle dots sit to the right of the switch, level with the '
         'position they want.</p>'
-        '<p>The middle toggle always shows <strong>two</strong> dots, '
-        'marked OR. A voice can live on either Set, and which one you pick '
-        'is up to you. It cannot live on Freeform, because Freeform has no '
-        'slot to save into.</p>'
+        '<p>The middle toggle always shows <strong>three</strong> dots, '
+        'marked OR. A voice can live on any Set, and which one you pick '
+        'is up to you.</p>'
         '<p>The other two toggles show one dot each. Every character wants '
         'octave 0 and the medium gate; both are the middle position.</p>'
-        '<p class="small">Four of the eight have a factory home. The other '
-        'four are recipes: dial them in and save them wherever you '
+        '<p class="small">Six of the eight have a factory home. The other '
+        'two are recipes: dial them in and save them wherever you '
         'like.</p>',
         "y", "Reading a card"))
 
@@ -1110,7 +1133,7 @@ def build_pages(toc_rows=""):
         '<tr><td>Engage or bypass</td><td>Tap either footswitch</td></tr>'
         '<tr><td>Latch menu 2<br>(F1, F2)</td>'
         '<td>Hold RIGHT ~1 s: it latches while you hold</td></tr>'
-        '<tr><td>Latch menu 3<br>(F3, vibrato)</td>'
+        '<tr><td>Latch menu 3<br>(F3, vibrato, detune)</td>'
         '<td>Hold LEFT ~1 s: it latches while you hold</td></tr>'
         '<tr><td>Jump to the other menu</td>'
         '<td>With one latched, tap the other footswitch</td></tr>'
@@ -1129,9 +1152,10 @@ def build_pages(toc_rows=""):
 
     P.append(page(
         '<div class="note"><b>Together, not staggered</b>'
-        'Both-footswitch gestures need both switches going down at the '
-        'same time. Holding one for a second and then adding the other is '
-        'the <em>save</em> gesture, and it will save instead.</div>'
+        'Charge needs both switches going down at the same time. Holding '
+        'one for a second and then adding the other is the <em>save</em> '
+        'gesture. Bypassed, any 2 s with both down is update mode, '
+        'however they went down.</div>'
         '<h2>What the LEDs mean</h2>'
         '<p class="small">Single colour, both of them: the left LED is '
         'always blue, the right always orange. Nothing ever changes an '
@@ -1142,15 +1166,15 @@ def build_pages(toc_rows=""):
         '<tr><td>Bypassed</td><td>off</td><td>off</td></tr>'
         '<tr><td>Left slot engaged</td><td>solid</td><td>off</td></tr>'
         '<tr><td>Right slot engaged</td><td>off</td><td>solid</td></tr>'
-        '<tr><td>Freeform engaged</td><td>solid</td><td>solid</td></tr>'
         '<tr><td>Menu 2 latched</td><td>off</td><td>blinking</td></tr>'
         '<tr><td>Menu 3 latched</td><td>blinking</td><td>off</td></tr>'
         '<tr><td>Saved</td><td>3 blinks</td><td>3 blinks</td></tr>'
-        '<tr><td>Save refused</td><td colspan="2">one double-flicker, '
-        'both</td></tr>'
         '<tr><td>Charging</td><td colspan="2">alternating, speeding up'
         '</td></tr>'
-        '</table>',
+        '</table>'
+        '<p class="small">Chord mode (section 11) uses the same two LEDs '
+        'differently: three flashes, both, on entry; left lit is on; '
+        'right lit is the mouth open; left blinking is the chord menu.</p>',
         "y", "Reference"))
 
     # ---- troubleshooting ------------------------------------------------
@@ -1172,12 +1196,11 @@ def build_pages(toc_rows=""):
         "y", "Troubleshooting"))
 
     P.append(page(
-        '<h3 style="margin-top:0">Both LEDs flickered, nothing saved</h3>'
-        '<p>You were on Freeform. It has no slot. Flip T2 to Set&nbsp;1 or '
-        'Set&nbsp;2 and save again.</p>'
-        '<h3>I tried to save and got update mode</h3>'
-        '<p>Or the reverse. The gestures differ by timing: save is hold '
-        'one then add the other; update is both at once, from bypass.</p>'
+        '<h3 style="margin-top:0">I tried to save and got update mode</h3>'
+        '<p>Update mode is both footswitches down for 2 s while bypassed, '
+        'however they went down. A save from bypass completes on the '
+        'second press, so let go at once, or save with a voice engaged.'
+        '</p>'
         '<h3>It sounds thin and buzzy</h3>'
         '<p>Formant bandwidths set too wide will do that. The cards give '
         'the factory values: 7:55, 8:04 and 8:09.</p>'
@@ -1186,10 +1209,85 @@ def build_pages(toc_rows=""):
         'to reach each new note. At 7:00 it is instant.</p>',
         "y", "Troubleshooting"))
 
-    # ---- specs ----------------------------------------------------------
-    toc('11', 'Specifications')
+    # ---- chord mode -------------------------------------------------------
+    toc('11', 'Chord mode')
     P.append(page(
-        '<h1><span class="num">11</span>Specifications</h1>'
+        '<h1><span class="num">11</span>Chord mode</h1>'
+        '<p class="lede">Hold both footswitches through power-up and the '
+        'pedal spends that session as a single vowel filter driven '
+        'straight off your guitar, chords included, instead of the six '
+        'characters. There is no pitch tracker in this path: it cannot add '
+        'delay and cannot make an octave error.</p>'
+        '<h2 style="margin-top:0">Entering</h2>'
+        '<p>Hold both footswitches down and keep holding as you power the '
+        'pedal on. Both LEDs flash three times to say chord mode is live. '
+        'Power off and back on <strong>without</strong> the grip and the '
+        'six characters are exactly as you left them.</p>'
+        '<table><tr><th>Stomp</th><th>Does</th></tr>'
+        '<tr><td>LEFT tap</td><td>Engage or bypass. In the chord menu, '
+        'leaves it instead.</td></tr>'
+        '<tr><td>LEFT hold ~1 s</td><td>Latch the chord menu, under your '
+        'foot. Left LED blinks. Tap LEFT again to leave.</td></tr>'
+        '<tr><td>RIGHT, held</td><td>Open the mouth: right LED lit for as '
+        'long as you hold it. Momentary, never a menu, never a save.</td>'
+        '</tr>'
+        '<tr><td>Both together</td><td>Charge, engaged and outside the '
+        'menu only: the same gain, tone and size overlay, set up in normal '
+        'mode. Pitch has nothing to act on here and is ignored.</td>'
+        '</tr></table>',
+        "y", "Chord mode"))
+
+    P.append(page(
+        '<h2 style="margin-top:0">Toggles and saving</h2>'
+        '<p>Toggle 3 is the gate, same high/medium/low as the characters. '
+        'Toggles 1 and 2 do nothing in chord mode.</p>'
+        '<p>Chord mode has one setting, not six slots, and it saves '
+        'itself: a few seconds after you stop turning a knob, or at once '
+        'when you leave the chord menu, and only when something actually '
+        'changed. There is nothing to press. It lives in its own corner of '
+        'memory; your saved characters are never touched by it.</p>'
+        '<h2>The two knob layers</h2>'
+        '<table><tr><th></th><th>Main (default)</th><th>Chord menu '
+        '(hold LEFT)</th></tr>' +
+        "".join('<tr><td><strong>K%d</strong></td><td>%s</td><td>%s</td>'
+                '</tr>' % (i + 1, CHORD_MAIN[i][0], CHORD_MENU[i][0])
+                for i in range(6)) +
+        '</table>'
+        '<p class="small">The vowel knobs sweep across five vowels, oo, '
+        'oh, ah, eh, ee: closed vowel is where quiet picking sits, open '
+        'vowel is where the mouth goes as you dig in, or all the way with '
+        'RIGHT held.</p>',
+        "y", "Chord mode"))
+
+    P.append(page(
+        '<h3 style="margin-top:0">Main layer, every position</h3>'
+        '<table><tr><th>Knob</th><th>Range</th><th>Factory</th></tr>' +
+        "".join('<tr><td>K%d %s</td><td>%s</td><td>%s</td></tr>'
+                % (i + 1, lab, rng, fac)
+                for i, (lab, rng, fac) in enumerate(CHORD_MAIN)) +
+        '</table>'
+        '<h3>Charge and the mouth</h3>'
+        '<p>Pressing LEFT while holding RIGHT starts a charge, and the '
+        'mouth opens again when you let go of LEFT. In the chord menu, lift '
+        'RIGHT before tapping LEFT to leave.</p>',
+        "y", "Chord mode"))
+
+    P.append(page(
+        '<h3 style="margin-top:0">Chord menu layer, every position</h3>'
+        '<table><tr><th>Knob</th><th>Range</th><th>Factory</th></tr>' +
+        "".join('<tr><td>K%d %s</td><td>%s</td><td>%s</td></tr>'
+                % (i + 1, lab, rng, fac)
+                for i, (lab, rng, fac) in enumerate(CHORD_MENU)) +
+        '</table>'
+        '<p class="small">Factory gate: medium. Both layers and the gate '
+        'are the pedal\'s one factory-chord setting: the values it ships '
+        'with out of the box.</p>',
+        "y", "Chord mode"))
+
+    # ---- specs ----------------------------------------------------------
+    toc('12', 'Specifications')
+    P.append(page(
+        '<h1><span class="num">12</span>Specifications</h1>'
         '<table>'
         '<tr><td>Platform</td><td>Cleveland Music Co. Hothouse, Daisy '
         'Seed3, 125B enclosure</td></tr>'
@@ -1203,8 +1301,9 @@ def build_pages(toc_rows=""):
         '</tr>'
         '<tr><td>Power</td><td>9 V DC, 2.1 mm barrel, centre negative</td>'
         '</tr>'
-        '<tr><td>Memory</td><td>4 voice slots plus the global charge '
-        'configuration, kept across power cycles</td></tr>'
+        '<tr><td>Memory</td><td>6 voice slots, the global charge '
+        'configuration and the chord mode setting, kept across power '
+        'cycles</td></tr>'
         '</table>',
         "y", "Specifications"))
 
@@ -1213,8 +1312,8 @@ def build_pages(toc_rows=""):
         '<p>From <strong>bypass</strong>, press both footswitches together '
         'and hold about 2 seconds. The pedal appears over USB [universal '
         'serial bus] in DFU [Device Firmware Upgrade] mode. '
-        'Flash it with the Daisy Web Programmer or dfu-util. Press the '
-        'switches together, not one and then the other.</p>'
+        'Flash it with the Daisy Web Programmer or dfu-util. Any 2 s with '
+        'both down while bypassed does it, staggered or not.</p>'
         '<h2>Credits</h2>'
         '<p class="small">Formant voice synthesis derived from MonkSynth / '
         'Delay Lama. Pitch detection by cycfi/q, Boost Software License '

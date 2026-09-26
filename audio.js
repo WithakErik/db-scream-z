@@ -1,9 +1,15 @@
 // audio.js - the signal path.
 //
 //   source ─┬─────────────────────────► post-processor input 0 (dry)
-//           └─► fof-processor (voice) ─► post-processor input 1
-//                                            │
-//                                            ▼  destination
+//           ├─► fof-processor (voice)   ─┐
+//           └─► chord-processor (chord) ─┴► post-processor input 1
+//                                             │
+//                                             ▼  destination
+//
+// Only one of fof/chord is ever connected to a source: which one is fixed
+// for the page's lifetime by chordMode (the ?chord URL flag, decided once
+// in app.js), the same way the pedal's firmware runs one engine or the
+// other depending on how it booted.
 //
 // The pedal always sees a live signal, so every source here (built-in clip,
 // uploaded file, microphone) feeds the engine in live mode. The lab's
@@ -11,6 +17,7 @@
 // and the firmware has no equivalent.
 
 import { kGateLevels, formantScaleFrom } from './voice-params.js';
+import { toChordEngineParams } from './chord-map.js';
 
 // The lab's digital x4 stands in for the analog input gain the pedal's
 // hardware provides, and the gate thresholds were tuned against it.
@@ -40,7 +47,7 @@ export function toFofParams(v) {
     // Grain length is pinned for the same reason unison and aspiration are:
     // the engine keeps its support and the pedal stops driving it. 20 ms is
     // the engine's own default (grainMs default in fof-processor.js), and
-    // every character and beast already stored exactly 20, so no voice
+    // every character already stored exactly 20, so no voice
     // changed when the knob was retired on 2026-09-02. Knob 6 is detune
     // now, and the knob detune left is vibrato depth.
     grainMs: 20,
@@ -60,9 +67,14 @@ export function toFofParams(v) {
 }
 
 export class AudioEngine {
-  constructor() {
+  // chordMode fixes which engine the page drives for its whole lifetime,
+  // mirroring the firmware: one engine runs at a time, decided by how the
+  // pedal booted, never switched mid-session.
+  constructor(chordMode = false) {
+    this.chordMode = chordMode;
     this.ctx = null;
     this.fof = null;
+    this.chord = null;
     this.post = null;
     this.source = null;       // the currently connected source node
     this.stream = null;       // live input MediaStream, if any
@@ -76,6 +88,9 @@ export class AudioEngine {
   get ready() { return this.ctx !== null; }
   get duration() { return this.buffer ? this.buffer.duration : 0; }
 
+  // The engine that is actually wired into the graph, by mode.
+  get activeEngine() { return this.chordMode ? this.chord : this.fof; }
+
   async start() {
     if (this.ctx) {
       if (this.ctx.state === 'suspended') await this.ctx.resume();
@@ -85,21 +100,34 @@ export class AudioEngine {
       sampleRate: SAMPLE_RATE, latencyHint: 'interactive',
     });
     await ctx.audioWorklet.addModule('fof-processor.js');
+    await ctx.audioWorklet.addModule('chord-processor.js');
     await ctx.audioWorklet.addModule('post-processor.js');
 
     this.fof = new AudioWorkletNode(ctx, 'fof-processor', {
       numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1],
     });
+    this.chord = new AudioWorkletNode(ctx, 'chord-processor', {
+      numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1],
+    });
     this.post = new AudioWorkletNode(ctx, 'post-processor', {
       numberOfInputs: 2, numberOfOutputs: 1, outputChannelCount: [2],
     });
-    this.fof.connect(this.post, 0, 1);
+    // Only the active engine feeds post input 1: wiring both permanently
+    // would sum the idle engine's output into it, and an idle fof/chord
+    // node is not guaranteed to render exact silence with no source
+    // connected upstream (residual internal state, e.g. a glide target).
+    this.activeEngine.connect(this.post, 0, 1);
     this.post.connect(ctx.destination);
 
-    this.fof.port.onmessage = (e) => {
+    // Only the active engine's port feeds onLiveState: the idle node still
+    // runs and posts its own livestate, which would otherwise overwrite
+    // the status line with the other engine's readings.
+    this.activeEngine.port.onmessage = (e) => {
       if (e.data.type === 'livestate') this.onLiveState(e.data);
     };
     // Live mode, permanently: everything upstream is a real-time signal.
+    // fof-processor.js is the only engine that has a live/transport
+    // concept; chord-processor.js has no pitch tracker to reset.
     this.fof.port.postMessage({ type: 'live', on: 1 });
     this.fof.port.postMessage({ type: 'transport', playing: true, reset: true });
     this.ctx = ctx;
@@ -114,11 +142,27 @@ export class AudioEngine {
     });
   }
 
+  // c is a ChordParams object (chord-map.js), already run through
+  // applyChargeChord by the caller; mouthOpen is UI state (the right stomp)
+  // that lives outside the saved setting, so it is threaded through here
+  // rather than folded into c.
+  setChord(c, mouthOpen, engaged) {
+    if (!this.ctx) return;
+    this.chord.port.postMessage({
+      type: 'params', values: toChordEngineParams(c, mouthOpen, INPUT_GAIN),
+    });
+    this.post.port.postMessage({
+      type: 'params', tone: c.tone, vocal: c.vocal_vol,
+      mix: c.mix, master: c.master_vol, engaged,
+    });
+  }
+
   // The burp fix: on a bypass -> engage edge, clear the overlap buffer and
   // the post chain's filter state, never the pitch tracker.
   engageEdge() {
     if (!this.ctx) return;
-    this.fof.port.postMessage({ type: 'transport', playing: true, reset: true });
+    if (this.chordMode) this.chord.port.postMessage({ type: 'reset' });
+    else this.fof.port.postMessage({ type: 'transport', playing: true, reset: true });
     this.post.port.postMessage({ type: 'reset' });
   }
 
@@ -138,7 +182,7 @@ export class AudioEngine {
   }
 
   connect(node) {
-    node.connect(this.fof);
+    node.connect(this.activeEngine);
     node.connect(this.post, 0, 0);
     this.source = node;
   }
@@ -200,34 +244,49 @@ export class AudioEngine {
 
   // ---- offline render ----
   // Re-runs the whole file through the same two worklets with the settings
-  // frozen as they are now, faster than real time.
-  async render(voice, onProgress) {
+  // frozen as they are now, faster than real time. Same mode branch as the
+  // live graph: "download" in chord mode renders chord mode.
+  async render(payload, onProgress) {
     if (!this.buffer) throw new Error('nothing loaded to render');
     const len = Math.ceil(this.buffer.duration * SAMPLE_RATE);
     const off = new OfflineAudioContext(2, len, SAMPLE_RATE);
-    await off.audioWorklet.addModule('fof-processor.js');
+    await off.audioWorklet.addModule(this.chordMode ? 'chord-processor.js' : 'fof-processor.js');
     await off.audioWorklet.addModule('post-processor.js');
 
-    const fof = new AudioWorkletNode(off, 'fof-processor', {
+    const engine = new AudioWorkletNode(off, this.chordMode ? 'chord-processor' : 'fof-processor', {
       numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1],
     });
     const post = new AudioWorkletNode(off, 'post-processor', {
       numberOfInputs: 2, numberOfOutputs: 1, outputChannelCount: [2],
     });
-    fof.connect(post, 0, 1);
+    engine.connect(post, 0, 1);
     post.connect(off.destination);
-    fof.port.postMessage({ type: 'live', on: 1 });
-    fof.port.postMessage({ type: 'transport', playing: true, reset: true });
-    fof.port.postMessage({ type: 'params', values: toFofParams(voice) });
-    post.port.postMessage({
-      type: 'params', tone: voice.tone,
-      vocal: voice.vocal_vol, mix: voice.mix, master: voice.master_vol,
-      engaged: true,
-    });
+    if (this.chordMode) {
+      // No forced-open mouth in a download: the envelope follows the
+      // rendered guitar's own dynamics, same as a normal right-stomp-up
+      // playthrough.
+      engine.port.postMessage({
+        type: 'params', values: toChordEngineParams(payload, false, INPUT_GAIN),
+      });
+      post.port.postMessage({
+        type: 'params', tone: payload.tone,
+        vocal: payload.vocal_vol, mix: payload.mix, master: payload.master_vol,
+        engaged: true,
+      });
+    } else {
+      engine.port.postMessage({ type: 'live', on: 1 });
+      engine.port.postMessage({ type: 'transport', playing: true, reset: true });
+      engine.port.postMessage({ type: 'params', values: toFofParams(payload) });
+      post.port.postMessage({
+        type: 'params', tone: payload.tone,
+        vocal: payload.vocal_vol, mix: payload.mix, master: payload.master_vol,
+        engaged: true,
+      });
+    }
 
     const src = off.createBufferSource();
     src.buffer = this.buffer;
-    src.connect(fof);
+    src.connect(engine);
     src.connect(post, 0, 0);
     src.start();
     if (onProgress) onProgress(0);

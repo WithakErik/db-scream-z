@@ -439,8 +439,75 @@ class QPitchDetector {
     }
     return f;
   }
+  // pitch_detector::reset(): forget the frequency so the next lock is fresh
+  reset() { this.frequency = 0; }
 }
+
 /* =============== end Cycfi Q BACF port =============== */
+
+/* ============ PitchTracker: port of firmware/engine/pitch_tracker.hpp ======
+ * QPitchDetector -> OctaveGate, plus a detector reset after
+ * silence. The header carries the measurements and the reasons; this is a
+ * value-for-value port, and pedal/tests/pitch-tracker.test.mjs reads the
+ * gate constants out of the header so the two cannot drift. */
+
+class OctaveGate {
+  static kMinPeriodicity = 0.8;     // q's pitch_detector::min_periodicity
+  static kOctaveHoldWindows = 3;    // ~43 ms of analysis windows
+  static kOctLo = 1.94251;          // 2 * 2^(-50/1200)
+  static kOctHi = 2.05917;          // 2 * 2^(+50/1200)
+  static kSameLo = 0.971532;        // 2^(-50/1200)
+  static kSameHi = 1.029302;        // 2^(+50/1200)
+
+  // f0Init is JS-only: the firmware always starts at 200 (JS liveF0 init),
+  // but the worklet rebuilds its tracker on every 'live' message and has
+  // always kept liveF0 across that, so it passes the held value in.
+  constructor(f0Init = 200) {
+    this.f = f0Init;
+    this.pendingF = 1; this.pendingN = 0;
+    this.voiced = false;
+  }
+  window(f, periodicity) {
+    const G = OctaveGate;
+    if (f <= 0 || periodicity < G.kMinPeriodicity) { this.pendingN = 0; return; }
+    if (!this.voiced) { this.voiced = true; this.accept(f); return; }
+    const r = f / this.f;
+    const octave = (r > G.kOctLo && r < G.kOctHi) ||
+                   (r > 1 / G.kOctHi && r < 1 / G.kOctLo);
+    if (!octave) { this.accept(f); return; }
+    const rp = f / this.pendingF;
+    this.pendingN = (this.pendingN > 0 && rp > G.kSameLo && rp < G.kSameHi)
+      ? this.pendingN + 1 : 1;
+    this.pendingF = f;
+    if (this.pendingN >= G.kOctaveHoldWindows) this.accept(f);
+  }
+  unvoiced() { this.voiced = false; this.pendingN = 0; }
+  f0() { return this.f; }
+  accept(f) { this.f = f; this.pendingN = 0; }
+}
+
+class PitchTracker {
+  constructor(sps, f0Init = 200) {
+    this.pd = new QPitchDetector(70, 1300, sps, -45);
+    this.gate = new OctaveGate(f0Init);
+    this.silenceAfter = Math.floor(this.pd.pd.zc.windowSize * 3 / 2);
+    this.sinceReady = 0;
+    this.per = 0;
+  }
+  process(x) {
+    const ready = this.pd.process(x);
+    this.per = this.pd.periodicity();
+    if (ready) {
+      this.sinceReady = 0;
+      this.gate.window(this.pd.frequency, this.per);
+    } else if (++this.sinceReady === this.silenceAfter) {
+      this.gate.unvoiced();
+      this.pd.reset();
+    }
+  }
+  f0() { return this.gate.f0(); }
+  periodicity() { return this.per; }
+}
 
 const MAX_UNISON = 8;
 
@@ -604,8 +671,10 @@ class FofProcessor extends AudioWorkletProcessor {
     } else if (m.type === 'live') {
       this.live = m.on ? 1 : 0;
       // BACF detector: full audio rate, 70-1300 Hz, -45 dB hysteresis
-      // (the constructor values Cycfi's own guitar test suite uses)
-      this.qpd = new QPitchDetector(70, 1300, this.sr, -45);
+      // (the constructor values Cycfi's own guitar test suite uses),
+      // behind the firmware's octave gate (PitchTracker above).
+      // The held liveF0 survives the rebuild, as it always has.
+      this.qpd = new PitchTracker(this.sr, this.liveF0);
       this.trackerReset();
       this.envFast = 0; this.envPeak = 0.05;
       this.gateOpen = false; this.gateGain = 0;
@@ -838,11 +907,11 @@ class FofProcessor extends AudioWorkletProcessor {
     this.liveAmp = rawAmp * this.gateGain;
 
     // BACF path: full-rate, no decimation, no blanking/votes/median needed.
-    // The detector's own median-3 + bias logic is the whole stabiliser.
+    // The detector's own median-3 + bias logic plus the octave gate is the
+    // whole stabiliser; the tracker holds the last f0 on unvoiced itself.
     if (this.p.useBacf && this.qpd) {
       this.qpd.process(x);
-      const f = this.qpd.frequency;
-      if (f > 0) this.liveF0 = f;      // hold last on unvoiced
+      this.liveF0 = this.qpd.f0();
       this.liveConf = this.qpd.periodicity();
       return;
     }
@@ -1089,5 +1158,9 @@ class FofProcessor extends AudioWorkletProcessor {
     return true;
   }
 }
+
+// For pedal/tests/pitch-tracker.test.mjs: a worklet module cannot export.
+FofProcessor.OctaveGate = OctaveGate;
+FofProcessor.PitchTracker = PitchTracker;
 
 registerProcessor('fof-processor', FofProcessor);

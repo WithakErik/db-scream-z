@@ -21,10 +21,13 @@ int main() {
   // about rather than silently passing. v6 dropped VoiceParams::unison when
   // the voices control was retired (2026-09-01); v7 (2026-09-03) changed the
   // factory charge config with no layout change, bumped so a pedal with a
-  // v6 block in QSPI actually picks the new defaults up.
+  // v6 block in QSPI actually picks the new defaults up. v8 (2026-09-24)
+  // appended the chord block; a v7 store migrates to it (test_store.cpp).
+  // v9 (2026-09-25) grew the slots to six for the third bank; v8 and v7
+  // migrate (see test_store.cpp).
   {
     VoiceStore s = factory_store();
-    assert(s.version == 7 && kVoiceStoreVersion == 7);
+    assert(s.version == 9 && kVoiceStoreVersion == 9);
     assert(s.charge.gain == 1);   // on
     assert(s.charge.time == 2);   // Birit Spomb
     assert(s.charge.decay == 1);  // slow

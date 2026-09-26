@@ -68,7 +68,9 @@ v12). It contains, top to bottom:
    instead; the JS is the behavioural reference. Config:
    `pitch_detector(70_Hz, 1300_Hz, sps, -45_dB)`, fed the FULL-RATE input
    sample (no decimation), `get_frequency()` per sample, hold last value
-   when it returns 0.
+   when it returns 0. Since 2026-09-24 the firmware and the emulator both
+   gate octave jumps on top of this and reset the detector after silence;
+   see the "Pitch:" row in section 4.
 2. The FOF engine: per-voice grain tables (`buildGrain`), trigger +
    overlap-add loop, common vibrato LFO, register/transpose, quantizer,
    glide, leveler, envelope follower, noise gate. Port each verbatim.
@@ -90,7 +92,7 @@ v12). It contains, top to bottom:
    reproduces the v12 milestone reference renders either, an accepted
    cost of the removal (see the vocal size design spec section 7). The
    LFO itself returned to the engine 2026-09-02 as menu 3 knobs 4 and 5
-   (vibrato rate and depth), factory OFF for every character and beast;
+   (vibrato rate and depth), factory OFF for every character;
    render.cpp's renders stay unreconciled with v12, since no stored voice
    carries a nonzero vibrato to reproduce.
 4. The old YIN/causal tracker in the same file is DEAD CODE for firmware:
@@ -123,7 +125,7 @@ section 11 explains the history.
 | Envelope: 6 ms attack / 80 ms release, peak-normalised with FLOOR 0.05, output amp scaled x0.5 | silence-AGC (constant Ahhh from noise floor); WaveShaper-era clipping |
 | Noise gate on raw env: hysteresis open at `gate`, close at `gate/2`, gain slew 5 ms open / 60 ms close | mixer hiss driving the voice; gate chatter |
 | Mix ALL input channels (average) | right-channel guitar silently dropped |
-| Pitch: BACF full-rate 70-1300 Hz, -45 dB hysteresis; hold last f on unvoiced | octave-down above F5 (old 700 Hz cap); tracking latency |
+| Pitch: BACF full-rate 70-1300 Hz, -45 dB hysteresis; hold last f on unvoiced. Since 2026-09-24 (`pitch_tracker.hpp`): the detector still reads the raw sample (a q `dynamic_smoother` in front was measured, -17..-33% burst but ~9% octave-class drift from v12, and lost the A/B listening test; the full `signal_conditioner` measured worse); an octave gate takes a reading only at periodicity >= 0.8, holds an octave jump (within 50 cents) until it repeats for 3 windows (~43 ms) and takes any other change at once; after 43 ms with no analysis window the detector is `reset()` and the next confident reading is taken at once | octave-down above F5 (old 700 Hz cap); tracking latency; octave blips; a note after silence folded onto the previous one by q's harmonic snap (A2, gap, A3 read A2) |
 | Quantizer: 32 steps/semitone on the TRUE octave (idx = round(note*32)) | everything an octave low (MonkSynth's internal -12 offset trap) |
 | Transpose = plain 2^octaveShift multiply; characters NEVER change pitch | the +2-octave "sounds too high" failure |
 | Grain floor 16 Hz | -3 octave transpose clamping to 50 Hz |
@@ -131,7 +133,7 @@ section 11 explains the history.
 | NO noise sources anywhere in the voice path. The engine's aspiration (2 inharmonic sines) is the nearest thing and the pedal pins it to 0: main.cpp never passes it through. Removed from the controls 2026-09-01 after it was measured as the on-hardware "static", +22.6 dB in the 3-6 kHz band at 0.3 with no change in broadband level | the rejected hiss |
 | Unison pinned to 3, not reachable from any control. Retired 2026-09-01 after stacks above 3 were heard as a ringmod-like artifact on hardware, audible even at mix 0 where the voice path is multiplied by zero. Briefly dropped to 1 on 2026-09-02 and reverted the same day, see section 9 | per-block grain accumulation cost scaling with voice count |
 | `DBSCREAMZ_MAX_UNISON=3` on the firmware build, so the grain tables hold exactly the pinned stack. `build_grains()` fills all `kMaxUnison` voices on every rebuild but `process_block` reads only the first `p.unison`, so voices 3..7 were built and never read until 2026-09-02. The HOST default stays 8 to match the frozen JS `MAX_UNISON`, and `main.cpp`'s `static_assert(kPinnedUnison <= kMaxUnison)` ties the two | 75 KB of SRAM spent on tables nothing reads, and grain rebuilds 8/3 more expensive than needed |
-| Grain length pinned to 20 ms, not reachable from any control. Retired 2026-09-02 to free knob 6; every character and beast already stored exactly 20 | per-block cost scales with grain length as well as voice count |
+| Grain length pinned to 20 ms, not reachable from any control. Retired 2026-09-02 to free knob 6; every character already stored exactly 20 | per-block cost scales with grain length as well as voice count |
 
 ## 5. Ear-approved defaults (v12) - bake as firmware constants
 
@@ -260,6 +262,13 @@ session, in C++ form.
   dropout, and it logs the tracked f0 at that block so the pitch
   dependence is visible directly. Do not go back to estimating.
 
+  **2026-09-25: the meter is compiled out by default.** Its USB serial
+  log pulls in libDaisy's USB CDC stack and printf, about 6 KB, and with
+  chord mode the image overflowed the 128 KB internal flash by 5616
+  bytes. Build `CPU_LOG=1 tools/flash.sh` (after `make clean` in
+  `firmware/hothouse`) to get it back; that image only links once the
+  firmware has headroom again without it.
+
   **2026-09-03: measured, and the crackle IS a deadline miss.** The meter,
   on hardware, playing up the neck:
 
@@ -357,6 +366,50 @@ session, in C++ form.
      but with the least margin the pedal has. Step 2 is what buys that
      margin back.
 
+  **2026-09-24: an octave gate shipped; a lowpass in front of the tracker
+  was measured and NOT shipped.** The tracker now gates octave jumps and
+  resets q's detector after silence (section 4, "Pitch:" row; the reasons
+  are in `pitch_tracker.hpp`). The detector still reads the raw sample, so
+  the autocorrelate() burst is exactly what it was. The lowpass tried in
+  front of it, q's `dynamic_smoother`, counted the way the table above was
+  (words through an instrumented `count_bits`, a throwaway harness, fed
+  `guitar_long.wav`; "+1/+2 octaves" is sample skip), worst analysis
+  window in ACF calls, 99th percentile in brackets, at the pedal's x1
+  input gain and the render's x4:
+
+  | input | x1 raw (shipped) | x1 smoothed | x4 raw (shipped) | x4 smoothed |
+  |---|---|---|---|---|
+  | as recorded | 75 (37) | 51 (26) | 74 (37) | 51 (31) |
+  | +1 octave | 208 (129) | 144 (94) | 212 (125) | 190 (98) |
+  | +2 octaves | 539 (359) | 360 (342) | 646 (363) | 533 (345) |
+
+  The raw x4 column reproduces the 09-03 table (75 / 212 / 646) to within
+  one call. The smoother cut the worst window 17-33%, but the 99th
+  percentile at +2 octaves barely moved: up there the edges belong to the
+  fundamental itself. It also moved the render's octave-class
+  disagreement with the v12 trace from 0.29% (gate only) to ~9%. A
+  spectral check found it right more often than the old tracker on
+  weak-fundamental low notes (the 87.6 Hz low F at 25.0 s of
+  `guitar_long.wav`) but wrong in new ways (two octaves low at 21.8 s),
+  and the user's A/B listening test on 2026-09-24 preferred gate only.
+  Also measured and dropped: q's full `signal_conditioner` (x4: 99 / 273 /
+  1005, WORSE, its compressor's makeup gain lifts decaying tails over the
+  -45 dB hysteresis) and its 70 Hz highpass (x4: 39 / 133 / 369 with the
+  smoother, but it doubled octave jumps and put 24% of the render's
+  blocks an octave class away from the v12 trace).
+
+  Octave jumps (consecutive blocks within 50 cents of an octave,
+  `tools/octave_jumps.py`) over the same six cases, x1 then x4, as
+  recorded / +1 / +2: before 5/8/6 and 4/13/10 (46), gate only 3/6/5 and
+  2/11/8 (35); no jump that comes back within 100 ms remains. Most of the
+  remaining jumps last hundreds of ms (for example 140 Hz reading as
+  70 Hz), which no 43 ms persistence rule can catch. The render matches
+  `artifacts/ref` on every `compare_metrics.py` gate (f0 agreement 0.0001
+  cents median, 0.29% octave class; loudness max 2.30 dB, which was 3.08
+  dB and failing before the gate). The gate runs once per analysis window
+  and is compares only, no libm calls; its flash cost is not yet measured
+  on the pedal.
+
   The vibrato LFO restored 2026-09-02 costs one `std::sin` per sample,
   shared across the whole stack rather than one per voice. Against the
   pedal as it stood on 2026-09-01 that is one more transcendental per
@@ -364,6 +417,11 @@ session, in C++ form.
   two (the LFO and its jitter oscillator) and only one came back. If the
   ringmod artifact is ever heard again this LFO is a suspect too, and the
   cheap fix is a lookup-table LFO rather than removing the control.
+- Chord mode (section 11) runs neither the grain engine nor the pitch
+  tracker: its per-sample cost is the front end, a soft clip, three SVFs
+  [state-variable filters] and the leveler, plus 3 `sin`, 3 `cos` and 3
+  `pow` every 16 samples for the coefficient update. Not yet measured on
+  hardware; the CpuLoadMeter above will show it once a chord session logs.
 - RAM: measured from the map file, not estimated. `.bss` links into
   SRAM (512 KB at 0x24000000), NOT the 128 KB DTCMRAM, and was 119 KB
   at MAX_GRAIN_LEN 1024. The grain tables dominate it at 64 bytes per
@@ -439,78 +497,162 @@ fixed-pitch and tracking checks to fall back to if a milestone 5 script
 fails, and MILESTONE0.md documents the host harness that regenerates the
 reference renders.
 
-## 11. Beast mode (the hidden bank)
+## 11. Chord mode
 
 **Gesture: hold BOTH footswitches while powering the pedal on.**
 
-The four DBZ characters are replaced for that session by four sustained
-animal calls: Set 1 is Cow (right) / Wolf (left), Set 2 is Whale (right)
-/ Elephant (left). Toggle 2 still pages between the sets, Freeform is
-unchanged, and charge mode works on the animals exactly as it does on the
-characters.
+The six DBZ characters are replaced for that session by a single vowel
+filter driven straight off the guitar's own signal, chords included. No
+pitch tracker runs anywhere in this path, so it adds no delay and cannot
+make an octave error. Chord mode design spec, 2026-09-24.
 
-Nothing is written to QSPI. The save chord still works as a session
-sandbox (tweak a cow, save it, keep it until you pull the plug), but
-`main.cpp` skips `storage->Save()` while beast mode is active, so the
-saved characters can never be overwritten by it. Power cycle to get them
-back.
+### Signal path: why no pitch tracker runs
 
-Why it is cheap: `ui_controller.hpp` holds a `const VoiceStore*` and only
-ever reads it, so the whole mechanism is pointing that at a static store
-built by `beast_store()`. The switches are already debounced by the
-50-pass ADC settle loop that runs before `ui.init()`.
+`firmware/engine/chord_engine.hpp`'s `ChordEngine::process_block()`:
 
-**The one real collision, and how it is handled.** The pedal boots
-BYPASSED, which is exactly when the Hothouse DFU escape is armed, and that
-escape fires once both stomps have been held for 2000 ms
+```
+in -> LiveFrontEnd (gate, peak-normalised amp)
+in -> soft clip -> 3 x TPT bandpass, summed -> leveler -> x amp x 0.5
+```
+
+The three bandpasses sit at the F1/F2/F3 formant triple for whichever
+vowel the mouth follower has reached; the follower itself is just
+`amp * sensitivity` (or forced fully open while the right stomp is held)
+smoothed by an attack/release pair, sweeping between `closed_vowel` and
+`open_vowel` in log frequency (`vowel_formants()`). Because the vowel
+comes from picking dynamics rather than a tracked fundamental, the same
+three filters pass a chord exactly as they pass a single note: there is
+nothing in the chain that needs one pitch to lock onto. `update_coefs()`
+recomputes the three filters' coefficients every `kChordCoefEvery` (16)
+samples at the currently smoothed formant frequencies, not every sample,
+because the mouth smoother already makes the motion continuous and
+per-sample coefficient recomputation would be the most expensive thing in
+the path for no audible gain.
+
+No new libm transcendentals were spent on this: `tan` and `tanh` are not
+linked in the firmware build, so the TPT prewarp uses `sin`/`cos`
+(`prewarp_g()`, both already linked for the FOF engine) and the drive
+stage is a Pade rational approximation of `tanh` (`soft_clip()`), exact at
+0 and +/-1 at +/-3, odd and monotone.
+
+### `ChordUiController`: a separate class, on purpose
+
+`firmware/hothouse/chord_ui.hpp` is not a branch inside `UiController`; it
+is its own class, because chord mode's gesture surface genuinely differs:
+no slots, no pages, no save chord, and a momentary right stomp that is
+routinely held for seconds at a time. Folding that into the normal-mode
+state machine would put a mode branch in every gesture path the normal
+pedal depends on. Only the LEFT stomp latches (at `kHoldMs`, 1000 ms,
+under the foot); the RIGHT stomp is the mouth, held past that threshold as
+a matter of course, and must never latch anything. A tap of LEFT toggles
+engage/bypass outside the menu, or leaves the chord menu when latched.
+Both stomps together starts a charge, but only when already engaged and
+outside the menu, mirroring `UiController`'s charge gesture exactly. A
+both-press closes the mouth, but once a charge's LEFT is let go with RIGHT
+still held the mouth opens again; the both-press swallow itself lasts
+until both stomps are up, so in the chord menu a LEFT tap while RIGHT is
+held is ignored, as in normal mode.
+
+### Store v9, the v8/v7 migration, and `PersistentStorage`
+
+`firmware/hothouse/voice_params.hpp` is the authority: see
+`kVoiceStoreVersion` and `migrate_store()` there for the exact layout and
+migration logic. Store v9 (three-banks spec, 2026-09-25) holds six voice
+slots (`VoiceStore::slots[6]`: 0/1 Set 1 R/L, 2/3 Set 2 R/L, 4/5 Set 3
+R/L), the global `ChargeConfig`, and one `ChordParams` block. The new
+slots are APPENDED to the array, so charge and chord move to new offsets
+and a v8 image is not a valid v9 prefix past slot 3. `migrate_store()`
+reads a v8 or v7 image through the frozen `VoiceStoreV8` struct (4 slots,
+charge, chord) instead, then rebuilds a factory v9 store and copies the
+old image's four character slots and charge config back in; a v7 image
+has no chord tail (QSPI garbage past its old struct end), so its chord
+setting stays factory, while a v8 image's chord is kept. Any other
+version is a full `factory_store()` reset. `main.cpp` calls
+`storage->Save()` only on the `Migrated` case (persisting the now-valid v9
+image once) and `RestoreDefaults()` only on `Reset`, so a v9-to-v9 boot
+never writes flash it does not have to. `VoiceStore::operator!=` is a
+`memcmp`, which `PersistentStorage<T>` uses in `Save()` and
+`RestoreDefaults()` to skip the QSPI erase+write when the settings already
+match what is stored; a `static_assert` checks the struct's size against
+its fields' sizes with no padding term, which is what makes that `memcmp`
+(and the `ChordParams` `memcmp`s in `chord_ui.hpp`'s auto-save) valid.
+`migrate_store()` itself compares nothing but the version field.
+
+### Auto-save
+
+Chord mode has one saved setting, not six slots, so there is no save
+gesture: `chord_ui.tick()` raises `save_pending_` `kAutoSaveMs` (3000 ms)
+after the last real change, or immediately on leaving the chord menu,
+and only when the live `ChordParams` actually differs (by `memcmp`) from
+what was last persisted. A knob wiggled back to where it started, or a
+menu opened and closed with nothing touched, never dirties it and never
+saves. A live knob is only re-applied once it has moved more than
+`kChordKnobDeadband` (1/256 of travel) from where it was last applied:
+the ADC wanders by a few LSB every block, and without the deadband that
+wander changed `chord_` bit for bit nearly every tick, so the 3 s settle
+never elapsed and main-layer edits were never auto-saved. The main loop polls `chord_ui.save_pending()` every pass, writes
+the snapshot into the store, calls `storage->Save()` (the same blocking
+QSPI erase+write the character save gesture uses; audio keeps running
+through it), and acks with `chord_ui.save_done()`, which is what moves
+`persisted_` to the new baseline. The snapshot is taken from `chord_`
+itself, never from the charge overlay (`apply_charge_chord()` is a pure
+copy onto a separate `ChordParams`), so an auto-save that lands mid-charge
+saves the knob values, not the charged ones.
+
+### The boot_grip DFU guard
+
+The pedal boots BYPASSED, which is exactly when the Hothouse DFU escape is
+armed, and that escape fires once both stomps have been held for 2000 ms
 (`CheckResetToBootloader` / `HOLD_THRESHOLD_MS` in
-`third_party/HothouseExamples/src/hothouse.cpp:181`). Left alone, holding
-both stomps a beat too long at power-up would load the bank and then
-reboot straight into the bootloader, which is a trap rather than a
-feature. So the entry gesture CONSUMES that grip: `main.cpp` swallows the
-DFU check until both stomps have been seen released once. After the first
-release the escape behaves exactly as it always has, beast session or not.
+`third_party/HothouseExamples/src/hothouse.cpp:181`). Chord mode's entry
+gesture is the same grip, already down when the main loop starts, so left
+alone it would trip that escape about two seconds after boot: chord mode
+loads and then the pedal reboots straight into the bootloader, a trap
+rather than a feature. The entry gesture CONSUMES that grip instead:
+`main.cpp`'s `boot_grip` (true only while `chord_mode`) swallows the DFU
+check in the main loop until both stomps have been seen released once.
 Skipping the call outright rather than gating it also leaves Hothouse's
-`dfu_start_time_` at 0, so no partial hold is banked while we wait.
+`dfu_start_time_` at 0, so no partial hold is banked while it waits. After
+the first release the escape behaves exactly as it always has, armed only
+while `chord_ui.bootloader_armed()` (bypassed), same as normal mode.
 
 This is the one behaviour here that no host test can cover, because it
 lives in `main.cpp` and `hothouse.cpp`. Check it by hand on the next
 hardware pass: hold both stomps through power-up for a good five seconds
-and confirm the pedal is playing animals rather than sitting in DFU, then
-release, hold both again for 2 s, and confirm the LEDs do their triple
-alternation and the board enumerates as `0483:df11`.
+and confirm the pedal keeps playing chord mode rather than sitting in DFU,
+then release, hold both again for 2 s, and confirm the LEDs do their
+triple alternation and the board enumerates as `0483:df11`.
 
-The bank lives in `firmware/hothouse/beast_presets.hpp`, deliberately
-outside the generated `firmware/engine/presets.hpp`: a `CharacterPreset`
-carries only formants and detune, and these voices
-need octave, glide and bandwidth to sound like anything. The engine is a
-pitch-tracked formant resynth, which is why all four are SUSTAINED calls;
-it does vowel-like animal voices well and percussive ones (a bark, a
-quack) badly, because there is no per-attack amplitude shaper or noise
-burst anywhere in the chain.
+### The emulator mirror and the drift-guard test
 
-Every number in the bank is a first-pass ear target, in the same state as
-the `kGateLevels` placeholders: plausible on paper, never heard through
-an amp. `firmware/host/tests/test_beast_presets.cpp` asserts ranges and
-relationships rather than exact values so a tuning pass does not mean
-rewriting the test.
+`pedal/` gets chord mode via `?chord` (or `#chord`) on the URL
+(`pedal/static/app.js`), the browser's only equivalent of a decision made
+at boot. Unlike the old hidden bank this replaced, chord mode is
+not a frozen sandbox: it reads and auto-saves `store.chord` through the
+same `persist()` the characters use, because the real pedal auto-saves
+too. `pedal/static/chord-ui.js`, `chord-map.js` and `chord-processor.js`
+are value-for-value ports of `chord_ui.hpp`, `chord_map.hpp` and
+`chord_engine.hpp`.
 
-**Flash cost: NOT YET MEASURED.** The bank is ~208 bytes of table plus
-the builders and about fifteen lines in `main.cpp`; the estimate is well
-under 1 KB against the 7,916 bytes that were free at 123,156 B. Measure
-it on the next build and record the real number here rather than trusting
-that estimate.
+`pedal/tests/chord.test.mjs` is the drift guard, parsing the C++ the same
+way `presets.test.mjs` parses `presets.hpp`: it asserts `kVowelHz`,
+`kChordBaseBw`, `kChordAmp`, `kChordCoefEvery` and `kChordLevelTarget`
+(`chord_engine.hpp`), `kVoiceStoreVersion` (`voice_params.hpp`), and
+`kHoldMs`, `kBootFlashMs`, `kAutoSaveMs` (`chord_ui.hpp`) against the JS
+values. It also runs a cross-implementation check: the JS `ChordEngine`
+over a signal-bearing 2 s slice of `guitar_long.wav` (t = 31 s, picked
+because the first 2 s is near-silent and gates to exact silence on both
+sides, which would prove nothing) against `firmware/host/render --chord`
+over the same slice, both at factory settings and input gain 4. Measured
+max abs difference 2.1e-5, well under the test's 1e-4 tolerance.
 
-The booklet (`docs/BOOKLET.md`, generated) carries a hint that the four
-voices exist and does not say how to reach them. This section and
-HANDOFF.md are the only places the gesture is written down.
+### Task 5 calibration: `kChordLevelTarget`
 
-### In the emulator
-
-`pedal/` gets the same bank via `?beast` (or `#beast`) on the URL, which
-is the browser's only equivalent of a decision made at boot. `app.js`
-swaps the store and its `persist()` refuses to write, mirroring the
-firmware's skipped QSPI commit. `pedal/static/beast-presets.js` is a
-value-for-value port, and `pedal/tests/presets.test.mjs` parses
-`beast_presets.hpp` to keep the two from drifting, the same way it
-already does for `presets.hpp`.
+The leveler target first pass borrowed the grain engine's 0.09 outright.
+Task 5 (2026-09-24) calibrated it against a factory Wukong render on
+`guitar_long.wav`: at 0.09, chord RMS measured 0.0294 against Wukong's
+0.0293, a ratio of +0.03 dB, already inside the 1 dB target and well under
+the 3 dB review gate. It was scaled anyway by the measured ratio
+(`new = old * 10^(-dB/20)`) for an exact match, landing on 0.0897, then
+re-measured at chord RMS 0.0293 against Wukong 0.0293: 0.00 dB, peak
+0.239, no clipping.

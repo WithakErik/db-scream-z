@@ -60,6 +60,12 @@ C_INCLUDES += -I../engine \
 # C_DEFS reaches C++ TUs via the core Makefile's CFLAGS -> CPPFLAGS chain.
 C_DEFS += -DDBSCREAMZ_MAX_GRAIN_LEN=1920
 C_DEFS += -DDBSCREAMZ_MAX_UNISON=3
+# CPU load report over USB serial (main.cpp): off by default because its USB
+# CDC stack costs ~6 KB of the 128 KB flash. `CPU_LOG=1 tools/flash.sh` builds
+# it in. The objects do not depend on this flag, so run `make clean` in this
+# directory whenever you switch it, or a stale main.o is linked.
+CPU_LOG ?= 0
+C_DEFS += -DDBSCREAMZ_CPU_LOG=$(CPU_LOG)
 
 LIBDAISY_DIR = ../third_party/libDaisy
 # No DAISYSP_DIR on purpose: the DSP is ours plus cycfi/q (FIRMWARE.md sec 2).

@@ -58,9 +58,12 @@ MANIFEST = [
     ("knob-pickup.js",       "pedal/static/knob-pickup.js"),
     ("charge.js",            "pedal/static/charge.js"),
     ("voice-params.js",      "pedal/static/voice-params.js"),
-    # app.js imports this at module scope, so leaving it out does not
-    # degrade the page, it blanks it: the import 404s and nothing runs.
-    ("beast-presets.js",     "pedal/static/beast-presets.js"),
+    # app.js imports these at module scope, and audio.js loads the chord
+    # worklet by name, so leaving any out does not degrade the page, it
+    # blanks it: the import 404s and nothing runs.
+    ("chord-map.js",         "pedal/static/chord-map.js"),
+    ("chord-ui.js",          "pedal/static/chord-ui.js"),
+    ("chord-processor.js",   "pedal/static/chord-processor.js"),
     ("audio.js",             "pedal/static/audio.js"),
     ("fof-processor.js",     "pedal/static/fof-processor.js"),
     ("post-processor.js",    "pedal/static/post-processor.js"),

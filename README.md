@@ -19,8 +19,8 @@ DBscreamZ does one thing: play a note, and a voice screams it back at you. The v
 tracker running on the live guitar signal. It tracks what you play, so the
 scream bends and vibratos with the note.
 
-Four voices ship in the pedal: **Wukong**, **Rice**, **Prince** and
-**Piccolo**. Four more (**Boo**, **Fling**, **Ki-Ki** and **Master**) are
+Six voices ship in the pedal: **Wukong**, **Prince**, **Rice**,
+**Piccolo**, **Master** and **Ki-Ki**. Two more (**Boo** and **Fling**) are
 recipes in the [manual](manual/DBscreamZ-manual.pdf) that you dial in by hand
 and save to a slot.
 
@@ -59,6 +59,9 @@ Three ways to feed it:
 - **your own track**: drop in a file, play it through, tweak while it runs,
   and render the result back out as a WAV
 
+Add `?chord` to the page address to try [chord mode](#chord-mode) instead of
+the six characters.
+
 Two controls are buttons rather than switches, because one mouse pointer
 cannot press two footswitches at once: **CHARGE** and **SAVE**. Everything
 else is the real gesture.
@@ -76,8 +79,9 @@ settings card for every voice. This is the short version.
 Plug in, power on. The pedal boots **bypassed**, both LEDs off. Flip the
 middle toggle up (Set 1) and tap the RIGHT stomp: Wukong engages and the right
 LED glows solid orange. Tap again to bypass. Tap LEFT for Prince, and the left
-LED glows blue. Flip the middle toggle down for Set 2: Rice on the right,
-Piccolo on the left.
+LED glows blue. Flip the middle toggle to the middle for Set 2: Rice on the
+right, Piccolo on the left, or down for Set 3: Master on the right, Ki-Ki on
+the left.
 
 The LEDs are single-colour and never change: LEFT is always blue, RIGHT always
 orange. Only whether they are off, solid or blinking ever changes.
@@ -133,12 +137,13 @@ written; all the way up is the deepest it goes.
 | Toggle | Up | Middle | Down |
 |---|---|---|---|
 | 1 Octave | +1 | 0 | -1 |
-| 2 Memory page | Set 1 | Freeform | Set 2 |
+| 2 Memory page | Set 1 | Set 2 | Set 3 |
 | 3 Gate | high | medium | low |
 
-Freeform makes the stomps engage and bypass whatever the knobs are set to
-right now, with no slot involved. While a menu is latched the toggles do
-something else entirely: they configure charge mode.
+Each page holds two voices, one per stomp: Set 1 is Wukong (right) and
+Prince (left), Set 2 is Rice and Piccolo, Set 3 is Master and Ki-Ki. While
+a menu is latched the toggles do something else entirely: they configure
+charge mode.
 
 ### Saving
 
@@ -147,11 +152,8 @@ second and, while **still holding it**, press the other. The held side picks
 the slot: hold RIGHT and press LEFT to write the right slot of the current
 page. Both LEDs blink three times. That hold latches its menu on the way
 past a second, as any hold does; pressing the other stomp drops the menu
-again and saves, so you end up back where you started.
-
-Freeform has no slot, so a save there is refused with one short double
-flicker: pick a page first. Menus never save; exit the menu first, and your
-tweaks survive.
+again and saves, so you end up back where you started. Menus never save;
+exit the menu first, and your tweaks survive.
 
 ### Charge mode
 
@@ -177,8 +179,51 @@ config is global and survives a power cycle.
 > **Check for a lit LED before you stomp both.** Engaged, both stomps together
 > is charge mode. **Bypassed**, the identical gesture held for about two
 > seconds is DFU [Device Firmware Update] mode, which takes the pedal off-line
-> until you power cycle it. Press them together, not staggered: holding one
-> first is the save gesture.
+> until you power cycle it. It counts however they went down, so a save from
+> bypass (hold one, press the other) should be let go of at once.
+
+### Chord mode
+
+Hold both stomps while powering the pedal on and it spends that session as a
+single talking vowel filter driven straight off your own guitar, chords
+included, instead of the six characters. It opens as you pick harder. There
+is no pitch tracker in this path, so there is no delay and it can never make
+an octave error; there is no octave shift either.
+
+Both LEDs flash three times to say it is live. Power off and back on without
+holding both stomps and the six characters are exactly as you left them.
+
+| Stomp | Does |
+|---|---|
+| Left tap | Engage/bypass; a tap in the chord menu leaves it |
+| Left hold ~1 s | Latch the chord menu (left LED blinks); tap left again to leave |
+| Right, held | Open the mouth (right LED lit) |
+| Both together | Charge, whose gain, tone and size settings apply |
+
+Pressing left while holding right starts a charge, and the mouth opens again
+when you let go of left. In the chord menu, lift the right stomp before tapping
+left to leave.
+
+Two knob layers:
+
+| Knob | Main | Chord menu (hold LEFT) |
+|---|---|---|
+| 1 | Vocal volume | Closed vowel |
+| 2 | Mix (dry to voice) | Open vowel |
+| 3 | Master volume | Vocal size |
+| 4 | Tone (dark, flat at centre, bright) | Resonance (soft to sharp) |
+| 5 | Sensitivity (how hard picking opens the mouth) | Attack |
+| 6 | Drive | Release |
+
+The vowel knobs sweep oo, oh, ah, eh, ee: closed vowel is where quiet picking
+sits, open vowel is where the mouth goes as you dig in, or all the way with
+the right stomp held.
+
+Toggle 3 is the gate, same as the characters; toggles 1 and 2 do nothing.
+
+Saving is automatic: a few seconds after you stop adjusting, or the moment you
+leave the chord menu. There is nothing to press, and your saved characters are
+never touched by it.
 
 ### What the LEDs mean
 
@@ -187,12 +232,13 @@ config is global and survives a power cycle.
 | Bypassed | off | off |
 | Left slot engaged | solid | off |
 | Right slot engaged | off | solid |
-| Freeform engaged | solid | solid |
 | Menu 2 latched | off | blinking |
 | Menu 3 latched | blinking | off |
 | Save confirmed | 3 blinks | 3 blinks |
-| Save refused | double flicker | double flicker |
 | Charging | alternating, speeding up | |
+| Chord mode entry | 3 flashes | 3 flashes |
+| Chord mode on | solid | mouth open |
+| Chord menu latched | blinking | off |
 
 ## Building one yourself
 

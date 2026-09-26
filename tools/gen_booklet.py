@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Generate docs/BOOKLET.md: per-character knob-position cards for the
-milestone 5 control surface. Regenerate after any change to
-firmware/engine/presets.hpp or the knob ranges in
-firmware/hothouse/param_map.hpp (the ranges below mirror that header).
+milestone 5 control surface, plus chord mode's own card. Regenerate after
+any change to firmware/engine/presets.hpp, the knob ranges in
+firmware/hothouse/param_map.hpp (the ranges below mirror that header), or
+chord mode's chord_ui.hpp / chord_map.hpp / voice_params.hpp factory_chord().
 
 Values come from presets.hpp (BAKED formants, tract scale applied), not
 presets.json (pre-bake), because the knobs must reproduce the baked values.
@@ -13,11 +14,13 @@ first use, e.g. "DFU [Device Firmware Upgrade]", "LED [light-emitting
 diode]". Later uses may go bare. Also state LED colours as blue LEFT /
 orange RIGHT; they are a build choice, not firmware.
 """
+import math
 import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 PRESETS = ROOT / "firmware" / "engine" / "presets.hpp"
+VOICE_PARAMS = ROOT / "firmware" / "hothouse" / "voice_params.hpp"
 OUT = ROOT / "docs" / "BOOKLET.md"
 
 # Knob ranges: MUST mirror firmware/hothouse/param_map.hpp.
@@ -64,11 +67,15 @@ def menu1_frac(key, v):
         return x / 2.0 + 0.5
     raise KeyError(key)
 SLOTS = {"Wukong": "Set 1, RIGHT", "Prince": "Set 1, LEFT",
-         "Rice": "Set 2, RIGHT", "Piccolo": "Set 2, LEFT"}
+         "Rice": "Set 2, RIGHT", "Piccolo": "Set 2, LEFT",
+         "Master": "Set 3, RIGHT", "Ki-Ki": "Set 3, LEFT"}
 
-# Booklet-only characters: not factory slots, dial by hand and save
-# wherever you like. Same keys as a parsed preset (f1/f2/f3/detune_cents)
-# plus an optional "note" line shown on the card.
+# Booklet-only characters: Boo and Fling, not factory slots, dial by hand
+# and save wherever you like. Same keys as a parsed preset
+# (f1/f2/f3/detune_cents) plus an optional "note" line shown on the card.
+#
+# Master and Ki-Ki were promoted to factory Set 3 on 2026-09-25
+# (tools/gen_presets.py PEDAL_PRESETS).
 #
 # Detune is all that is left of the bottom row's voice stack: thick, frayed
 # voices take a wider spread, thin and piercing ones take a tighter one.
@@ -93,14 +100,6 @@ EXTRA = {
     # modest detune so the edge stays on the formants.
     "Fling": {"f1": 880.0, "f2": 1600.0, "f3": 3050.0,
               "detune_cents": 14.0},
-    # Ki-Ki: shrill piercing female, everything pushed high. Narrowest
-    # detune in the booklet so nothing blunts the point of it.
-    "Ki-Ki": {"f1": 950.0, "f2": 1800.0, "f3": 3350.0,
-              "detune_cents": 8.0},
-    # Master: old raspy male, small dark tract. The widest detune of the
-    # eight, for the frayed edge of an elderly voice.
-    "Master": {"f1": 640.0, "f2": 1080.0, "f3": 2400.0,
-               "detune_cents": 30.0},
 }
 
 # Hand-maintained usage section. MUST mirror firmware/MILESTONE5.md
@@ -114,8 +113,9 @@ USAGE = """\
 Plug in, power on. The pedal boots BYPASSED, both LEDs [light-emitting
 diodes] off. Flip the middle toggle up (Set 1) and tap the RIGHT stomp:
 Wukong engages, the right LED glows solid orange. Tap again to bypass.
-Tap LEFT for Prince (left LED, blue). Flip the middle toggle down for
-Set 2 (Rice right, Piccolo left).
+Tap LEFT for Prince (left LED, blue). Flip the middle toggle to the
+middle for Set 2 (Rice right, Piccolo left), or down for Set 3 (Master
+right, Ki-Ki left).
 
 The two LEDs are single-colour: the LEFT one is always blue, the RIGHT
 one always orange. Nothing on the pedal ever changes an LED's colour;
@@ -167,12 +167,12 @@ into the bottom sixth of the travel.
 | Toggle | Up | Middle | Down |
 |---|---|---|---|
 | 1 Octave | +1 | 0 | -1 |
-| 2 Memory page | Set 1 | Freeform | Set 2 |
+| 2 Memory page | Set 1 | Set 2 | Set 3 |
 | 3 Gate | high | medium | low |
 
-Freeform (toggle 2 middle) makes the stomps engage/bypass whatever the
-knobs are currently set to, no slot involved. While a menu is latched
-the toggles do something different entirely: see Charge mode below.
+Each page holds two voices, one per stomp, so six in all. While a menu
+is latched the toggles do something different entirely: see Charge mode
+below.
 
 ### Saving a sound
 
@@ -181,14 +181,13 @@ Everything you tweak is live but volatile. To SAVE: hold one stomp past
 picks the slot (hold RIGHT + press LEFT = the R slot of the current
 page). That hold latches its menu on the way past 1 second, as any hold
 does; the second press drops the menu again and saves, leaving you
-where you started. Both LEDs blink 3 times. On Freeform there is no slot,
-so the LEDs give one short double-flicker instead: pick a page first.
-Menus never save; exit the menu first (your tweaks stay).
+where you started. Both LEDs blink 3 times. Menus never save; exit the
+menu first (your tweaks stay).
 
 ### CHARGE MODE (the power-up)
 
-Charge mode ONLY happens while a voice is ENGAGED, meaning one or both
-LEDs are lit, and no menu is latched. Check for a lit LED before you
+Charge mode ONLY happens while a voice is ENGAGED, meaning one of the
+LEDs is lit, and no menu is latched. Check for a lit LED before you
 stomp: the same two-stomp hold done while BYPASSED is the firmware
 update gesture instead, and it will take the pedal off-line mid-song.
 
@@ -225,11 +224,9 @@ your saved voices.
 | Bypassed | off | off |
 | R slot engaged | off | solid |
 | L slot engaged | solid | off |
-| Freeform engaged | solid | solid |
 | Menu 2 latched | off | blinking |
 | Menu 3 latched | blinking | off |
 | Save confirmed | 3 blinks | 3 blinks |
-| Save rejected (Freeform) | double-flicker | double-flicker |
 | Charging | alternating, speeding up with the charge | |
 
 ### Firmware update mode
@@ -241,9 +238,10 @@ The pedal makes no sound in this mode and waits for a computer. Power
 cycle it to go back to playing.
 
 Being bypassed is what arms this gesture. Engaged, the identical
-two-stomp hold is CHARGE MODE and can never reach DFU. Press the two
-stomps together, not staggered: holding one for a second first is the
-save gesture.
+two-stomp hold is CHARGE MODE and can never reach DFU. Bypassed, any
+two seconds with both stomps down enters DFU, however they went down:
+a save from bypass (hold one, press the other) completes on the second
+press, so let go at once.
 """
 
 
@@ -259,14 +257,15 @@ def clock(frac):
 
 def parse_presets():
     text = PRESETS.read_text()
-    rx = re.compile(r'\{"(\w+)",\s*\{([\d.]+)f,\s*([\d.]+)f,\s*([\d.]+)f\},'
+    rx = re.compile(r'\{"([\w-]+)",\s*\{([\d.]+)f,\s*([\d.]+)f,\s*([\d.]+)f\},'
                     r'\s*([\d.]+)f\}')
     out = {}
     for m in rx.finditer(text):
         name, f1, f2, f3, dt = m.groups()
         out[name] = {"f1": float(f1), "f2": float(f2), "f3": float(f3),
                      "detune_cents": float(dt)}
-    assert len(out) == 4, f"expected 4 presets, parsed {len(out)}"
+    assert list(out) == ["Wukong", "Rice", "Prince", "Piccolo", "Master",
+                         "Ki-Ki"], f"unexpected presets parsed: {list(out)}"
     return out
 
 
@@ -286,6 +285,36 @@ def row(label, value, lo, hi):
 # the bottom sixth of the travel, unsettable on a real pot.
 def vib_rate_frac(v):
     return (max(0.0, min(50.0, v)) / 50.0) ** (1.0 / 3.0)
+
+
+# Chord mode's own tapers (firmware/hothouse/chord_map.hpp
+# apply_chord_knob()), the same class of fix as vib_rate_frac() above.
+# Most chord knobs are the plain map_lin() row() already inverts
+# correctly (vocal vol, mix, master vol, both vowels) or are the knob
+# position itself (resonance) or near enough to identity that the
+# 32-step quantiser in map_vocal_size() rounds away (vocal size). Three
+# are map_cube()'s cube taper (sensitivity, attack, release) and one is
+# map_drive()'s log taper (drive); tone reuses map_tone(), which
+# menu1_frac() above already inverts for the normal-mode tone knob.
+def cube_frac(v, lo, hi):
+    """Exact inverse of map_cube(t, lo, hi) = lo + (hi - lo) * t**3."""
+    t = (v - lo) / (hi - lo)
+    return max(0.0, min(1.0, t)) ** (1.0 / 3.0)
+
+
+def drive_frac(v):
+    """Exact inverse of map_drive(t) = pow(40.0, t) (chord_map.hpp)."""
+    return math.log(v) / math.log(40.0)
+
+
+def chord_frac(key, v, lo, hi):
+    if key == "drive":
+        return drive_frac(v)
+    if key in ("sensitivity", "attack_ms", "release_ms"):
+        return cube_frac(v, lo, hi)
+    if key == "tone":
+        return menu1_frac("tone", v)
+    return (v - lo) / (hi - lo)
 
 
 def card(name, p):
@@ -322,23 +351,124 @@ def card(name, p):
     return "\n".join(lines)
 
 
-# The beast bank hint. Deliberately says WHAT and not HOW: the gesture is
-# documented in FIRMWARE.md and HANDOFF.md, which owners do not read. See
-# firmware/hothouse/beast_presets.hpp.
-HINT = """## One more thing
+# Chord mode (firmware/hothouse/chord_ui.hpp, chord_map.hpp). Knob ranges
+# MUST mirror the ChordParams field comments in voice_params.hpp.
+CHORD_MAIN = [("Vocal vol", "vocal_vol", 0, 2), ("Mix", "mix", 0, 1),
+              ("Master vol", "master_vol", 0, 2), ("Tone", "tone", -1, 1),
+              ("Sensitivity", "sensitivity", 0, 8), ("Drive x", "drive", 1, 40)]
+CHORD_MENU = [("Closed vowel (0 oo .. 4 ee)", "closed_vowel", 0, 4),
+              ("Open vowel (0 oo .. 4 ee)", "open_vowel", 0, 4),
+              ("Vocal size", "vocal_size", 0, 1),
+              ("Resonance", "resonance", 0, 1),
+              ("Attack ms", "attack_ms", 1, 50),
+              ("Release ms", "release_ms", 20, 500)]
 
-The pedal knows four voices that are not in this booklet, and they are
-not people. They are already in there. Nothing you can do from the front
-panel will find them by accident, and nothing they do can overwrite the
-four characters above.
+# Chord mode's one factory setting (firmware/hothouse/voice_params.hpp
+# factory_chord()). Four fields (vocal_vol, mix, master_vol, tone) plus
+# vocal_size and gate are copied there from factory_voice(0), which is
+# already mirrored above as V12_MENU1, so they are pulled from there
+# instead of duplicated. check_factory_chord() below asserts the rest
+# (chord mode's own literal values) against a regex pull of
+# factory_chord()'s body, the same drift guard parse_presets() gives the
+# character presets.
+FACTORY_CHORD = {
+    "vocal_vol": V12_MENU1["vocal_vol"],
+    "mix": V12_MENU1["mix"],
+    "master_vol": V12_MENU1["master_vol"],
+    "tone": V12_MENU1["tone"],
+    "sensitivity": 3.0,
+    "drive": 10.0,
+    "closed_vowel": 0.0,
+    "open_vowel": 2.0,
+    "vocal_size": V12_MENU1["vocal_size"],
+    "resonance": 0.5,
+    "attack_ms": 10.0,
+    "release_ms": 150.0,
+    "gate": V12_MENU1["gate"],
+}
 
-Someone will have to tell you.
-"""
+
+def check_factory_chord():
+    """Parses factory_chord()'s own literal `c.field = N.Nf;` assignments
+    out of voice_params.hpp and asserts they match FACTORY_CHORD, so a
+    tuning change there cannot silently drift from this booklet. The
+    fields factory_chord() copies from `v` (vocal_vol, mix, master_vol,
+    tone, vocal_size, gate) have no literal here to check against; they
+    are kept in step by hand via V12_MENU1 above instead."""
+    text = VOICE_PARAMS.read_text()
+    m = re.search(r'inline ChordParams factory_chord\(\)\s*\{(.*?)\n\}',
+                  text, re.S)
+    assert m, "factory_chord() not found in voice_params.hpp"
+    rx = re.compile(r'c\.(\w+)\s*=\s*([\d.]+)f;')
+    literal = {name: float(val) for name, val in rx.findall(m.group(1))}
+    assert literal, "no literal c.field = N.Nf; assignments found to check"
+    for key, val in literal.items():
+        assert key in FACTORY_CHORD, (
+            f"factory_chord() sets {key}, not mirrored in gen_booklet.py")
+        assert FACTORY_CHORD[key] == val, (
+            f"factory_chord() {key}={val} but gen_booklet.py FACTORY_CHORD "
+            f"has {FACTORY_CHORD[key]}: update the mirror")
+
+
+def chord_section():
+    lines = [
+        "## Chord mode", "",
+        "Hold both footswitches down and keep holding as you power the",
+        "pedal on: for that session it replaces the six characters with",
+        "one vowel filter, chords included, driven straight off your",
+        "guitar with no pitch tracker anywhere in the path. Both LEDs",
+        "flash three times to say it is live. Power off and back on",
+        "WITHOUT the grip and the six characters are exactly as you",
+        "left them.", "",
+        "| Stomp | Does |", "|---|---|",
+        "| LEFT tap | Engage or bypass. In the chord menu, leaves it "
+        "instead. |",
+        "| LEFT hold ~1 s | Latch the chord menu (left LED blinks). Tap "
+        "LEFT again to leave. |",
+        "| RIGHT, held | Open the mouth: right LED lit for as long as "
+        "you hold it. Momentary, never a menu, never a save. |",
+        "| Both together | Charge, engaged and outside the menu only: "
+        "the same gain, tone and size overlay as the characters. |", "",
+        "Pressing LEFT while holding RIGHT starts a charge, and the mouth",
+        "opens again when you let go of LEFT. In the chord menu, lift",
+        "RIGHT before tapping LEFT to leave.", "",
+        "Toggle 3 is the gate (high/medium/low), same as the characters;",
+        "toggles 1 and 2 do nothing. Chord mode has one setting, not",
+        "six slots, and it saves itself: a few seconds after you stop",
+        "turning a knob, or at once when you leave the chord menu, and",
+        "only when something actually changed. There is nothing to",
+        "press, and your saved characters are never touched by it.", "",
+        "### Main layer (default): knobs 1-6", "",
+        "| Param | Value | Travel | Clock |", "|---|---|---|---|",
+    ]
+    for label, key, lo, hi in CHORD_MAIN:
+        v = FACTORY_CHORD[key]
+        lines.append(frow(label, v, chord_frac(key, v, lo, hi)))
+    lines += [
+        "", "### Chord menu (hold LEFT stomp): knobs 1-6", "",
+        "| Param | Value | Travel | Clock |", "|---|---|---|---|",
+    ]
+    for label, key, lo, hi in CHORD_MENU:
+        v = FACTORY_CHORD[key]
+        lines.append(frow(label, v, chord_frac(key, v, lo, hi)))
+    lines += [
+        "",
+        "Vowel knobs sweep oo, oh, ah, eh, ee (0 to 4): closed vowel is",
+        "where quiet picking sits, open vowel is where the mouth goes as",
+        "you dig in, or all the way with RIGHT held.", "",
+        f"Toggles: 3 Gate = {GATE_POS[FACTORY_CHORD['gate']]} "
+        f"({FACTORY_CHORD['gate']}).", "",
+    ]
+    return "\n".join(lines)
+
+
+CHORD = chord_section()
 
 
 def main():
+    check_factory_chord()
     presets = parse_presets()
-    order = ["Wukong", "Rice", "Prince", "Piccolo"]
+    order = ["Wukong", "Prince", "Rice", "Piccolo", "Master", "Ki-Ki"]
     parts = ["# DBscreamZ: Instruction Booklet",
              "",
              "GENERATED by tools/gen_booklet.py from firmware/engine/",
@@ -351,7 +481,7 @@ def main():
              "# Character settings cards", ""]
     parts += [card(n, presets[n]) for n in order]
     parts += [card(n, p) for n, p in EXTRA.items()]
-    parts += [HINT]
+    parts += [CHORD]
     OUT.write_text("\n".join(parts))
     print(f"wrote {OUT}")
 

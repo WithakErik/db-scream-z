@@ -9,33 +9,56 @@
 //   LEFT hold ~1 s    : latch menu 3 (F3, vibrato, detune), left LED
 //                       blinks
 //   Stomp taps        : recall/engage slots, tap again = bypass; while a
-//                       menu is latched the OTHER stomp's tap = SAVE
-//   Toggle 1: octave +1/0/-1   Toggle 2: page Set1/Freeform/Set2
+//                       menu is latched the OTHER stomp's tap switches
+//                       menus and the blinking side's own tap exits
+//   Save              : hold one stomp past ~1 s, press the other; the
+//                       held side is the slot (menus never save)
+//   Toggle 1: octave +1/0/-1   Toggle 2: page Set1/Set2/Set3
 //   Toggle 3: gate high/med/low (kGateLevels, milestone 3 calibration TBD)
 //   Both stomps together (engaged, no menu): CHARGE MODE power-up ramp,
 //   LEDs alternate and accelerate; release decays. Config via toggles
 //   while a menu is latched. Spec:
 //   docs/superpowers/specs/2026-08-27-charge-mode-design.md
-//   Both stomps held THROUGH power-up: beast mode, the hidden bank
-//   (beast_presets.hpp). Session only, never written to QSPI.
+//   Both stomps held THROUGH power-up: CHORD MODE for this session
+//   (chord_engine.hpp, chord_ui.hpp; chord mode design spec
+//   2026-09-24). Left tap on/off, left hold = chord menu, right held =
+//   open mouth, both = charge. Its one setting auto-saves to QSPI.
 // Bypass = milestone 1 passthrough; engage ramps in over 10 ms.
 
+// The CPU load report (see "CPU load instrumentation" below) is compiled OUT
+// by default. Its USB serial log pulls libDaisy's whole USB CDC stack plus
+// printf into the image, about 6 KB, and with chord mode the firmware no
+// longer fits the 128 KB internal flash with it in (2026-09-25: 5616 bytes
+// over). Build with `CPU_LOG=1` (Makefile) for a diagnostic image, which
+// will only link once the image is back under the limit without it.
+#ifndef DBSCREAMZ_CPU_LOG
+#define DBSCREAMZ_CPU_LOG 0
+#endif
+
+#if DBSCREAMZ_CPU_LOG
 #include <cmath>   // std::isfinite, guarding the CPU report against NaN
+#endif
 
 #include "daisy_seed.h"
 #include "hothouse.h"
 #include "util/PersistentStorage.h"
+#if DBSCREAMZ_CPU_LOG
 #include "util/CpuLoadMeter.h"
+#endif
 
 #include "fof_engine.hpp"
 #include "post_chain.hpp"
 #include "charge.hpp"
 #include "ui_controller.hpp"
-#include "beast_presets.hpp"
+#include "chord_engine.hpp"
+#include "chord_map.hpp"
+#include "chord_ui.hpp"
 
 using clevelandmusicco::Hothouse;
 using daisy::AudioHandle;
+#if DBSCREAMZ_CPU_LOG
 using daisy::CpuLoadMeter;
+#endif
 using daisy::Led;
 using daisy::PersistentStorage;
 using daisy::SaiHandle;
@@ -47,6 +70,11 @@ FofEngine* eng = nullptr;
 PostChain* post = nullptr;
 PersistentStorage<VoiceStore>* storage = nullptr;
 UiController ui;
+ChordEngine* chord_eng = nullptr;
+ChordUiController chord_ui;
+// Decided once at boot (both stomps held through power-up) and never
+// changed: the callback runs exactly one engine and one controller.
+bool chord_mode = false;
 
 // ---- CPU load instrumentation (2026-09-02) --------------------------------
 // FIRMWARE.md section 9 has said since the start that the per-block cost
@@ -64,6 +92,9 @@ UiController ui;
 // Cost when idle: two System::GetTick() reads and a handful of floats per
 // block. The USB serial log is written from the MAIN LOOP only, never from
 // the audio IRQ.
+//
+// Compiled in only with DBSCREAMZ_CPU_LOG=1 (see the top of this file).
+#if DBSCREAMZ_CPU_LOG
 CpuLoadMeter cpu_meter;
 // Written by the audio IRQ, read and cleared by the main loop. A torn read
 // across that boundary would cost one wrong diagnostic line and nothing
@@ -71,6 +102,7 @@ CpuLoadMeter cpu_meter;
 // locking. Deliberately not volatile-qualified beyond that.
 volatile float cpu_worst_load = 0.0f;
 volatile float cpu_worst_f0 = 0.0f;
+#endif
 
 // The grain tables are trimmed on this target (Makefile: MAX_GRAIN_LEN).
 // Grain length is no longer knob-driven: the knob (and map_grain, and its
@@ -183,8 +215,8 @@ static FofParams to_fof_params(const VoiceParams& v) {
   p.vib_depth = v.vib_depth_cents / 100.0;
   // Grain length is pinned for the same reason unison and aspiration are:
   // the engine keeps its support and the pedal stops driving it. 20 ms is
-  // the engine's own default (FofParams::grain_ms), and every character and
-  // beast already stored exactly 20, so no voice changed when the knob was
+  // the engine's own default (FofParams::grain_ms), and every character
+  // already stored exactly 20, so no voice changed when the knob was
   // retired on 2026-09-02. Knob 6 is detune now, and the knob detune left
   // is vibrato depth.
   p.grain_ms = 20.0;
@@ -214,7 +246,9 @@ static FofParams to_fof_params(const VoiceParams& v) {
 // from AudioCallback, including the bypass early-return: a block that skips
 // the engine is the cheap baseline this whole measurement is compared
 // against, so dropping it would bias the numbers toward the engine.
+// A no-op unless DBSCREAMZ_CPU_LOG is on.
 static inline void end_block_metering() {
+#if DBSCREAMZ_CPU_LOG
   cpu_meter.OnBlockEnd();
   // GetMaxCpuLoad() is monotonically non-decreasing between Reset() calls, so
   // it growing means THIS block is the new worst one and the f0 read below is
@@ -223,31 +257,20 @@ static inline void end_block_metering() {
   const float mx = cpu_meter.GetMaxCpuLoad();
   if (mx > cpu_worst_load) {
     cpu_worst_load = mx;
-    cpu_worst_f0 = static_cast<float>(eng->live_f0());
+    // In chord mode the grain engine is idle and its held f0 is meaningless,
+    // so the report logs 0 there.
+    cpu_worst_f0 = chord_mode ? 0.0f : static_cast<float>(eng->live_f0());
   }
+#endif
 }
 
-void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out,
-                   size_t size) {
-  cpu_meter.OnBlockStart();
-  hw.ProcessAllControls();
-  ui.tick(read_inputs());
-
-  // Charge overlay (charge spec sections 3 and 5): a pure copy, the
-  // edit buffer itself is never modified.
-  const VoiceParams vp = apply_charge(ui.edit_buffer(), ui.charge_config(),
-                                      ui.charge_level(), ui.charging());
-  eng->set_params(to_fof_params(vp));
-  post->set(vp.tone, vp.vocal_vol, vp.mix, vp.master_vol);
-
-  if (ui.take_engage_edge()) {
-    // Burp fix + held-f0 preservation (spec sec 7, MILESTONE0.md sec 7):
-    // clear the overlap buffer and front end, never the tracker.
-    eng->clear_output_state();
-    post->reset();
-  }
-
-  const float target = ui.engaged() ? 1.0f : 0.0f;
+// Bypass passthrough, engage ramp, post chain and metering, shared by both
+// engines. `render` fills `mono` with the engine's output for the block.
+template <typename Render>
+static void run_output(AudioHandle::InputBuffer in,
+                       AudioHandle::OutputBuffer out, size_t size,
+                       bool engaged, Render render) {
+  const float target = engaged ? 1.0f : 0.0f;
 
   if (target == 0.0f && ramp <= 0.0f) {
     // Milestone 1 passthrough, verbatim: the bypass branch.
@@ -258,7 +281,7 @@ void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out,
 
   static float mono[kBlockSize];  // matches SetAudioBlockSize below
   const size_t n = size > kBlockSize ? kBlockSize : size;
-  eng->process_block(in[0], mono, static_cast<int>(n));
+  render(in[0], mono, static_cast<int>(n));
   for (size_t i = 0; i < n; ++i) {
     if (ramp < target) {
       ramp += kRampStep;
@@ -276,6 +299,59 @@ void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out,
   end_block_metering();
 }
 
+void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out,
+                   size_t size) {
+#if DBSCREAMZ_CPU_LOG
+  cpu_meter.OnBlockStart();
+#endif
+  hw.ProcessAllControls();
+
+  if (chord_mode) {
+    chord_ui.tick(read_inputs());
+    // Charge overlay: a pure copy, chord_ui's setting is never charged,
+    // so an auto-save can never persist a charge (spec section 4).
+    const ChordParams cp = apply_charge_chord(
+        chord_ui.chord(), chord_ui.charge_config(), chord_ui.charge_level());
+    // input_gain 1.0: hardware analog gain replaces the lab's x4, as in
+    // to_fof_params().
+    chord_eng->set_params(
+        to_chord_engine_params(cp, chord_ui.mouth_open(), 1.0));
+    post->set(cp.tone, cp.vocal_vol, cp.mix, cp.master_vol);
+    if (chord_ui.take_engage_edge()) {
+      // Burp fix, as in normal mode (spec sec 7): clear the filters, front
+      // end and mouth so bypass-era state never bursts out on engage.
+      chord_eng->clear_output_state();
+      post->reset();
+    }
+    run_output(in, out, size, chord_ui.engaged(),
+               [](const float* x, float* y, int n) {
+                 chord_eng->process_block(x, y, n);
+               });
+    return;
+  }
+
+  ui.tick(read_inputs());
+
+  // Charge overlay (charge spec sections 3 and 5): a pure copy, the
+  // edit buffer itself is never modified.
+  const VoiceParams vp = apply_charge(ui.edit_buffer(), ui.charge_config(),
+                                      ui.charge_level(), ui.charging());
+  eng->set_params(to_fof_params(vp));
+  post->set(vp.tone, vp.vocal_vol, vp.mix, vp.master_vol);
+
+  if (ui.take_engage_edge()) {
+    // Burp fix + held-f0 preservation (spec sec 7, MILESTONE0.md sec 7):
+    // clear the overlap buffer and front end, never the tracker.
+    eng->clear_output_state();
+    post->reset();
+  }
+
+  run_output(in, out, size, ui.engaged(),
+             [](const float* x, float* y, int n) {
+               eng->process_block(x, y, n);
+             });
+}
+
 int main() {
   hw.Init(true);  // 480 MHz boost, budgeted in FIRMWARE.md section 8
   hw.SetAudioBlockSize(kBlockSize);
@@ -284,18 +360,27 @@ int main() {
   led_left.Init(hw.seed.GetPin(Hothouse::LED_1), false);
   led_right.Init(hw.seed.GetPin(Hothouse::LED_2), false);
 
-  // Voice memory: QSPI-backed, factory characters on first boot or on a
-  // schema version mismatch (spec section 6). Writes ONLY on save.
+  // Voice memory: QSPI-backed, factory characters on first boot or on an
+  // unmigratable schema version (spec section 6). Writes ONLY on save,
+  // chord mode's auto-save, and once after a v8 or v7 migration.
   static PersistentStorage<VoiceStore> store_obj(hw.seed.qspi);
   store_obj.Init(factory_store());
-  if (store_obj.GetSettings().version != kVoiceStoreVersion)
-    store_obj.RestoreDefaults();
+  // v9 grew the slots to six; a v8 or v7 image keeps its four characters
+  // and charge config, and a v8 image its chord setting too
+  // (voice_params.hpp migrate_store, three-banks spec section 4).
+  switch (migrate_store(store_obj.GetSettings())) {
+    case StoreLoad::Current: break;
+    case StoreLoad::Migrated: store_obj.Save(); break;
+    case StoreLoad::Reset: store_obj.RestoreDefaults(); break;
+  }
   storage = &store_obj;
 
   static FofEngine engine(48000.0);  // static: engine buffers live in .bss
   static PostChain post_obj(48000.0f);
   eng = &engine;
   post = &post_obj;
+  static ChordEngine chord_engine(48000.0);  // static: .bss, like the above
+  chord_eng = &chord_engine;
 
   // Let the ADC and the AnalogControl smoothing settle so the boot knob
   // captures (pickup references) are real positions, not zeros.
@@ -304,70 +389,86 @@ int main() {
     hw.ProcessAllControls();
     hw.DelayMs(1);
   }
-  // Beast mode (beast_presets.hpp): both stomps held THROUGH power-up
-  // swap the four characters for the animal bank, for this session only.
-  // The settle loop above has already debounced the switches, so the read
-  // is real, and no OTHER boot-time reader competes for the gesture.
+  // Chord mode (chord_engine.hpp, chord_ui.hpp): both stomps held THROUGH
+  // power-up run the chord engine and its controller instead of the
+  // characters, for this session. The settle loop above has already
+  // debounced the switches, so the read is real, and no OTHER boot-time
+  // reader competes for the gesture.
   //
   // It does overlap one RUNTIME gesture, and the overlap has to be handled
   // rather than reasoned away: the pedal boots BYPASSED, which is exactly
   // when the Hothouse DFU escape is armed, and that escape fires after both
   // stomps have been held 2000 ms (hothouse.cpp CheckResetToBootloader,
-  // HOLD_THRESHOLD_MS). Left alone, holding both a beat too long would load
-  // the bank and then reboot straight into the bootloader. See boot_grip_
+  // HOLD_THRESHOLD_MS). Left alone, holding both a beat too long would enter
+  // chord mode and then reboot straight into the bootloader. See boot_grip
   // below, which swallows the DFU check until the entry grip is released.
   //
-  // The swap is a pointer: ui_controller.hpp holds a const VoiceStore* and
-  // only ever reads it, so pointing it at a static beast store is the
-  // whole mechanism. Nothing here touches QSPI, so the saved characters
-  // survive untouched and a power cycle brings them back.
+  // The choice is made once here and never revisited: the callback runs
+  // exactly one engine and one controller. Chord mode reads and writes only
+  // the store's chord block (its auto-save); the characters are untouched.
   const UiInputs boot_in = read_inputs();
-  const bool beast_mode = boot_in.left_down && boot_in.right_down;
-  static VoiceStore beast = beast_store();
-  VoiceStore& active = beast_mode ? beast : store_obj.GetSettings();
-  ui.init(&active, boot_in);
+  chord_mode = boot_in.left_down && boot_in.right_down;
+  VoiceStore& active = store_obj.GetSettings();
+  if (chord_mode)
+    chord_ui.init(active.chord, active.charge, boot_in);
+  else
+    ui.init(&active, boot_in);
 
   // True only when the entry grip is still held; cleared on first release.
-  bool boot_grip = beast_mode;
+  bool boot_grip = chord_mode;
 
-  eng->set_params(to_fof_params(ui.edit_buffer()));
-  eng->rebuild_grains_if_dirty();  // first tables built before audio starts
+  // In chord mode `ui` is never initialised and the grain engine never
+  // plays, so no grain table is built for it.
+  if (!chord_mode) {
+    eng->set_params(to_fof_params(ui.edit_buffer()));
+    eng->rebuild_grains_if_dirty();  // first tables built before audio starts
+  }
 
   // CPU metering. Init BEFORE StartAudio so the first callback already has
   // its tick scaling. StartLog(false) does NOT wait for a host to attach, so
   // a pedal with nothing plugged into the USB port boots and plays exactly as
-  // before; the lines are simply discarded.
+  // before; the lines are simply discarded. DBSCREAMZ_CPU_LOG builds only.
+#if DBSCREAMZ_CPU_LOG
   cpu_meter.Init(48000.0f, static_cast<int>(kBlockSize));
   hw.seed.StartLog(false);
+#endif
 
   hw.StartAudio(AudioCallback);
+#if DBSCREAMZ_CPU_LOG
   uint32_t cpu_log_ms = System::GetNow();
+#endif
 
   while (true) {
     // Grain rebuilds ONLY here, never in the audio IRQ (FIRMWARE.md
     // gotcha 2).
-    if (eng->grains_dirty()) eng->rebuild_grains_if_dirty();
+    if (!chord_mode && eng->grains_dirty()) eng->rebuild_grains_if_dirty();
 
-    // Both saves write the ACTIVE store and skip the QSPI commit in beast
-    // mode. Outside beast mode `active` IS storage->GetSettings(), so this
-    // is the same write it always was. Inside it, the save chord still
-    // works as a session sandbox: tweak a cow, save it, keep it until you
-    // pull the plug. What it can never do is overwrite a character.
-    if (ui.save_pending()) {
-      active.slots[ui.save_slot()] = ui.save_snapshot();
-      // blocking QSPI erase+write; audio keeps running
-      if (!beast_mode) storage->Save();
-      ui.save_done(System::GetNow());
+    if (chord_mode) {
+      // Chord mode auto-save (spec section 4): chord_ui raises it 3 s after
+      // the last change or on leaving the menu, and only for a real change.
+      // Same blocking QSPI erase+write the save chord does; audio runs on.
+      if (chord_ui.save_pending()) {
+        active.chord = chord_ui.save_snapshot();
+        storage->Save();
+        chord_ui.save_done();
+      }
+    } else {
+      if (ui.save_pending()) {
+        active.slots[ui.save_slot()] = ui.save_snapshot();
+        storage->Save();  // blocking QSPI erase+write; audio keeps running
+        ui.save_done(System::GetNow());
+      }
+
+      if (ui.config_save_pending()) {
+        // Silent charge-config write on menu exit (charge spec sec 7);
+        // the gesture guard covers the blocking window, no LED blink.
+        active.charge = ui.charge_config();
+        storage->Save();
+        ui.config_save_done();
+      }
     }
 
-    if (ui.config_save_pending()) {
-      // Silent charge-config write on menu exit (charge spec sec 7);
-      // the gesture guard covers the blocking window, no LED blink.
-      active.charge = ui.charge_config();
-      if (!beast_mode) storage->Save();
-      ui.config_save_done();
-    }
-
+#if DBSCREAMZ_CPU_LOG
     // CPU report, once a second, from the main loop (never the audio IRQ).
     // Printed as integer tenths of a percent on purpose: libDaisy's logger
     // has no %f, it offers the FLT_FMT/FLT_VAR decomposition macros instead
@@ -402,8 +503,10 @@ int main() {
       cpu_meter.Reset();
       cpu_worst_load = 0.0f;
     }
+#endif
 
-    const LedState l = ui.leds(System::GetNow());
+    const LedState l = chord_mode ? chord_ui.leds(System::GetNow())
+                                  : ui.leds(System::GetNow());
     led_left.Set(l.left ? 1.0f : 0.0f);
     led_right.Set(l.right ? 1.0f : 0.0f);
     led_left.Update();
@@ -414,19 +517,21 @@ int main() {
     // menu/save gestures can never reboot the pedal mid-song. BOOT+RESET
     // on the Seed remains the hard fallback.
     //
-    // Beast mode enters on both stomps held through power-up, and the pedal
+    // Chord mode enters on both stomps held through power-up, and the pedal
     // boots bypassed, so that grip is still down when this loop starts and
     // would trip the 2 s DFU hold within about two seconds. The entry
     // gesture CONSUMES it: the check is swallowed until both stomps have
     // been seen released once. After that the escape behaves exactly as it
-    // always has, including in a beast session, so nothing is lost but the
-    // trap. Skipping the call outright also leaves Hothouse's
-    // dfu_start_time_ at 0, so no partial hold is banked while we wait.
+    // always has, including in a chord session (armed only while chord
+    // mode is bypassed), so nothing is lost but the trap. Skipping the call
+    // outright also leaves Hothouse's dfu_start_time_ at 0, so no partial
+    // hold is banked while we wait.
     if (boot_grip) {
       if (!hw.switches[Hothouse::FOOTSWITCH_1].Pressed() &&
           !hw.switches[Hothouse::FOOTSWITCH_2].Pressed())
         boot_grip = false;
-    } else if (ui.bootloader_armed()) {
+    } else if (chord_mode ? chord_ui.bootloader_armed()
+                          : ui.bootloader_armed()) {
       hw.CheckResetToBootloader();
     }
   }

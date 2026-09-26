@@ -5,9 +5,11 @@ struct CharacterPreset {
   float formants_hz[3];   // baked (tract scale already applied), Hz
   float detune_cents;     // spread across the engine's 3 voices, 0..60 cents
 };
-inline constexpr CharacterPreset kPresets[4] = {
+inline constexpr CharacterPreset kPresets[6] = {
   {"Wukong",    {858.4f, 1234.0f, 3111.7f}, 11.0f},
   {"Rice",    {1000.0f, 1437.5f, 3625.0f}, 8.0f},
   {"Prince",    {741.6f, 1066.0f, 2688.3f}, 18.0f},
   {"Piccolo",    {697.6f, 1002.8f, 2528.8f}, 26.0f},
+  {"Master",    {640.0f, 1080.0f, 2400.0f}, 30.0f},
+  {"Ki-Ki",    {950.0f, 1800.0f, 3350.0f}, 8.0f},
 };

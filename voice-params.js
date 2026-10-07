@@ -58,14 +58,14 @@ export const TogglePos = { Up: 'Up', Middle: 'Middle', Down: 'Down' };
 export const EngagedSource = { None: 'None', SlotR: 'SlotR', SlotL: 'SlotL' };
 export const MenuLayer = { Menu1: 0, Menu2: 1, Menu3: 2 };
 
-// Wukong 0, Rice 1, Prince 2, Piccolo 3, Master 4, Ki-Ki 5 - the order in
+// Wukong 0, Rice 1, Prince 2, Flute 3, Master 4, Ki-Ki 5 - the order in
 // firmware/engine/presets.hpp, which slot_index and factory_store depend on.
 // Master and Ki-Ki are pedal-side (tools/gen_presets.py PEDAL_PRESETS).
 export const kPresets = [
   { name: 'Wukong',  formants_hz: [858.4, 1234.0, 3111.7], detune_cents: 11.0 },
   { name: 'Rice',    formants_hz: [1000.0, 1437.5, 3625.0], detune_cents: 8.0 },
   { name: 'Prince',  formants_hz: [741.6, 1066.0, 2688.3], detune_cents: 18.0 },
-  { name: 'Piccolo', formants_hz: [697.6, 1002.8, 2528.8], detune_cents: 26.0 },
+  { name: 'Flute', formants_hz: [697.6, 1002.8, 2528.8], detune_cents: 26.0 },
   { name: 'Master',  formants_hz: [640.0, 1080.0, 2400.0], detune_cents: 30.0 },
   { name: 'Ki-Ki',   formants_hz: [950.0, 1800.0, 3350.0], detune_cents: 8.0 },
 ];
@@ -118,24 +118,24 @@ export function chargeConfigsEqual(a, b) {
 // applied by chord-map.js; the fields hold mapped values. Mirrors
 // firmware/hothouse/voice_params.hpp ChordParams field for field.
 //
-// First-pass ear targets (spec section 4). The shared post-chain fields and
-// the gate come from factoryVoice() so chord mode starts at the same levels
-// as a character.
+// Ear-tuned on the hardware (2026-09-28), captured from its QSPI; see
+// factory_chord() for the rounding. Mix, tone, vocal size and the gate
+// still come from factoryVoice().
 export function factoryChord() {
   const v = factoryVoice(0);
   return {
-    vocal_vol: v.vocal_vol,
+    vocal_vol: 2.0,
     mix: v.mix,
-    master_vol: v.master_vol,
+    master_vol: 1.2,
     tone: v.tone,
-    sensitivity: 3.0,
-    drive: 10.0,
+    sensitivity: 1.6,
+    drive: 40.0,
     closed_vowel: 0.0,  // oo
-    open_vowel: 2.0,    // ah
+    open_vowel: 4.0,    // ee
     vocal_size: v.vocal_size,
-    resonance: 0.5,
-    attack_ms: 10.0,
-    release_ms: 150.0,
+    resonance: 0.53,
+    attack_ms: 17.0,
+    release_ms: 20.0,
     gate_level: v.gate_level,
   };
 }
@@ -145,7 +145,7 @@ export function chordsEqual(a, b) {
   return true;
 }
 
-// Set 1 = Wukong (R) / Prince (L); Set 2 = Rice (R) / Piccolo (L);
+// Set 1 = Wukong (R) / Prince (L); Set 2 = Rice (R) / Flute (L);
 // Set 3 = Master (R) / Ki-Ki (L).
 export function factoryStore() {
   return {

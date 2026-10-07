@@ -226,12 +226,12 @@ static FofParams to_fof_params(const VoiceParams& v) {
   // instead. Its two 4-5 kHz
   // sinusoids, retriggered once per pitch period, were the "static"
   // heard on hardware on 2026-09-01: measured at +22.6 dB in the 3-6 kHz
-  // band at Piccolo's old 0.3 with no change in broadband level, which
+  // band at Flute's old 0.3 with no change in broadband level, which
   // is why no volume knob touched it.
   p.aspiration = 0.0;
   // Vocal size: the whole vocal tract scaled down means a physically bigger
   // creature. Grain-affecting, which is why param_map and charge both
-  // quantise their inputs (design spec section 8).
+  // quantize their inputs (design spec section 8).
   p.formant_scale = formant_scale_from(v.vocal_size);
   p.glide_ms = v.glide_ms;
   p.octave_shift = v.octave;
@@ -417,7 +417,7 @@ int main() {
   // True only when the entry grip is still held; cleared on first release.
   bool boot_grip = chord_mode;
 
-  // In chord mode `ui` is never initialised and the grain engine never
+  // In chord mode `ui` is never initialized and the grain engine never
   // plays, so no grain table is built for it.
   if (!chord_mode) {
     eng->set_params(to_fof_params(ui.edit_buffer()));

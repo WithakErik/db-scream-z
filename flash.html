@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>DBscreamZ firmware</title>
+<style>
+  :root{
+    --bg:#0b0e14; --panel:#141922; --panel2:#1a212c; --line:#26303f;
+    --fg:#e6edf3; --dim:#8b98a8; --blue:#2f7fe0; --orange:#ff7a18;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;background:var(--bg);color:var(--fg);
+    font:15px/1.5 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+    padding:env(safe-area-inset-top) 16px env(safe-area-inset-bottom);
+  }
+  main{max-width:640px;margin:0 auto;padding-block:24px 48px}
+  h1{font-size:22px;margin:0 0 4px}
+  h2{font-size:16px;margin:28px 0 8px}
+  a{color:var(--blue)}
+  .dim{color:var(--dim)}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;
+        padding:14px 16px;margin:16px 0}
+  ol{padding-left:22px;margin:8px 0}
+  li{margin:4px 0}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:12px}
+  button{
+    background:var(--panel2);color:var(--fg);border:1px solid var(--line);
+    border-radius:7px;padding:9px 16px;font:inherit;font-size:14px;cursor:pointer;
+  }
+  button:hover:not(:disabled){border-color:#3d4b60}
+  button:disabled{opacity:.45;cursor:default}
+  button.primary{background:var(--orange);color:#241300;border-color:var(--orange);font-weight:650}
+  progress{width:100%;height:10px;margin-top:12px;accent-color:var(--orange)}
+  #status{margin-top:10px;min-height:1.5em}
+  #error{border-color:#7a3b16}
+  pre{background:var(--panel2);border:1px solid var(--line);border-radius:7px;
+      padding:10px;overflow-x:auto;font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.92em}
+</style>
+</head>
+<body>
+<main>
+  <h1>Flash the latest firmware</h1>
+  <p class="dim">
+    Published build: <span id="version">loading...</span>
+    <a id="source" hidden>source for this build</a>
+  </p>
+
+  <div class="card" id="unsupported" hidden>
+    This page needs WebUSB [Web Universal Serial Bus], which Chrome and Edge
+    have and Firefox and Safari do not. Open it in Chrome or Edge on a
+    computer.
+  </div>
+
+  <h2>1. Put the pedal in DFU [Device Firmware Upgrade] mode</h2>
+  <ol>
+    <li>Connect the Seed's USB [Universal Serial Bus] port to this computer
+      with a data cable, and power the pedal.</li>
+    <li>Make sure the pedal is <strong>bypassed</strong>: both LEDs
+      [light-emitting diodes] off.</li>
+    <li>Press both stomps together and hold about 2 seconds. The pedal goes
+      quiet and waits for the computer.</li>
+  </ol>
+  <p class="dim">If that does not work: hold the BOOT button on the Seed,
+    tap RESET, release BOOT.</p>
+  <p class="dim">Your saved voices and settings are kept. Flashing only
+    replaces the firmware.</p>
+
+  <h2>2. Connect and flash</h2>
+  <div class="row">
+    <button id="connect" disabled>Connect</button>
+    <button id="flash" class="primary" disabled>Flash</button>
+  </div>
+  <progress id="bar" value="0" max="1" hidden></progress>
+  <div id="status" class="dim">Loading the published firmware...</div>
+
+  <div class="card" id="error" hidden>
+    <strong id="error-text"></strong>
+
+    <div data-help="enter-dfu" hidden>
+      <p>The pedal is plugged in but running normally. Enter DFU mode with
+        the steps above, then press Connect again and pick
+        "DFU in FS Mode".</p>
+    </div>
+
+    <div data-help="reload" hidden>
+      <p>Reload this page. If it keeps happening, a new build may be in the
+        middle of publishing; wait a few minutes.</p>
+    </div>
+
+    <div data-help="linux" hidden>
+      <p><strong>On Linux</strong>, the browser needs permission to open the
+        pedal. Add this rule once, then unplug the pedal and plug it back
+        in:</p>
+      <pre>echo 'SUBSYSTEM=="usb", ATTRS{idVendor}=="0483", ATTRS{idProduct}=="df11", TAG+="uaccess"' | sudo tee /etc/udev/rules.d/70-stm32-dfu.rules
+sudo udevadm control --reload-rules
+sudo udevadm trigger</pre>
+    </div>
+
+    <div data-help="windows" hidden>
+      <p><strong>On Windows</strong>, the DFU device may need the WinUSB
+        driver. Electro-Smith's
+        <a href="https://docs.daisy.audio/tutorials/zadig/">Zadig guide</a>
+        walks through it.</p>
+    </div>
+
+    <div data-help="recover" hidden>
+      <p>Nothing is broken. The bootloader lives in read-only memory and
+        cannot be overwritten. Hold BOOT on the Seed, tap RESET, release
+        BOOT, then press Connect and Flash again.</p>
+    </div>
+  </div>
+
+  <p class="dim" style="margin-top:32px"><a href="index.html">Back to the pedal</a></p>
+</main>
+
+<script src="vendor/webdfu/dfu.js"></script>
+<script src="vendor/webdfu/dfuse.js"></script>
+<script type="module" src="flash.js"></script>
+</body>
+</html>

@@ -45,7 +45,7 @@ still free.
 **STATUS 2026-08-25: IMPLEMENTED, verified headlessly, awaiting live play.**
 The full pitch chain now runs inside `fof-processor.js` (decimator, YIN,
 attack blank, vote, hysteresis, fold, median-5) plus a live envelope
-follower (6 ms attack, 80 ms release, running-peak normalisation, 0.5
+follower (6 ms attack, 80 ms release, running-peak normalization, 0.5
 headroom scale so pick attacks cannot clip the downstream WaveShaper).
 Headless test feeding the real 35 s DI as live input: 3% of one core,
 octave-jump rate 1.23/s (offline reference 1.4/s), output peak 0.56,
@@ -151,7 +151,7 @@ pedal, but proves everything except the enclosure. Do not skip it.
 | PedalPCB Terrarium PCB | ~$12 | or GuitarML Funbox |
 | 125B enclosure, drilled | ~$15 | Tayda pre-drilled for Terrarium |
 | 2x 1/4" mono jacks | ~$4 | |
-| 9V DC jack (centre negative) | ~$2 | |
+| 9V DC jack (center negative) | ~$2 | |
 | 3PDT footswitch | ~$5 | true bypass |
 | Momentary SPST (character cycle) | ~$2 | MVP spec: one button |
 | RGB LED (common cathode) + resistors | ~$2 | character indicator |
@@ -180,7 +180,7 @@ Port map, JS/Python -> C:
 | `fof-processor.js` leveler | ratio leveler | `level.c` (two one-poles + divide) |
 | `fof-processor.js` `registerMap()` mode 0 | transpose | one multiply, table of 2^n |
 | `build_assets.py` `yin()` | pitch detect | `yin.c` (on 8 kHz stream; 4.7 MOPS at 100 Hz control rate) |
-| `build_assets.py` `causal_pitch()` | octave stabiliser | `pitch.c` (attack blank, vote, hysteresis, fold, median-5) |
+| `build_assets.py` `causal_pitch()` | octave stabilizer | `pitch.c` (attack blank, vote, hysteresis, fold, median-5) |
 | `presets.json` | 4 character presets | generated `presets.h` (write a 20-line generator script) |
 
 Memory plan (static allocation, no heap):
@@ -190,7 +190,7 @@ does not even notice.
 
 Controls for the prototype:
 - Footswitch: true bypass (relay or 3PDT hard bypass).
-- Button: cycle Wukong -> Rice -> Prince -> Piccolo. RGB LED colour per
+- Button: cycle Wukong -> Rice -> Prince -> Flute. RGB LED color per
   character (orange / white / blue / green).
 - Knob 1: TRANSPOSE (detented feel: 0 / +1 / +2). Knob 2: output gain.
   Knob 3: glide. Everything else is a firmware constant from section 6.
@@ -207,8 +207,8 @@ Each milestone has a pass test. Do not stack unverified layers.
 | 1 | Hardware passthrough | guitar -> pedal -> amp, clean, noise floor acceptable by ear and scope |
 | 2 | FOF at fixed pitch | button cycles 4 characters, each sounds like the lab render (A/B against `/tmp/dbscreamz_v6` WAVs regenerated locally) |
 | 3 | Envelope follower | voice loudness follows picking; no synth heard when muted strings |
-| 4 | Live pitch tracking | port `yin.c` + `pitch.c`; same riff through pedal vs lab live mode, comparable behaviour |
-| 5 | Controls + LED + bypass | one-button character cycle, colour feedback, silent bypass |
+| 4 | Live pitch tracking | port `yin.c` + `pitch.c`; same riff through pedal vs lab live mode, comparable behavior |
+| 5 | Controls + LED + bypass | one-button character cycle, color feedback, silent bypass |
 | 6 | Enclosure | plays a rehearsal without embarrassment |
 
 Milestone 2 before 4 on purpose: fixed-pitch FOF isolates codec/synth bugs
@@ -235,7 +235,7 @@ formants/vibrato per character: presets.json (regenerate presets.h)
 ```
 
 Engine invariants that must survive the C port: constant-power grain
-normalisation (1/sqrt overlap, x0.55), target leveler (8 ms tracker,
+normalization (1/sqrt overlap, x0.55), target leveler (8 ms tracker,
 asymmetric 10/60 ms gain slew, clamp 0.25-4, target 0.09), common vibrato
 LFO, side-voice taper 0.55, per-voice grain phases, noise gate with
 hysteresis, pitch range 75-1250 Hz (YIN tmin 6 at sr/6).
@@ -260,7 +260,7 @@ validated against a native C++ build of the same library
 | CPU | - | - | 8 ns/sample | 1.9-3.9% JS realtime |
 
 No blanking/voting/median scaffolding needed; the detector's own bias
-logic and median-3 are the whole stabiliser. YIN kept as a UI fallback
+logic and median-3 are the whole stabilizer. YIN kept as a UI fallback
 toggle. **For firmware, use cycfi/q's C++ headers directly** (header-only,
 BSL-1.0, ~1500 lines incl. utilities); the JS port doubles as readable
 reference. Detector config: 70-1300 Hz, -45 dB hysteresis, full audio
@@ -268,7 +268,7 @@ rate (no decimation).
 
 Unison implementation notes that must survive the port (HANDOFF section 4a):
 common vibrato LFO across voices, side-voice gain taper 0.55, per-voice
-grain phase scatter, per-grain overlap normalisation at write time, ratio
+grain phase scatter, per-grain overlap normalization at write time, ratio
 leveler before the envelope multiply. Removing any of these brings back the
 intermittent volume spikes.
 

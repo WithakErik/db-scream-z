@@ -102,8 +102,8 @@ int main() {
     assert(v.octave == -2);
   }
 
-  // ---- the result is CAPPED at +/-2 rather than cancelled: a voice whose
-  // own octave toggle is already +1 keeps one octave of travel and still
+  // ---- the sweep is RELATIVE, never capped: a voice whose own octave
+  // toggle is already +1 still travels two full octaves, to +3, and still
   // gets the sweep glide.
   {
     VoiceParams hi = base;
@@ -111,16 +111,16 @@ int main() {
     ChargeConfig c{};
     c.pitch = 2;
     VoiceParams v = apply_charge(hi, c, 1.0f, true);
-    assert(v.octave == 2);
+    assert(v.octave == 3);
     assert(near(v.glide_ms, 2000.0f));
-    // and downward from the same voice still reaches the bottom cap
+    // and downward from the same voice
     c.pitch = 1;
     v = apply_charge(hi, c, 1.0f, true);
-    assert(v.octave == -1);              // 1 - 2, inside the cap
+    assert(v.octave == -1);              // 1 - 2
     VoiceParams lo = base;
     lo.octave = -1;
     v = apply_charge(lo, c, 1.0f, true);
-    assert(v.octave == -2);              // -1 - 2 = -3, capped
+    assert(v.octave == -3);              // -1 - 2, not capped
   }
 
   // ---- pitch during decay: octave back home, glide = the decay time
@@ -174,7 +174,7 @@ int main() {
     assert(v.vocal_size == 0.3f);
   }
 
-  // ---- the ramp is quantised, so a charge cannot trigger a grain rebuild
+  // ---- the ramp is quantized, so a charge cannot trigger a grain rebuild
   // on every main loop pass (design spec section 8)
   {
     VoiceParams v0{};

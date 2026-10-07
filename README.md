@@ -14,13 +14,13 @@
 
 ## What this is
 
-DBscreamZ does one thing: play a note, and a voice screams it back at you. The voice is synthesised, not sampled, using a MonkSynth-style
-**FOF** [formant wave function] engine driven by a **Cycfi Q BACF** pitch
+DBscreamZ does one thing: play a note, and a voice screams it back at you. The voice is synthesized, not sampled, using a MonkSynth-style
+**FOF** [formant wave function] engine driven by a **Cycfi Q BACF** [bitstream autocorrelation function] pitch
 tracker running on the live guitar signal. It tracks what you play, so the
 scream bends and vibratos with the note.
 
 Six voices ship in the pedal: **Wukong**, **Prince**, **Rice**,
-**Piccolo**, **Master** and **Ki-Ki**. Two more (**Boo** and **Fling**) are
+**Flute**, **Master** and **Ki-Ki**. Two more (**Boo** and **Fling**) are
 recipes in the [manual](manual/DBscreamZ-manual.pdf) that you dial in by hand
 and save to a slot.
 
@@ -57,7 +57,7 @@ Three ways to feed it:
 - **the built-in clips**, for hearing it with nothing plugged in
 - **live input**, so you can play a guitar through your interface into it
 - **your own track**: drop in a file, play it through, tweak while it runs,
-  and render the result back out as a WAV
+  and render the result back out as a WAV [Waveform Audio File Format] file
 
 Add `?chord` to the page address to try [chord mode](#chord-mode) instead of
 the six characters.
@@ -78,12 +78,12 @@ settings card for every voice. This is the short version.
 
 Plug in, power on. The pedal boots **bypassed**, both LEDs off. Flip the
 middle toggle up (Set 1) and tap the RIGHT stomp: Wukong engages and the right
-LED glows solid orange. Tap again to bypass. Tap LEFT for Prince, and the left
+LED [light-emitting diode] glows solid orange. Tap again to bypass. Tap LEFT for Prince, and the left
 LED glows blue. Flip the middle toggle to the middle for Set 2: Rice on the
-right, Piccolo on the left, or down for Set 3: Master on the right, Ki-Ki on
+right, Flute on the left, or down for Set 3: Master on the right, Ki-Ki on
 the left.
 
-The LEDs are single-colour and never change: LEFT is always blue, RIGHT always
+The LEDs are single-color and never change: LEFT is always blue, RIGHT always
 orange. Only whether they are off, solid or blinking ever changes.
 
 ### Knobs
@@ -95,14 +95,14 @@ Normally the six knobs are the default layer:
 | 1 | Vocal volume |
 | 2 | Mix (dry to voice) |
 | 3 | Master volume |
-| 4 | Tone (dark, flat at centre, bright) |
+| 4 | Tone (dark, flat at center, bright) |
 | 5 | Glide (0-300 ms) |
 | 6 | Vocal size (character as written to deepest) |
 
-Hold the RIGHT stomp: about a second in, **menu 2** latches under your foot,
-the right LED starts blinking, and the knobs now edit formants F1 and F2. It
+Hold the RIGHT stomp: about a second in, **menu 2** latches and
+the right LED starts blinking, and the knobs now edit formants F1 and F2 [formant 1 and formant 2]. It
 does not wait for you to let go, and letting go changes nothing. Hold LEFT
-the same way for **menu 3**, F3 and vibrato. While a menu is latched, tap the
+the same way for **menu 3**, F3 [formant 3] and vibrato. While a menu is latched, tap the
 *other* stomp to jump straight to the other menu; tap the blinking side's own
 stomp to exit.
 
@@ -115,7 +115,7 @@ jumps to wherever the knob happens to be pointing.
 
 Menu 3's bottom row is **vibrato**: how fast the pitch wobbles (knob 4), how
 far it swings (knob 5), and how far apart the character's three stacked
-voices are tuned (knob 6, up to 60 cents). Every voice ships with vibrato
+voices are tuned (knob 6, up to 60 cents either side). Every voice ships with vibrato
 off.
 
 Knob 4 barely moves for its first half: off at the counter-clockwise stop,
@@ -141,7 +141,7 @@ written; all the way up is the deepest it goes.
 | 3 Gate | high | medium | low |
 
 Each page holds two voices, one per stomp: Set 1 is Wukong (right) and
-Prince (left), Set 2 is Rice and Piccolo, Set 3 is Master and Ki-Ki. While
+Prince (left), Set 2 is Rice and Flute, Set 3 is Master and Ki-Ki. While
 a menu is latched the toggles do something else entirely: they configure
 charge mode.
 
@@ -157,12 +157,13 @@ exit the menu first, and your tweaks survive.
 
 ### Charge mode
 
-With a voice **engaged**, stomp both switches together and hold. The sound
-charges like a power-up: at a full charge every row you have switched on
-reaches the **top of its range**, so the gain is all the way up, the pitch
-has swept two octaves, and the voice has grown to its deepest. The
-LEDs alternate faster and faster. Release to let it wind down. It is an
-overlay, so it never touches the voice you have saved.
+With a voice **engaged** and no menu latched, stomp both switches together
+and hold. The sound charges like a power-up: gain swells, the voice grows,
+and the pitch glides toward two octaves away for as long as you hold. On
+the gain and size rows the up position goes all the way to the top and
+the middle position halfway. The LEDs alternate faster and faster. Release
+to let it wind down. It is an overlay, so it never touches the voice you
+have saved.
 
 Configure it with the toggles while a menu is latched:
 
@@ -173,14 +174,17 @@ Configure it with the toggles while a menu is latched:
 | 3 | Decay: fast / **slow** / instant | Vocal size: **full** / half / off |
 
 Bold is the factory setting: out of the box it is the full power-up, a
-six-second rise of two octaves that brightens and grows as it builds. That
-config is global and survives a power cycle.
+six-second rise of nearly two octaves that brightens and grows as it
+builds. That config is global and is stored when you leave the menu, so it
+survives a power cycle. A toggle changes it when you move it, so to choose
+the position a switch already sits in, flick it away and back.
 
 > **Check for a lit LED before you stomp both.** Engaged, both stomps together
 > is charge mode. **Bypassed**, the identical gesture held for about two
-> seconds is DFU [Device Firmware Update] mode, which takes the pedal off-line
+> seconds is DFU [Device Firmware Upgrade] mode, which takes the pedal off-line
 > until you power cycle it. It counts however they went down, so a save from
-> bypass (hold one, press the other) should be let go of at once.
+> bypass (hold one, press the other) overwrites the held side's slot and
+> should be let go of at once.
 
 ### Chord mode
 
@@ -200,9 +204,11 @@ holding both stomps and the six characters are exactly as you left them.
 | Right, held | Open the mouth (right LED lit) |
 | Both together | Charge, whose gain, tone and size settings apply |
 
-Pressing left while holding right starts a charge, and the mouth opens again
-when you let go of left. In the chord menu, lift the right stomp before tapping
-left to leave.
+While holding right (mouth open), press left as well to start a charge. The
+mouth closes while both are down. Let go of left and the charge winds down, and
+the mouth opens again if right is still held. In the chord menu, a left tap
+with right held does not count, so let go of right before tapping left to leave
+the menu.
 
 Two knob layers:
 
@@ -211,13 +217,14 @@ Two knob layers:
 | 1 | Vocal volume | Closed vowel |
 | 2 | Mix (dry to voice) | Open vowel |
 | 3 | Master volume | Vocal size |
-| 4 | Tone (dark, flat at centre, bright) | Resonance (soft to sharp) |
+| 4 | Tone (dark, flat at center, bright) | Resonance (soft to sharp) |
 | 5 | Sensitivity (how hard picking opens the mouth) | Attack |
 | 6 | Drive | Release |
 
-The vowel knobs sweep oo, oh, ah, eh, ee: closed vowel is where quiet picking
-sits, open vowel is where the mouth goes as you dig in, or all the way with
-the right stomp held.
+The vowel knobs each pick one of five vowels: oo, oh, ah, eh, ee. Play softly
+and you hear the closed vowel; the harder you pick, the further it moves toward
+the open vowel. Sensitivity (knob 5) sets how hard you must pick to reach it.
+Hold the right stomp and it goes straight to the open vowel.
 
 Toggle 3 is the gate, same as the characters; toggles 1 and 2 do nothing.
 
@@ -235,15 +242,29 @@ never touched by it.
 | Menu 2 latched | off | blinking |
 | Menu 3 latched | blinking | off |
 | Save confirmed | 3 blinks | 3 blinks |
-| Charging | alternating, speeding up | |
+| Charging | alternating, speeding up as it builds, slowing as it winds down | |
 | Chord mode entry | 3 flashes | 3 flashes |
 | Chord mode on | solid | mouth open |
 | Chord menu latched | blinking | off |
 
+## Updating the firmware
+
+**<https://withakerik.github.io/db-scream-z/flash.html>**
+
+Plug the pedal's Seed into a computer over USB [Universal Serial Bus], open
+that page in Chrome or Edge, and follow it: put the pedal in DFU mode (bypassed,
+hold both stomps about two seconds), press Connect, then Flash. It writes the
+latest firmware, built automatically from the source in this repo, and the
+page shows exactly which commit that is. Your saved voices and settings are
+kept.
+
+Firefox and Safari cannot do this: the page needs WebUSB [Web Universal
+Serial Bus], which only Chromium browsers have.
+
 ## Building one yourself
 
 The board is the [Hothouse](https://clevelandmusicco.com/hothouse-diy-digital-signal-processing-platform-kit/),
-open hardware under CC BY-SA. Gerbers, BOM [bill of materials], placement file
+open hardware under CC BY-SA [Creative Commons Attribution-ShareAlike]. Gerbers, BOM [bill of materials], placement file
 and the drill template are mirrored in [`hardware/`](hardware/). Populate it
 with a Daisy Seed3.
 
@@ -252,31 +273,39 @@ orange on the right, where the kit's bill of materials calls for two reds. The
 enclosure artwork is not included as source files; the emulator panel shows a
 photograph of the painted faceplate.
 
-Building the firmware needs the Arm GNU toolchain (GCC 12 or newer, since
-cycfi/q is C++20) plus clones of libDaisy and HothouseExamples under
-`firmware/third_party/`:
+Building the firmware needs the Arm GNU [GNU's Not Unix] toolchain (GCC [GNU Compiler Collection] 12 or newer, since
+cycfi/q is C++20) plus libDaisy, HothouseExamples and cycfi/q at pinned
+commits, which `tools/fetch-deps.sh` clones into `firmware/third_party/`:
 
 ```bash
+tools/fetch-deps.sh
 cd firmware/third_party/libDaisy && make -j
 cd ../../hothouse
 make GCC_PATH=$HOME/toolchains/arm-gnu-toolchain-13.3.rel1-x86_64-arm-none-eabi/bin
 make program-dfu     # Seed3 in DFU mode: hold BOOT, tap RESET
 ```
 
-The [Daisy Web Programmer](https://electro-smith.github.io/Programmer/) flashes
-a prebuilt binary with nothing to install.
+The binary the [flash page](https://withakerik.github.io/db-scream-z/flash.html)
+writes is built by GitHub Actions from this source, with the same toolchain
+and the same pins, on every update to the repo.
 
 [FIRMWARE.md](FIRMWARE.md) is the engineering brief: what the engine does, the
 invariants that must not be broken, and the constants behind every voice.
 
 ## Credits and licensing
 
-- FOF voice synthesis derived from [MonkSynth / Delay Lama](https://github.com/JonET/monksynth).
+- The firmware under [`firmware/`](firmware/) is licensed GPL-3.0 [GNU
+  General Public License, version 3], in [`firmware/LICENSE`](firmware/LICENSE),
+  because it links the Hothouse board support from HothouseExamples, which is
+  GPL-3.0. No license is offered for anything outside `firmware/`.
+- FOF voice synthesis derived from [MonkSynth / Delay Lama](https://github.com/JonET/monksynth), MIT [Massachusetts Institute of Technology] license.
+- [libDaisy](https://github.com/electro-smith/libDaisy), MIT license.
+- The flash page uses [webdfu](https://github.com/devanlai/webdfu), ISC [Internet Systems Consortium] license.
 - Pitch detection by [cycfi/q](https://github.com/cycfi/q), Boost Software
   License 1.0.
 - Hardware files under [`hardware/`](hardware/) are from
   [clevelandmusicco/HothouseExamples](https://github.com/clevelandmusicco/HothouseExamples),
   distributed as open source hardware under CC BY-SA 4.0, with the upstream
-  licence alongside them.
+  license alongside them.
 
 This is a personal, non-commercial project.

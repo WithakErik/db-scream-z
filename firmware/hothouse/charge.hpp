@@ -18,7 +18,7 @@ inline VoiceParams apply_charge(const VoiceParams& base,
   // Every row here ramps its parameter toward the TOP of its own range,
   // measured from wherever the voice already sits: charge is a power-up,
   // so a full charge means full value, not a fixed increment on top of
-  // whatever you dialled. `reach` is how far up that gap the row travels
+  // whatever you dialed. `reach` is how far up that gap the row travels
   // at full charge: Up goes the whole way, Middle stops halfway.
   //
   // Gain: the ramp drives vocal volume toward its 2.0 ceiling. It used to
@@ -30,16 +30,13 @@ inline VoiceParams apply_charge(const VoiceParams& base,
   }
 
   // Pitch: a TWO octave sweep, run continuously by the engine's portamento
-  // smoother (fof_engine.hpp cur_f0_) via a long glide override. The result
-  // is capped at +/-2 rather than the sweep being cancelled, so pitch always
-  // does something: a voice whose own octave toggle is already at +1 simply
-  // has one octave of travel left instead of two.
+  // smoother (fof_engine.hpp cur_f0_) via a long glide override. The sweep
+  // is RELATIVE: always two octaves from wherever the octave toggle sits, so
+  // a voice already at +1 rises to +3. No cap is needed here: the engine
+  // clamps every voice to 16..2000 Hz, so the extreme notes simply saturate.
   if (c.pitch != 0) {
-    int target = base.octave + (c.pitch == 2 ? 2 : -2);
-    if (target > 2) target = 2;
-    if (target < -2) target = -2;
     if (charging) {
-      v.octave = static_cast<int8_t>(target);
+      v.octave = static_cast<int8_t>(base.octave + (c.pitch == 2 ? 2 : -2));
       v.glide_ms = 2000.0f;  // the sweep: rise/fall, never a jump
     } else {
       v.octave = base.octave;  // decay: glide back home
@@ -59,9 +56,9 @@ inline VoiceParams apply_charge(const VoiceParams& base,
   //
   // UNLIKE every other row, this one IS grain-affecting: main.cpp turns
   // vocal_size into FofParams::formant_scale, which grain.hpp bakes into
-  // the formants and fof_engine.hpp dirty-checks. An unquantised ramp would
+  // the formants and fof_engine.hpp dirty-checks. An unquantized ramp would
   // therefore rebuild the grain tables on every 5 ms main loop pass for the
-  // whole charge. Quantising the LEVEL to 32 steps holds that to about 33
+  // whole charge. Quantizing the LEVEL to 32 steps holds that to about 33
   // rebuilds per charge, exactly as the aspiration row used to. Audio is
   // never at risk either way (rebuilds are double buffered and published by
   // an active_set_ flip), but an unbounded rebuild rate starves the main

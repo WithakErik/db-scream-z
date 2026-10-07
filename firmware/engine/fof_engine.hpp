@@ -201,7 +201,7 @@ class FofEngine {
     // when the tracker moves it, once per 14 ms window at most.
     //
     // Each memo below is a pure function cached on its exact input, so the
-    // output is bit-identical to recomputing it: this is an optimisation of
+    // output is bit-identical to recomputing it: this is an optimization of
     // cost only, the JS transcription is unchanged. Keys start at NaN so
     // the first sample always misses. Verified bit-exact against a
     // snapshot of the pre-memo engine over guitar_long.wav for octave
@@ -278,7 +278,7 @@ class FofEngine {
         vphase_[u] += f / sr_;
         if (vphase_[u] >= 1) {
           vphase_[u] -= std::floor(vphase_[u]);
-          // Overlap normalisation PER GRAIN, at TRIGGER time (lines 1009-1022).
+          // Overlap normalization PER GRAIN, at TRIGGER time (lines 1009-1022).
           // gl is the grain length of the ACTIVE set as of the top of this
           // block: a grain-length change from a rebuild only takes effect
           // for triggers in the block after the swap, matching the JS
@@ -370,7 +370,7 @@ class FofEngine {
 
   // Per-voice memo of the three per-sample transcendentals (see the note
   // above the synth loop). No JS counterpart: pure caches, keyed on the
-  // exact input (the quantizer on its bin's Hz interval), initialised so
+  // exact input (the quantizer on its bin's Hz interval), initialized so
   // the first lookup misses. Not reset by
   // reset_live()/clear_output_state() on purpose: a cached pure function
   // is valid forever.

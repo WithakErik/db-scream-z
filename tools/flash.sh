@@ -5,6 +5,10 @@
 #
 #   tools/flash.sh              build, then flash
 #   tools/flash.sh --build      build only, do not flash
+#   tools/flash.sh --dump       build and flash firmware/qspi_dump instead:
+#                               READ-ONLY, prints the saved settings over
+#                               USB serial. Flash the pedal back afterwards
+#                               with plain tools/flash.sh.
 #
 # Put the Seed3 in DFU first: hold BOOT, tap RESET, release BOOT.
 #
@@ -23,7 +27,18 @@ FW="$REPO/firmware/hothouse"
 BIN="$FW/build/dbscreamz_pedal.bin"
 
 BUILD_ONLY=0
-[ "${1:-}" = "--build" ] && BUILD_ONLY=1
+DUMP=0
+for arg in "$@"; do
+  case "$arg" in
+    --build) BUILD_ONLY=1 ;;
+    --dump) DUMP=1 ;;
+    *) echo "FAIL: unknown option $arg"; exit 1 ;;
+  esac
+done
+if [ "$DUMP" -eq 1 ]; then
+  FW="$REPO/firmware/qspi_dump"
+  BIN="$FW/build/qspi_dump.bin"
+fi
 
 # The toolchain. cycfi/q uses std::bit_cast, which is C++20 and landed in
 # GCC 11, so the usual distro arm-none-eabi-gcc (10.x on Debian/Ubuntu)
@@ -121,9 +136,18 @@ else
   echo "count and 'Download done.', not by this exit code."
 fi
 
+if [ "$DUMP" -eq 1 ]; then
+  echo
+  echo "qspi_dump is running: the Seed's own LED blinks once a second and it"
+  echo "shows up as a USB serial port (/dev/ttyACM0), printing the saved"
+  echo "settings every second. It never writes the settings chip."
+  echo "When done, flash the pedal back: BOOT + RESET, then tools/flash.sh"
+  exit 0
+fi
+
 echo
 echo "The Seed will now disappear from lsusb. That is expected: this"
-echo "firmware never initialises the USB device stack, so vanishing is"
+echo "firmware never initializes the USB device stack, so vanishing is"
 echo "evidence the application is running, not that the board is dead."
 echo "To get back to DFU at any time: hold BOOT, tap RESET, release BOOT."
 echo

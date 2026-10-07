@@ -6,7 +6,7 @@
 // engine (fof_engine.hpp) does not run in chord mode; main.cpp picks one
 // engine at boot.
 //
-//   in -> LiveFrontEnd (gate, peak-normalised amp)
+//   in -> LiveFrontEnd (gate, peak-normalized amp)
 //   in -> soft clip -> 3 x TPT bandpass, summed -> leveler -> x amp x 0.5
 //   mouth follower (amp x sensitivity, or forced open) sweeps the formants
 //   from the closed vowel to the open vowel, in log frequency.
@@ -74,7 +74,7 @@ inline double prewarp_g(double fc, double sr) {
 }
 
 // Vowel knob position (0..4, clamped) to a formant triple in Hz,
-// interpolated between neighbouring rows in log frequency.
+// interpolated between neighboring rows in log frequency.
 inline void vowel_formants(double v, double out[3]) {
   v = std::min(std::max(v, 0.0), static_cast<double>(kVowelCount - 1));
   const int i = std::min(static_cast<int>(v), kVowelCount - 2);
@@ -83,7 +83,7 @@ inline void vowel_formants(double v, double out[3]) {
     out[k] = kVowelHz[i][k] * std::pow(kVowelHz[i + 1][k] / kVowelHz[i][k], t);
 }
 
-// Zavalishin/Simper topology-preserving SVF, bandpass output normalised to
+// Zavalishin/Simper topology-preserving SVF, bandpass output normalized to
 // unity peak gain (k * v1). Chosen because it stays stable and quiet under
 // the fast coefficient modulation the mouth sweep puts on it.
 struct TptBandpass {

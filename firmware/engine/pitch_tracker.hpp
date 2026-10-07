@@ -18,7 +18,7 @@ static_assert(cycfi::q::bitset<>::value_size == 32,
 // fed the FULL-RATE post-inputGain sample, get_frequency() per sample,
 // hold last value when it returns 0.
 //
-// Behavioural reference: the line-faithful JS port at the top of
+// Behavioral reference: the line-faithful JS port at the top of
 // dbscreamz_lab/static/fof-processor.js (lines 19-443):
 //   QPitchDetector(70, 1300, sr, -45), .process(x), .frequency, .periodicity()
 //

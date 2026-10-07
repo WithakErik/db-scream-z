@@ -25,17 +25,17 @@ int main() {
            sizeof(uint32_t) + 4 * sizeof(VoiceParams) + sizeof(ChargeConfig));
   }
 
-  // ---- factory chord: spec section 4 values, pad zeroed
+  // ---- factory chord: hardware-tuned values (2026-09-28), pad zeroed
   {
     const ChordParams c = factory_chord();
     const VoiceParams v = factory_voice(0);
-    assert(c.vocal_vol == v.vocal_vol && c.mix == v.mix);
-    assert(c.master_vol == v.master_vol && c.tone == v.tone);
+    assert(c.vocal_vol == 2.0f && c.mix == v.mix);
+    assert(c.master_vol == 1.2f && c.tone == v.tone);
     assert(c.vocal_size == v.vocal_size && c.gate_level == v.gate_level);
-    assert(c.sensitivity == 3.0f && c.drive == 10.0f);
-    assert(c.closed_vowel == 0.0f && c.open_vowel == 2.0f);  // oo -> ah
-    assert(c.resonance == 0.5f);
-    assert(c.attack_ms == 10.0f && c.release_ms == 150.0f);
+    assert(c.sensitivity == 1.6f && c.drive == 40.0f);
+    assert(c.closed_vowel == 0.0f && c.open_vowel == 4.0f);  // oo -> ee
+    assert(c.resonance == 0.53f);
+    assert(c.attack_ms == 17.0f && c.release_ms == 20.0f);
     assert(c.pad_[0] == 0 && c.pad_[1] == 0 && c.pad_[2] == 0);
     const VoiceStore s = factory_store();
     assert(s.version == 9);

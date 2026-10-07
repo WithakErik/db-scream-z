@@ -1,0 +1,78 @@
+# Build the pedal firmware and deploy the GitHub Pages site.
+#
+# Every push to main rebuilds the firmware from the pinned dependencies
+# (tools/fetch-deps.sh) with the pinned Arm toolchain, then publishes the
+# site with the binary at firmware/latest/, where flash.html finds it.
+# If the build fails, nothing deploys and the previous site stays live.
+#
+# Requires the repo's Pages source to be "GitHub Actions"
+# (Settings > Pages), not "Deploy from a branch".
+
+name: Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+env:
+  TOOLCHAIN: arm-gnu-toolchain-13.3.rel1-x86_64-arm-none-eabi
+  TOOLCHAIN_URL: https://developer.arm.com/-/media/Files/downloads/gnu/13.3.rel1/binrel/arm-gnu-toolchain-13.3.rel1-x86_64-arm-none-eabi.tar.xz
+  TOOLCHAIN_SHA256: 95c011cee430e64dd6087c75c800f04b9c49832cc1000127a92a97f9c8d83af4
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Cache the Arm toolchain
+        id: toolchain
+        uses: actions/cache@v6
+        with:
+          path: ~/toolchains/${{ env.TOOLCHAIN }}
+          key: ${{ env.TOOLCHAIN }}-${{ env.TOOLCHAIN_SHA256 }}
+
+      - name: Install the Arm toolchain
+        if: steps.toolchain.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ~/toolchains
+          curl -sSfL -o "$RUNNER_TEMP/toolchain.tar.xz" "$TOOLCHAIN_URL"
+          echo "$TOOLCHAIN_SHA256  $RUNNER_TEMP/toolchain.tar.xz" | sha256sum -c -
+          tar -xJf "$RUNNER_TEMP/toolchain.tar.xz" -C ~/toolchains
+
+      - name: Fetch the pinned dependencies
+        run: tools/fetch-deps.sh
+
+      - name: Build libDaisy
+        run: make -C firmware/third_party/libDaisy -j"$(nproc)" GCC_PATH="$HOME/toolchains/$TOOLCHAIN/bin"
+
+      - name: Build the firmware
+        run: make -C firmware/hothouse GCC_PATH="$HOME/toolchains/$TOOLCHAIN/bin"
+
+      - name: Assemble the site
+        run: tools/ci_site.sh . firmware/hothouse/build/dbscreamz_pedal.bin "$RUNNER_TEMP/site"
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: ${{ runner.temp }}/site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5

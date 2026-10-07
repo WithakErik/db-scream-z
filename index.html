@@ -36,11 +36,13 @@
   button.primary{background:var(--orange);color:#241300;border-color:var(--orange);font-weight:650}
   button.on{background:var(--blue);border-color:var(--blue);color:#fff}
   .spacer{flex:1 1 auto}
+  .navlink{color:var(--dim);font-size:13px;text-decoration:none;padding:7px 4px;white-space:nowrap}
+  .navlink:hover{color:var(--fg)}
   .status{color:var(--dim);font:12px ui-monospace,SFMono-Regular,Menlo,monospace;
           white-space:nowrap}
   .status b{color:var(--fg);font-weight:600}
 
-  /* ---------- centred pedal ---------- */
+  /* ---------- centered pedal ---------- */
   main{
     flex:1 1 auto;min-height:0;display:flex;flex-direction:column;
     align-items:center;justify-content:center;gap:10px;padding:10px;
@@ -51,8 +53,8 @@
 
   /* ---------- the pedal itself ---------- */
   /* The panel is a photo of the painted faceplate. --scrim is how much of
-     the flat colour is washed back over it: 0 is the bare photograph, 1
-     hides it entirely. The labels are small dark text on busy multicoloured
+     the flat color is washed back over it: 0 is the bare photograph, 1
+     hides it entirely. The labels are small dark text on busy multicolored
      ink, so this is the knob to turn if they stop being readable. */
   .enclosure-base{fill:var(--enclosure)}
   .enclosure-scrim{fill:var(--enclosure);opacity:var(--scrim)}
@@ -73,7 +75,7 @@
   .toggle-lever{fill:#20242b;stroke:#0c0f14;stroke-width:.2}
   .toggle:focus-visible .toggle-slot{stroke:var(--blue);stroke-width:.6}
   /* A latched menu owns the toggles, and says so in that menu's own LED
-     colour: menu 3 is the LEFT stomp (blue), menu 2 the RIGHT (orange). */
+     color: menu 3 is the LEFT stomp (blue), menu 2 the RIGHT (orange). */
   .toggle.charge-left .toggle-lever{fill:var(--blue)}
   .toggle.charge-right .toggle-lever{fill:var(--orange)}
   .toggle-label{font-size:2.2px;text-anchor:middle;fill:var(--ink);
@@ -91,7 +93,7 @@
   .stomp-label{font-size:3.4px;text-anchor:middle;fill:#2a2724;
                font-family:inherit;font-weight:700;pointer-events:none}
   /* Every label sits directly on the photograph, where a dark glyph can
-     land on a dark passage of ink. A halo in the panel colour, painted
+     land on a dark passage of ink. A halo in the panel color, painted
      behind the glyph, keeps the text legible wherever it falls. */
   .knob-label,.knob-value,.toggle-label,.toggle-value{
     paint-order:stroke;stroke:var(--enclosure);stroke-width:.5;
@@ -143,6 +145,7 @@
   <button id="render" disabled title="Render the loaded file with the current settings">Render WAV</button>
   <span class="spacer"></span>
   <span class="status" id="status">idle</span>
+  <a class="navlink" href="flash.html" title="Flash the latest firmware to a real pedal">Flash firmware</a>
   <button id="reset" title="Restore the four factory voices and the factory charge settings">Factory reset</button>
 </header>
 

@@ -5,8 +5,8 @@
 // LEDs, two footswitches. The knob and toggle positions here are PHYSICAL
 // positions: like real pots and real switches they stay where they were
 // left, and never jump when a slot is recalled. That is the whole reason
-// knob pickup exists, so modelling it any other way would hide the
-// behaviour this page is meant to teach.
+// knob pickup exists, so modeling it any other way would hide the
+// behavior this page is meant to teach.
 
 import { TogglePos } from './voice-params.js';
 
@@ -315,7 +315,7 @@ export class Faceplate {
       k.ptr.setAttribute('x2', k.cx + KNOB_R * 0.82 * Math.sin(rad));
       k.ptr.setAttribute('y2', k.cy - KNOB_R * 0.82 * Math.cos(rad));
       k.label.textContent = view.knobLabels[i];
-      // An inert knob shows its parameter's value greyed: the number is
+      // An inert knob shows its parameter's value grayed: the number is
       // what the voice is doing, not what the knob is pointing at.
       k.value.textContent = view.knobValues[i];
       k.g.classList.toggle('inert', !view.knobLive[i]);
@@ -328,7 +328,7 @@ export class Faceplate {
         TOG_Y + (pos === TogglePos.Up ? 2 : pos === TogglePos.Down ? 10 : 6));
       e.label.textContent = view.toggleLabels[t];
       e.value.textContent = view.toggleValues[t];
-      // Levers take the latched menu's LED colour, so the panel and the
+      // Levers take the latched menu's LED color, so the panel and the
       // lit LED agree about which menu you are in: left = blue, right =
       // orange, and the default near-black outside a menu.
       e.g.classList.toggle('charge-left', view.chargeMenu === 'left');

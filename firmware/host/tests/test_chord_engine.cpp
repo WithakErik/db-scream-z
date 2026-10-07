@@ -10,7 +10,7 @@
 
 static constexpr double kSr = 48000.0;
 
-// Magnitude of frequency f in x (Goertzel), normalised to sine amplitude.
+// Magnitude of frequency f in x (Goertzel), normalized to sine amplitude.
 static double tone_mag(const std::vector<float>& x, size_t from, double f) {
   const double w = 2 * M_PI * f / kSr, c = 2 * std::cos(w);
   double s1 = 0, s2 = 0;
@@ -87,7 +87,7 @@ int main() {
     assert(kVowelHz[0][0] == 300 && kVowelHz[2][1] == 1090 && kVowelHz[4][2] == 3010);
   }
 
-  // ---- bandpass: unity at centre, >= 12 dB down two octaves away
+  // ---- bandpass: unity at center, >= 12 dB down two octaves away
   {
     for (double fc : {300.0, 1090.0, 2440.0}) {
       TptBandpass bp;

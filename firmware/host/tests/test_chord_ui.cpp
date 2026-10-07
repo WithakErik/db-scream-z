@@ -147,8 +147,8 @@ int main() {
   // closed vowel; after a layer change knobs are inert until moved
   {
     Sim s;
-    s.knob(5, 1.0f);
-    assert(std::fabs(s.ui.chord().drive - 40.0f) < 1e-3f);
+    s.knob(5, 0.0f);  // not 1.0: 40x is the factory drive, proving nothing
+    assert(std::fabs(s.ui.chord().drive - 1.0f) < 1e-3f);
     s.press(Side::Left);
     s.step(ChordUiController::kHoldMs);
     s.release(Side::Left);
@@ -158,7 +158,7 @@ int main() {
     assert(s.ui.chord().closed_vowel == cv);
     s.knob(0, 1.0f);
     assert(s.ui.chord().closed_vowel == 4.0f);
-    assert(std::fabs(s.ui.chord().drive - 40.0f) < 1e-3f);  // untouched
+    assert(std::fabs(s.ui.chord().drive - 1.0f) < 1e-3f);  // untouched
   }
 
   // ---- toggles: gate moves are stored, octave and page do nothing

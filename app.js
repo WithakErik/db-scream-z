@@ -81,7 +81,7 @@ const now = () => performance.now();
 ui.init(store, face.inputs(now()));
 chordUi.init(store.chord, store.charge, face.inputs(now()));
 
-// ---- motorised pots ---------------------------------------------------
+// ---- motorized pots ---------------------------------------------------
 // The pedal cannot move its own knobs, so after a layer change or a slot
 // recall its six pots point at whatever they pointed at before, and knob
 // pickup keeps them inert until nudged. On screen there is nothing
@@ -397,7 +397,7 @@ function frame() {
 
   const layer = ui.layer();
   const tv = toggleView();
-  // Grey a knob's readout only when the knob is genuinely not pointing at
+  // Gray a knob's readout only when the knob is genuinely not pointing at
   // the value shown. Since the knobs are synced on every layer change that
   // is now rare, but it is still the truthful test: pickup has not taken
   // over AND the pointer disagrees with the parameter.
@@ -416,7 +416,7 @@ function frame() {
     knobValues: [0, 1, 2, 3, 4, 5].map((i) => knobValueText(layer, i, voice)),
     knobPos: shownPos,
     // Charging, the pointer is drawn FROM the value shown, so the two agree
-    // by construction and greying them would be a lie.
+    // by construction and graying them would be a lie.
     knobLive: [0, 1, 2, 3, 4, 5].map((i) => charging || ui.pickup.live(i) || agrees(i)),
     toggleLabels: tv.labels,
     toggleValues: tv.values,
@@ -478,7 +478,7 @@ function tickChord(t) {
   audio.setChord(chord, chordUi.mouthOpen(), chordUi.engaged());
 
   const layer = chordUi.layer();
-  // Same greying rule as normal mode: only when the knob genuinely is not
+  // Same graying rule as normal mode: only when the knob genuinely is not
   // pointing at the value shown.
   const truePos = chordKnobPositions(layer, chordUi.chord());
   const agrees = (i) => Math.abs(face.knobPos[i] - truePos[i]) < 0.005;

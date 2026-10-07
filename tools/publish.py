@@ -67,6 +67,15 @@ MANIFEST = [
     ("audio.js",             "pedal/static/audio.js"),
     ("fof-processor.js",     "pedal/static/fof-processor.js"),
     ("post-processor.js",    "pedal/static/post-processor.js"),
+    # The web flasher. flash.html loads the two vendored webdfu scripts
+    # and then flash.js, which imports flash-core.js; leaving any out
+    # leaves the page with dead buttons. firmware/latest/ is NOT here: CI
+    # builds it into the deployed site only (tools/ci_site.sh), so no
+    # binary is ever committed.
+    ("flash.html",           "pedal/static/flash.html"),
+    ("flash.js",             "pedal/static/flash.js"),
+    ("flash-core.js",        "pedal/static/flash-core.js"),
+    ("vendor/webdfu/",       "pedal/static/vendor/webdfu/"),
     # Only these three clips. The ref_*.wav files in the lab's audio
     # directory are reference audio and are never published; the deny list
     # enforces it.
@@ -96,6 +105,10 @@ MANIFEST = [
     ("FIRMWARE.md",          "FIRMWARE.md"),
     ("PROTOTYPE.md",         "PROTOTYPE.md"),
     ("HANDOFF.md",           "HANDOFF.md"),
+    # Builds the firmware and deploys Pages (Pages source must be "GitHub
+    # Actions"). firmware/LICENSE needs no entry: the firmware/ tree entry
+    # above carries it.
+    (".github/workflows/pages.yml", ".github/workflows/pages.yml"),
 
     # --- the hardware mirror already published (CC BY-SA, upstream)
     ("hardware/BOM.csv",     "hardware/hothouse/fabrication/BOM.csv"),

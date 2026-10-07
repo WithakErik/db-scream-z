@@ -15,11 +15,11 @@ Plug in, power on. The pedal boots BYPASSED, both LEDs [light-emitting
 diodes] off. Flip the middle toggle up (Set 1) and tap the RIGHT stomp:
 Wukong engages, the right LED glows solid orange. Tap again to bypass.
 Tap LEFT for Prince (left LED, blue). Flip the middle toggle to the
-middle for Set 2 (Rice right, Piccolo left), or down for Set 3 (Master
+middle for Set 2 (Rice right, Flute left), or down for Set 3 (Master
 right, Ki-Ki left).
 
-The two LEDs are single-colour: the LEFT one is always blue, the RIGHT
-one always orange. Nothing on the pedal ever changes an LED's colour;
+The two LEDs are single-color: the LEFT one is always blue, the RIGHT
+one always orange. Nothing on the pedal ever changes an LED's color;
 only whether it is off, solid, or blinking.
 
 ### Knobs (three layers)
@@ -41,7 +41,7 @@ coming from a physically bigger body. All the way down (7:00) is the
 character exactly as written; all the way up (5:00) is the deepest it
 goes.
 
-Hold the RIGHT stomp: about 1 second in, MENU 2 latches under your foot
+Hold the RIGHT stomp: about 1 second in, MENU 2 latches
 (right LED blinks) and the knobs edit formants F1/F2. It does not wait
 for the release, and letting go changes nothing. Hold LEFT the same way
 for MENU 3 (F3 + vibrato). While a menu is latched ONLY the blinking
@@ -53,8 +53,9 @@ any menu change a knob is inert until you move it, so nothing ever
 jumps.
 
 Menu 3's bottom row is VIBRATO: how fast it cycles (knob 4, 0 to 50 Hz)
-and how far it swings (knob 5, 0 to 100 cents), plus detune (knob 6, up
-to 60 cents), which spreads the engine's three voices apart. Every
+and how far it swings (knob 5, 0 to 100 cents), plus detune (knob 6),
+which spreads the engine's three voices apart: the outer two move up to
+60 cents either side of the middle one. Every
 character ships with vibrato off; wider detune thickens and roughens
 the scream, while at 0 the three voices collapse to the bare, focused
 character.
@@ -94,11 +95,9 @@ update gesture instead, and it will take the pedal off-line mid-song.
 
 With a voice engaged, then, stomp BOTH switches together and hold: the
 sound charges up like a power-up scream: at a full charge every row you
-have switched on reaches the TOP of its range, so the gain is all the
-way up, the pitch has swept two octaves, and the voice has grown to its
-deepest. The LEDs alternate faster and faster. Release
-to let it wind down. Configure it with the toggles while a menu is
-latched:
+have switched on goes as far as its position takes it (see below). The
+LEDs alternate faster and faster. Release to let it wind down.
+Configure it with the toggles while a menu is latched:
 
 | Toggle | Menu 2 latched | Menu 3 latched |
 |---|---|---|
@@ -106,8 +105,8 @@ latched:
 | 2 | Charge time: **Birit Spomb ~6 s** / Hamekameka ~2.5 s / punch ~0.75 s | Tone: **brighter** / darker / off |
 | 3 | Decay: fast / **slow** / off (instant) | Size: **full** / half / off |
 
-Bold is the factory setting (the full power-up: a six-second, two-octave
-rise that brightens and grows as it builds).
+Bold is the factory setting (the full power-up: a six-second rise of
+nearly two octaves that brightens and grows as it builds).
 
 On the amount rows (gain and size) the middle position gets you
 HALFWAY from wherever the voice already sits to the top, and the up
@@ -115,8 +114,20 @@ position takes it all the way. Tone's two positions are directions
 rather than amounts, so both go the whole way: darker means fully dark,
 brighter means fully bright.
 
-The config is global, remembered across power cycles, and never touches
-your saved voices.
+Pitch glides toward two octaves away for as long as you hold: nearly
+there by the end of the slowest charge (Birit Spomb, ~6 s), about one
+octave in by the end of the quickest (punch, ~0.75 s).
+The two octaves count from wherever the octave toggle sits, so a voice
+whose toggle is already up rises three octaves above normal.
+
+A toggle sets charge when you MOVE it, so to pick the position it already
+sits in, flick it away and back. Your Set, octave and gate stay as they
+were; the switches stop showing them until you next move them with no
+menu latched.
+
+The config is global and never touches your saved voices. It is stored
+when you leave the menu by tapping the blinking side; power off with a
+menu still latched and the change is lost.
 
 ### LED language
 
@@ -128,21 +139,23 @@ your saved voices.
 | Menu 2 latched | off | blinking |
 | Menu 3 latched | blinking | off |
 | Save confirmed | 3 blinks | 3 blinks |
-| Charging | alternating, speeding up with the charge | |
+| Charging | alternating, speeding up as it builds, slowing as it winds down | |
 
 ### Firmware update mode
 
 While BYPASSED, meaning both LEDs are off, press both stomps together
 and hold about 2 seconds to enter USB [Universal Serial Bus]
 firmware-update mode, also called DFU [Device Firmware Upgrade] mode.
-The pedal makes no sound in this mode and waits for a computer. Power
-cycle it to go back to playing.
+The pedal makes no sound in this mode and waits for a computer. To
+update it, open withakerik.github.io/db-scream-z/flash.html in Chrome or
+Edge and follow the page. Power cycle it to go back to playing.
 
 Being bypassed is what arms this gesture. Engaged, the identical
 two-stomp hold is CHARGE MODE and can never reach DFU. Bypassed, any
-two seconds with both stomps down enters DFU, however they went down:
-a save from bypass (hold one, press the other) completes on the second
-press, so let go at once.
+two seconds with both stomps down enters DFU, even if one went down
+before the other. A save from bypass (hold one, press the other)
+happens the moment the second stomp goes down, so release both right
+away, or engage a voice before saving.
 
 # Character settings cards
 
@@ -168,10 +181,10 @@ until moved), then save to any slot.
 | Param | Value | Travel | Clock |
 |---|---|---|---|
 | F1 Hz | 858.4 | 55% | 12:29 |
-| F1 bandwidth | 32.5 | 9% | 7:55 |
+| F1 bandwidth | 32.5 | 9% | 7:56 |
 | F1 amount | 1 | 50% | 12:00 |
-| F2 Hz | 1234 | 35% | 10:29 |
-| F2 bandwidth | 47.5 | 11% | 8:04 |
+| F2 Hz | 1234 | 35% | 10:30 |
+| F2 bandwidth | 47.5 | 11% | 8:05 |
 | F2 amount | 1 | 50% | 12:00 |
 
 ### Menu 3 (hold LEFT stomp): knobs 1-6
@@ -179,11 +192,11 @@ until moved), then save to any slot.
 | Param | Value | Travel | Clock |
 |---|---|---|---|
 | F3 Hz | 3111.7 | 54% | 12:22 |
-| F3 bandwidth | 62.5 | 12% | 8:09 |
+| F3 bandwidth | 62.5 | 12% | 8:10 |
 | F3 amount | 1 | 50% | 12:00 |
 | Vibrato rate Hz | 0 | 0% | 7:00 |
 | Vibrato depth cents | 0 | 0% | 7:00 |
-| Detune cents | 11 | 18% | 8:49 |
+| Detune cents | 11 | 18% | 8:50 |
 
 Toggles: 1 Octave = Middle (0), 3 Gate = Middle (medium).
 
@@ -208,19 +221,19 @@ until moved), then save to any slot.
 
 | Param | Value | Travel | Clock |
 |---|---|---|---|
-| F1 Hz | 741.6 | 45% | 11:30 |
-| F1 bandwidth | 32.5 | 9% | 7:55 |
+| F1 Hz | 741.6 | 45% | 11:31 |
+| F1 bandwidth | 32.5 | 9% | 7:56 |
 | F1 amount | 1 | 50% | 12:00 |
-| F2 Hz | 1066 | 27% | 9:41 |
-| F2 bandwidth | 47.5 | 11% | 8:04 |
+| F2 Hz | 1066 | 27% | 9:42 |
+| F2 bandwidth | 47.5 | 11% | 8:05 |
 | F2 amount | 1 | 50% | 12:00 |
 
 ### Menu 3 (hold LEFT stomp): knobs 1-6
 
 | Param | Value | Travel | Clock |
 |---|---|---|---|
-| F3 Hz | 2688.3 | 40% | 10:57 |
-| F3 bandwidth | 62.5 | 12% | 8:09 |
+| F3 Hz | 2688.3 | 40% | 10:58 |
+| F3 bandwidth | 62.5 | 12% | 8:10 |
 | F3 amount | 1 | 50% | 12:00 |
 | Vibrato rate Hz | 0 | 0% | 7:00 |
 | Vibrato depth cents | 0 | 0% | 7:00 |
@@ -250,10 +263,10 @@ until moved), then save to any slot.
 | Param | Value | Travel | Clock |
 |---|---|---|---|
 | F1 Hz | 1000 | 67% | 1:40 |
-| F1 bandwidth | 32.5 | 9% | 7:55 |
+| F1 bandwidth | 32.5 | 9% | 7:56 |
 | F1 amount | 1 | 50% | 12:00 |
-| F2 Hz | 1437.5 | 45% | 11:27 |
-| F2 bandwidth | 47.5 | 11% | 8:04 |
+| F2 Hz | 1437.5 | 45% | 11:28 |
+| F2 bandwidth | 47.5 | 11% | 8:05 |
 | F2 amount | 1 | 50% | 12:00 |
 
 ### Menu 3 (hold LEFT stomp): knobs 1-6
@@ -261,7 +274,7 @@ until moved), then save to any slot.
 | Param | Value | Travel | Clock |
 |---|---|---|---|
 | F3 Hz | 3625 | 71% | 2:05 |
-| F3 bandwidth | 62.5 | 12% | 8:09 |
+| F3 bandwidth | 62.5 | 12% | 8:10 |
 | F3 amount | 1 | 50% | 12:00 |
 | Vibrato rate Hz | 0 | 0% | 7:00 |
 | Vibrato depth cents | 0 | 0% | 7:00 |
@@ -269,7 +282,7 @@ until moved), then save to any slot.
 
 Toggles: 1 Octave = Middle (0), 3 Gate = Middle (medium).
 
-## Piccolo
+## Flute
 
 Factory slot: Set 2, LEFT. To dial from scratch: latch the
 menu, turn each knob to the position below (knobs are inert
@@ -290,19 +303,19 @@ until moved), then save to any slot.
 
 | Param | Value | Travel | Clock |
 |---|---|---|---|
-| F1 Hz | 697.6 | 41% | 11:08 |
-| F1 bandwidth | 32.5 | 9% | 7:55 |
+| F1 Hz | 697.6 | 41% | 11:09 |
+| F1 bandwidth | 32.5 | 9% | 7:56 |
 | F1 amount | 1 | 50% | 12:00 |
-| F2 Hz | 1002.8 | 24% | 9:23 |
-| F2 bandwidth | 47.5 | 11% | 8:04 |
+| F2 Hz | 1002.8 | 24% | 9:24 |
+| F2 bandwidth | 47.5 | 11% | 8:05 |
 | F2 amount | 1 | 50% | 12:00 |
 
 ### Menu 3 (hold LEFT stomp): knobs 1-6
 
 | Param | Value | Travel | Clock |
 |---|---|---|---|
-| F3 Hz | 2528.8 | 34% | 10:25 |
-| F3 bandwidth | 62.5 | 12% | 8:09 |
+| F3 Hz | 2528.8 | 34% | 10:26 |
+| F3 bandwidth | 62.5 | 12% | 8:10 |
 | F3 amount | 1 | 50% | 12:00 |
 | Vibrato rate Hz | 0 | 0% | 7:00 |
 | Vibrato depth cents | 0 | 0% | 7:00 |
@@ -331,11 +344,11 @@ until moved), then save to any slot.
 
 | Param | Value | Travel | Clock |
 |---|---|---|---|
-| F1 Hz | 640 | 37% | 10:39 |
-| F1 bandwidth | 32.5 | 9% | 7:55 |
+| F1 Hz | 640 | 37% | 10:40 |
+| F1 bandwidth | 32.5 | 9% | 7:56 |
 | F1 amount | 1 | 50% | 12:00 |
-| F2 Hz | 1080 | 28% | 9:45 |
-| F2 bandwidth | 47.5 | 11% | 8:04 |
+| F2 Hz | 1080 | 28% | 9:46 |
+| F2 bandwidth | 47.5 | 11% | 8:05 |
 | F2 amount | 1 | 50% | 12:00 |
 
 ### Menu 3 (hold LEFT stomp): knobs 1-6
@@ -343,7 +356,7 @@ until moved), then save to any slot.
 | Param | Value | Travel | Clock |
 |---|---|---|---|
 | F3 Hz | 2400 | 30% | 10:00 |
-| F3 bandwidth | 62.5 | 12% | 8:09 |
+| F3 bandwidth | 62.5 | 12% | 8:10 |
 | F3 amount | 1 | 50% | 12:00 |
 | Vibrato rate Hz | 0 | 0% | 7:00 |
 | Vibrato depth cents | 0 | 0% | 7:00 |
@@ -373,10 +386,10 @@ until moved), then save to any slot.
 | Param | Value | Travel | Clock |
 |---|---|---|---|
 | F1 Hz | 950 | 62% | 1:15 |
-| F1 bandwidth | 32.5 | 9% | 7:55 |
+| F1 bandwidth | 32.5 | 9% | 7:56 |
 | F1 amount | 1 | 50% | 12:00 |
 | F2 Hz | 1800 | 62% | 1:11 |
-| F2 bandwidth | 47.5 | 11% | 8:04 |
+| F2 bandwidth | 47.5 | 11% | 8:05 |
 | F2 amount | 1 | 50% | 12:00 |
 
 ### Menu 3 (hold LEFT stomp): knobs 1-6
@@ -384,7 +397,7 @@ until moved), then save to any slot.
 | Param | Value | Travel | Clock |
 |---|---|---|---|
 | F3 Hz | 3350 | 62% | 1:10 |
-| F3 bandwidth | 62.5 | 12% | 8:09 |
+| F3 bandwidth | 62.5 | 12% | 8:10 |
 | F3 amount | 1 | 50% | 12:00 |
 | Vibrato rate Hz | 0 | 0% | 7:00 |
 | Vibrato depth cents | 0 | 0% | 7:00 |
@@ -414,10 +427,10 @@ until moved), then save to any slot.
 | Param | Value | Travel | Clock |
 |---|---|---|---|
 | F1 Hz | 900 | 58% | 12:50 |
-| F1 bandwidth | 32.5 | 9% | 7:55 |
+| F1 bandwidth | 32.5 | 9% | 7:56 |
 | F1 amount | 1 | 50% | 12:00 |
 | F2 Hz | 1750 | 60% | 12:57 |
-| F2 bandwidth | 47.5 | 11% | 8:04 |
+| F2 bandwidth | 47.5 | 11% | 8:05 |
 | F2 amount | 1 | 50% | 12:00 |
 
 ### Menu 3 (hold LEFT stomp): knobs 1-6
@@ -425,7 +438,7 @@ until moved), then save to any slot.
 | Param | Value | Travel | Clock |
 |---|---|---|---|
 | F3 Hz | 2900 | 47% | 11:40 |
-| F3 bandwidth | 62.5 | 12% | 8:09 |
+| F3 bandwidth | 62.5 | 12% | 8:10 |
 | F3 amount | 1 | 50% | 12:00 |
 | Vibrato rate Hz | 0 | 0% | 7:00 |
 | Vibrato depth cents | 0 | 0% | 7:00 |
@@ -455,10 +468,10 @@ until moved), then save to any slot.
 | Param | Value | Travel | Clock |
 |---|---|---|---|
 | F1 Hz | 880 | 57% | 12:40 |
-| F1 bandwidth | 32.5 | 9% | 7:55 |
+| F1 bandwidth | 32.5 | 9% | 7:56 |
 | F1 amount | 1 | 50% | 12:00 |
 | F2 Hz | 1600 | 52% | 12:14 |
-| F2 bandwidth | 47.5 | 11% | 8:04 |
+| F2 bandwidth | 47.5 | 11% | 8:05 |
 | F2 amount | 1 | 50% | 12:00 |
 
 ### Menu 3 (hold LEFT stomp): knobs 1-6
@@ -466,7 +479,7 @@ until moved), then save to any slot.
 | Param | Value | Travel | Clock |
 |---|---|---|---|
 | F3 Hz | 3050 | 52% | 12:10 |
-| F3 bandwidth | 62.5 | 12% | 8:09 |
+| F3 bandwidth | 62.5 | 12% | 8:10 |
 | F3 amount | 1 | 50% | 12:00 |
 | Vibrato rate Hz | 0 | 0% | 7:00 |
 | Vibrato depth cents | 0 | 0% | 7:00 |
@@ -481,19 +494,21 @@ pedal on: for that session it replaces the six characters with
 one vowel filter, chords included, driven straight off your
 guitar with no pitch tracker anywhere in the path. Both LEDs
 flash three times to say it is live. Power off and back on
-WITHOUT the grip and the six characters are exactly as you
-left them.
+WITHOUT holding the footswitches and the six characters are
+exactly as you left them.
 
 | Stomp | Does |
 |---|---|
 | LEFT tap | Engage or bypass. In the chord menu, leaves it instead. |
 | LEFT hold ~1 s | Latch the chord menu (left LED blinks). Tap LEFT again to leave. |
-| RIGHT, held | Open the mouth: right LED lit for as long as you hold it. Momentary, never a menu, never a save. |
+| RIGHT, held | Open the mouth: right LED lit for as long as you hold it (dark in the chord menu). Momentary, never a menu, never a save. |
 | Both together | Charge, engaged and outside the menu only: the same gain, tone and size overlay as the characters. |
 
-Pressing LEFT while holding RIGHT starts a charge, and the mouth
-opens again when you let go of LEFT. In the chord menu, lift
-RIGHT before tapping LEFT to leave.
+While holding RIGHT (mouth open), press LEFT as well to start a
+charge. The mouth closes while both are down. Let go of LEFT and
+the charge winds down, and the mouth opens again if RIGHT is
+still held. In the chord menu, a LEFT tap with RIGHT held does
+not count, so let go of RIGHT before tapping LEFT to leave.
 
 Toggle 3 is the gate (high/medium/low), same as the characters;
 toggles 1 and 2 do nothing. Chord mode has one setting, not
@@ -506,26 +521,28 @@ press, and your saved characters are never touched by it.
 
 | Param | Value | Travel | Clock |
 |---|---|---|---|
-| Vocal vol | 1 | 50% | 12:00 |
+| Vocal vol | 2 | 100% | 5:00 |
 | Mix | 1 | 100% | 5:00 |
-| Master vol | 1 | 50% | 12:00 |
+| Master vol | 1.2 | 60% | 1:00 |
 | Tone | 0 | 50% | 12:00 |
-| Sensitivity | 3 | 72% | 2:12 |
-| Drive x | 10 | 62% | 1:14 |
+| Sensitivity | 1.6 | 58% | 12:51 |
+| Drive x | 40 | 100% | 5:00 |
 
 ### Chord menu (hold LEFT stomp): knobs 1-6
 
 | Param | Value | Travel | Clock |
 |---|---|---|---|
 | Closed vowel (0 oo .. 4 ee) | 0 | 0% | 7:00 |
-| Open vowel (0 oo .. 4 ee) | 2 | 50% | 12:00 |
+| Open vowel (0 oo .. 4 ee) | 4 | 100% | 5:00 |
 | Vocal size | 0 | 0% | 7:00 |
-| Resonance | 0.5 | 50% | 12:00 |
-| Attack ms | 10 | 57% | 12:41 |
-| Release ms | 150 | 65% | 1:28 |
+| Resonance | 0.53 | 53% | 12:18 |
+| Attack ms | 17 | 69% | 1:53 |
+| Release ms | 20 | 0% | 7:00 |
 
-Vowel knobs sweep oo, oh, ah, eh, ee (0 to 4): closed vowel is
-where quiet picking sits, open vowel is where the mouth goes as
-you dig in, or all the way with RIGHT held.
+Vowel knobs each pick one of oo, oh, ah, eh, ee (0 to 4). Play
+softly and you hear the closed vowel; the harder you pick, the
+further it moves toward the open vowel. Sensitivity (K5) sets how
+hard you must pick to reach it. Hold RIGHT and it goes straight
+to the open vowel.
 
 Toggles: 3 Gate = Middle (medium).

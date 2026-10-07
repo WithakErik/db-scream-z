@@ -22,8 +22,8 @@ export function mapTone(t) {
   return s * (Math.abs(x) - dz) / (1.0 - dz);
 }
 
-// Vocal size: 0..1, quantised to 32 steps. formant_scale is grain-affecting,
-// so an unquantised knob would rebuild the grain tables on every audio block
+// Vocal size: 0..1, quantized to 32 steps. formant_scale is grain-affecting,
+// so an unquantized knob would rebuild the grain tables on every audio block
 // during a sweep. Both stops land exactly on the grid, so 0 and 1 stay
 // exactly reachable.
 export function mapVocalSize(t) {

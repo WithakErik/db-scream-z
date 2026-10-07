@@ -30,7 +30,7 @@ STACK = {
     'Wukong':  {'detune_cents': 11.0},
     'Rice':    {'detune_cents': 8.0},
     'Prince':  {'detune_cents': 18.0},
-    'Piccolo': {'detune_cents': 26.0},
+    'Flute': {'detune_cents': 26.0},
     'Master':  {'detune_cents': 30.0},
     'Ki-Ki':   {'detune_cents': 8.0},
 }

@@ -46,7 +46,7 @@ MVP as specified by the human:
   No attack or decay noise for now (attack noise may be added later).
 - One button to cycle characters (later a rotary switch or pot).
 - 1/4" input jack (instrument), 1/4" output jack (amp).
-- Characters chosen: **Wukong, Rice, Prince, Piccolo**.
+- Characters chosen: **Wukong, Rice, Prince, Flute**.
 
 Reference material the human supplied:
 
@@ -83,7 +83,7 @@ Not yet purchased. Nothing is committed.
 - Guitar input is high impedance (~1 MOhm), 100 mV to 1 V. Needs a JFET or
   opamp buffer plus gain to reach line level.
 - Anti-alias filter before ADC, reconstruction filter after DAC.
-- 9 V centre-negative pedal supply, separate analog/digital rails. This is
+- 9 V center-negative pedal supply, separate analog/digital rails. This is
   where most DIY digital pedals fail on noise. The PedalPCB Terrarium is
   known to need an RC filter fix on current Daisy revisions for this reason.
 - True-bypass relay, footswitch debounce, 1590B/125B enclosure, RGB LED.
@@ -102,14 +102,14 @@ numbers. Nothing sampled is shipped or redistributed.
 
 ## 3. What the reference audio actually measures
 
-Two sources were analysed. **Use the second one.**
+Two sources were analyzed. **Use the second one.**
 
 ### Source 1: the scream compilation (mostly unusable)
 
 The scream compilation, 5:33. Measured:
 
 - Barely clipped (0.003% at full scale), crest factor 11.5 dB.
-- Voice is centre, music/SFX in the sides about **12 dB down**. Contaminated.
+- Voice is center, music/SFX in the sides about **12 dB down**. Contaminated.
 - 53 scream segments extracted, 51.5s of voiced material.
 - **The 53 segments do not separate into distinct voices.** k-means
   silhouette was weak at every k (best 0.266 at k=3), and cluster envelope
@@ -118,19 +118,19 @@ The scream compilation, 5:33. Measured:
 
 ### Source 2: the isolated per-character clips (this is the good data)
 
-Isolated, dry, silence-separated, already labelled per character. This solved
-both the contamination and the labelling problem.
+Isolated, dry, silence-separated, already labeled per character. This solved
+both the contamination and the labeling problem.
 
 | Character | f0 median | HNR | notes |
 |---|---:|---:|---|
 | Rice | 534.8 Hz | +0.1 dB | highest |
 | Wukong | 451.9 Hz | -1.0 dB | |
 | Prince | 379.8 Hz | -5.2 dB | gravellier |
-| Piccolo | 354.1 Hz | -4.7 dB | lowest, gravellier |
+| Flute | 354.1 Hz | -4.7 dB | lowest, gravellier |
 
-**f0 spread is 7 semitones** Rice to Piccolo. This is the single strongest
+**f0 spread is 7 semitones** Rice to Flute. This is the single strongest
 character discriminator. HNR splits them into two groups
-(Wukong/Rice smooth, Prince/Piccolo rough).
+(Wukong/Rice smooth, Prince/Flute rough).
 
 Caveat: these are PS1-era ADPCM clips, bandwidth 9.3-11.7 kHz. Codec noise
 biases every HNR **downward**. All four share the same codec so the relative
@@ -154,10 +154,10 @@ ratio. So:
 | Wukong | 858 | 1234 | 3112 | 1.073 | 6.7 Hz / 0.42 st |
 | Rice | 1000 | 1438 | 3625 | 1.250 | 7.2 Hz / 0.21 st |
 | Prince | 742 | 1066 | 2688 | 0.927 | 7.0 Hz / 0.70 st |
-| Piccolo | 698 | 1003 | 2529 | 0.872 | 7.1 Hz / 0.70 st |
+| Flute | 698 | 1003 | 2529 | 0.872 | 7.1 Hz / 0.70 st |
 
 f0 and vibrato **rate** are real measurements. Formants are a principled
-scaling, not measured. Vibrato **depth** for Prince and Piccolo was clamped
+scaling, not measured. Vibrato **depth** for Prince and Flute was clamped
 from 0.96 and 1.50 down to 0.70 because the f0 tracker was glitching on those
 raspy voices and real vocal vibrato is 0.2-0.7 semitones.
 
@@ -221,14 +221,14 @@ The human reported intermittent volume spikes with all FX bypassed. Ablation
 unison=1 gave ZERO spikes, so the unison stack was the cause. Three
 mechanisms, three fixes, in order of importance:
 
-1. **Staggered per-voice vibrato phases** (MonkSynth's choir behaviour).
+1. **Staggered per-voice vibrato phases** (MonkSynth's choir behavior).
    With 42 cents of vibrato swing against 11 cents of detune spacing, the
    voices' frequencies kept crossing; each crossing stalls their relative
    phase into a coherent lock (+9 dB) or a hole. Fix: ONE common vibrato LFO
    for the whole stack; detune alone supplies thickness. This took the spike
    count to zero on its own merits.
 2. **Equal-amplitude voices can null completely** at beat minima.
-   Fix: side voices tapered to 0.55, centre always dominates.
+   Fix: side voices tapered to 0.55, center always dominates.
 3. **Coherent grain waveforms.** All voices shared one grain table.
    Fix: per-voice grains with deterministic golden-ratio phase scatter
    (voice 0 keeps zero phase, so unison=1 is still the exact MonkSynth grain).
@@ -237,7 +237,7 @@ Plus a **ratio leveler** (8 ms/250 ms rectified-average trackers, gain =
 slow/fast clamped to +/-6 dB) applied BEFORE the guitar-envelope multiply, so
 playing dynamics pass through untouched. UI toggle "Unison leveler".
 Verified: 0 anomalous spikes across all parameter ablations, spectral
-flatness 2.7e-4 (still clean). Overlap normalisation also moved from read
+flatness 2.7e-4 (still clean). Overlap normalization also moved from read
 time (instantaneous divisor, wrong during pitch motion) to per-grain at
 write time, which is the correct firmware structure anyway.
 
@@ -250,7 +250,7 @@ in the session log; the export button reproduces it.
 
 ### Things already fixed in this engine (do not re-break)
 
-- **Overlap-add normalisation.** At 450 Hz with a 20 ms grain roughly 9-10
+- **Overlap-add normalization.** At 450 Hz with a 20 ms grain roughly 9-10
   grains overlap. Dividing only by the unison count left peaks at 3.745.
   Now divides by `unison * overlap` where `overlap = grainLen * f0 / sr`.
 - **Gain staging.** WaveShaper clamps its input to +/-1 and hard-clips
@@ -281,7 +281,7 @@ Source: `dbscreamz_lab/static/vowel-processor.js`. Takes the guitar as live inpu
 
 ```
 in -> drive (tanh) -> 4 parallel RBJ bandpass biquads -> sum -> out
-                            ^ envelope follower sweeps centres
+                            ^ envelope follower sweeps centers
 ```
 
 It is **not broken**. Verified: output peaks land on their targets
@@ -298,7 +298,7 @@ the analog option (section 8), but it is not the product.
 
 **One real finding from it:** at drive=0 the output is nearly silent
 (rms 0.0285 vs 0.125 dry). A clean guitar has too few harmonics in the
-formant passbands. The drive stage is load-bearing, not a flavour control.
+formant passbands. The drive stage is load-bearing, not a flavor control.
 This matters for any analog version too.
 
 ---
@@ -388,7 +388,7 @@ anchor vote + 10 ms median + 3 ms I/O).
 
 ### What to try next: Cycfi Q (this is the strongest lead)
 
-<https://github.com/cycfi/q> - MIT licence, C++, explicitly designed to be
+<https://github.com/cycfi/q> - MIT license, C++, explicitly designed to be
 "efficient enough to run on small microcontrollers".
 
 **Bitstream Autocorrelation (BACF)** works on the zero-crossing bitstream
@@ -421,7 +421,7 @@ far more attractive and the argument for going analog largely evaporates.
   Fastest path to a working prototype baseline.
 - `adamski/pitch_detector` - MPM (McLeod), JUCE-dependent; check whether the
   de-JUCE-ing on their roadmap has landed.
-- coertvonk's Arduino pitch detector - good optimisation case study,
+- coertvonk's Arduino pitch detector - good optimization case study,
   autocorrelation at half the memory of FFT.
 
 ---
@@ -442,7 +442,7 @@ Existence proof: a talkbox keeps the guitar's pitch and still sounds vocal.
   plus fuzz, marketed as producing "vocal-like sounds". Schematic widely
   available. Best DIY starting point.
 - **Synthrotek Motomouth** DIY kit - 3-band Sedra-Espinoza dual-amplifier
-  bandpass (DABP) tuned to vowel formants. DABP matters because Q and centre
+  bandpass (DABP) tuned to vowel formants. DABP matters because Q and center
   frequency are largely independent, which makes **switching resistor banks
   on a rotary switch practical** - i.e. your character selector.
 - **EHX Stereo Talking Machine** - 9 voices, 7 of them vowels, with a built-in
@@ -459,7 +459,7 @@ Existence proof: a talkbox keeps the guitar's pitch and still sounds vocal.
 guitar -> fuzz -> [octave-up rectifier, switchable] -> 3 parallel DABP
           formant sections -> summing amp -> out
                           ^
-        MCU sets centre frequencies via CD4051 muxes or digipots
+        MCU sets center frequencies via CD4051 muxes or digipots
         (character select + RGB LED, no audio DSP at all)
 ```
 
@@ -521,7 +521,7 @@ and whether the latency is playable.
     FEASIBILITY.md                  the MCU/real-time audit
     static/
       index.html                    UI
-      app.js                        effects graph, UI, spectrum analyser
+      app.js                        effects graph, UI, spectrum analyzer
       fof-processor.js              ENGINE A: FOF voice synth (the good one)
       vowel-processor.js            ENGINE B: vowel/formant filter
       presets.json                  the 4 character presets
@@ -573,11 +573,11 @@ Listed because several cost real time and the human noticed all of them.
    HNR at -1 to -5 dB, noted in writing that ADPCM codec noise biases it
    downward, then injected white noise to hit that number anyway. The human
    rejected the result outright. **The reference clips' noisiness is largely
-   codec artefact. Do not model it.**
+   codec artifact. Do not model it.**
 
 2. **Fixed a bug without checking what it was compensating for.** The
    quantizer octave bug (section 6a). The fix was correct; the result was
-   worse, because a second unexamined problem had been cancelling it.
+   worse, because a second unexamined problem had been canceling it.
    **When a fix makes things worse, suspect a compensating pair.**
 
 3. **Trusted pitch estimators repeatedly, and they were wrong repeatedly.**
@@ -593,7 +593,7 @@ Listed because several cost real time and the human noticed all of them.
    bought 0.2-0.9 dB. The actual cause was most likely the octave-flip warble.
    **Measure before asserting a cause.**
 
-5. **Over-generalised from one failed experiment.** Model B (fuzz into a
+5. **Over-generalized from one failed experiment.** Model B (fuzz into a
    formant bank) scored badly on a 7.9-semitone *pitch* error, and I concluded
    "analog cannot work". The correct conclusion was narrower: analog cannot
    set pitch. It handles vowels fine. See section 8.
@@ -626,7 +626,7 @@ Listed because several cost real time and the human noticed all of them.
    leaking a detuned stack at low level. Pinning unison to 3 makes it
    unreachable either way, which is why the fix shipped without the
    diagnosis being closed. **If it is ever heard again at mix 0, it is the
-   leak**, and the fix is a centre-detent-style deadzone on the mix map in
+   leak**, and the fix is a center-detent-style deadzone on the mix map in
    `param_map.hpp`, the same treatment tone already has.
 
    The lesson is the method, not the fix: when a symptom matches something

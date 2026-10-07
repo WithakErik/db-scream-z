@@ -31,11 +31,11 @@ inline float map_tone(float t) {
   return s * (std::fabs(x) - dz) / (1.0f - dz);
 }
 
-// Vocal size: 0..1, quantised to 32 steps. formant_scale is grain-affecting
-// (grain.hpp bakes it in, fof_engine.hpp dirty-checks it), so an unquantised
+// Vocal size: 0..1, quantized to 32 steps. formant_scale is grain-affecting
+// (grain.hpp bakes it in, fof_engine.hpp dirty-checks it), so an unquantized
 // knob would rebuild the grain tables on every audio block during a sweep
 // and starve the main loop. 32 steps over the 0.5 scale range is a step of
-// about 11 Hz at Piccolo's F1: inaudible. Both stops land exactly on the
+// about 11 Hz at Flute's F1: inaudible. Both stops land exactly on the
 // grid, so 0 and 1 stay exactly reachable.
 inline float map_vocal_size(float t) {
   if (t <= 0.0f) return 0.0f;

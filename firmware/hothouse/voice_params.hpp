@@ -54,7 +54,7 @@ inline constexpr uint32_t kVoiceStoreVersion = 9;
 inline constexpr float kGateLevels[3] = {0.008f, 0.02f, 0.05f};
 
 // vocal_size 0..1 maps onto FofParams::formant_scale 1.0..kMinFormantScale.
-// At 0.5 Piccolo's formants read 349/501/1264 Hz against 698/1003/2529, and
+// At 0.5 Flute's formants read 349/501/1264 Hz against 698/1003/2529, and
 // the rendered spectral centroid drops from 1439 Hz to 827 Hz. Ear-tuned.
 inline constexpr float kMinFormantScale = 0.5f;
 
@@ -125,7 +125,7 @@ inline int slot_index(Page p, Side s) {
 }
 
 // preset_idx indexes kPresets (presets.hpp): Wukong 0, Rice 1, Prince 2,
-// Piccolo 3, Master 4, Ki-Ki 5 (the last two are pedal-side, appended by
+// Flute 3, Master 4, Ki-Ki 5 (the last two are pedal-side, appended by
 // tools/gen_presets.py PEDAL_PRESETS).
 // Non-preset fields are the v12 defaults (FIRMWARE.md section 5)
 // plus the milestone 5 post-chain factory values: vocal_size 0, tone center,
@@ -178,24 +178,28 @@ struct ChordParams {
 };
 static_assert(sizeof(ChordParams) == 12 * 4 + 4, "no hidden padding");
 
-// First-pass ear targets (spec section 4). The shared post-chain fields
-// and the gate come from factory_voice() so chord mode starts at the same
-// levels as a character.
+// Ear-tuned on the hardware and captured from its QSPI with
+// firmware/qspi_dump (2026-09-28). End-stop readings (e.g. 1.9999 vocal
+// vol, 39.8x drive) are snapped to the stop they were set at; the rest are
+// rounded to two significant figures. The first-pass sensitivity of 3.0 held
+// the mouth fully open for most of every note, so the vowel never audibly
+// moved; 1.6 lets it close as the note decays. Mix, tone, vocal size and the
+// gate still come from factory_voice(), as a character's do.
 inline ChordParams factory_chord() {
   const VoiceParams v = factory_voice(0);
   ChordParams c{};
-  c.vocal_vol = v.vocal_vol;
+  c.vocal_vol = 2.0f;     // knob full up
   c.mix = v.mix;
-  c.master_vol = v.master_vol;
+  c.master_vol = 1.2f;
   c.tone = v.tone;
-  c.sensitivity = 3.0f;
-  c.drive = 10.0f;
+  c.sensitivity = 1.6f;
+  c.drive = 40.0f;        // knob full up
   c.closed_vowel = 0.0f;  // oo
-  c.open_vowel = 2.0f;    // ah
+  c.open_vowel = 4.0f;    // ee
   c.vocal_size = v.vocal_size;
-  c.resonance = 0.5f;
-  c.attack_ms = 10.0f;
-  c.release_ms = 150.0f;
+  c.resonance = 0.53f;
+  c.attack_ms = 17.0f;
+  c.release_ms = 20.0f;   // knob full down
   c.gate_level = v.gate_level;
   c.pad_[0] = c.pad_[1] = c.pad_[2] = 0;
   return c;
@@ -235,7 +239,7 @@ static_assert(sizeof(VoiceStoreV8) ==
 static_assert(sizeof(VoiceStoreV8) < sizeof(VoiceStore),
               "a v8 image must fit inside the bytes a v9 Init() reads");
 
-// Set 1 = Wukong (R) / Prince (L); Set 2 = Rice (R) / Piccolo (L);
+// Set 1 = Wukong (R) / Prince (L); Set 2 = Rice (R) / Flute (L);
 // Set 3 = Master (R) / Ki-Ki (L).
 inline VoiceStore factory_store() {
   VoiceStore s{};
@@ -243,7 +247,7 @@ inline VoiceStore factory_store() {
   s.slots[0] = factory_voice(0);  // Wukong
   s.slots[1] = factory_voice(2);  // Prince
   s.slots[2] = factory_voice(1);  // Rice
-  s.slots[3] = factory_voice(3);  // Piccolo
+  s.slots[3] = factory_voice(3);  // Flute
   s.slots[4] = factory_voice(4);  // Master
   s.slots[5] = factory_voice(5);  // Ki-Ki
   s.charge = factory_charge_config();

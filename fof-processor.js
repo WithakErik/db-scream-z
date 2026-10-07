@@ -540,7 +540,7 @@ class FofProcessor extends AudioWorkletProcessor {
       quantize: 1,
       ampComp: 1,   // MonkSynth's low-note boost: the human prefers it ON
                     // (with the target leveler active its static tilt is
-                    // mostly flattened; what remains is dynamic flavour)
+                    // mostly flattened; what remains is dynamic flavor)
       glideMs: 0,
       targetF0: 452, loF0: 300, hiF0: 620,
       octaveShift: 0,
@@ -619,7 +619,7 @@ class FofProcessor extends AudioWorkletProcessor {
     this.win = new Float32Array(320);
     this.yinD = new Float32Array(115);
     this.yinC = new Float32Array(115);
-    // live envelope follower + slow peak for normalisation
+    // live envelope follower + slow peak for normalization
     this.envFast = 0; this.envPeak = 0.05;
     this.cEnvA = 1 - Math.exp(-1 / (0.006 * this.sr));   // 6 ms attack
     this.cEnvR = 1 - Math.exp(-1 / (0.080 * this.sr));   // 80 ms release
@@ -817,7 +817,7 @@ class FofProcessor extends AudioWorkletProcessor {
     const w = this.win;
     for (let k = 0; k < wn; k++) { w[k] = this.p8[j]; j = (j + 1) % 512; }
 
-    // onset = fast rise of the normalised envelope (attack blanking:
+    // onset = fast rise of the normalized envelope (attack blanking:
     // a pick transient has no stable period, YIN is worst exactly there)
     // fastTrack: blank 6->3 frames, votes 3->2, median 5->3. Saves ~30 ms of
     // note-onset latency at the cost of octave stability at note starts.
@@ -892,7 +892,7 @@ class FofProcessor extends AudioWorkletProcessor {
   liveSample(x) {
     const a = Math.abs(x);
     this.envFast += (a - this.envFast) * (a > this.envFast ? this.cEnvA : this.cEnvR);
-    // 0.05 FLOOR on the peak reference. Without it this normaliser is an
+    // 0.05 FLOOR on the peak reference. Without it this normalizer is an
     // accidental AGC: over ~20 s of silence envPeak decayed to the noise
     // floor and liveAmp returned to 1.0, producing a constant full-volume
     // voice from mixer hiss (measured, and heard by the human).
@@ -908,7 +908,7 @@ class FofProcessor extends AudioWorkletProcessor {
 
     // BACF path: full-rate, no decimation, no blanking/votes/median needed.
     // The detector's own median-3 + bias logic plus the octave gate is the
-    // whole stabiliser; the tracker holds the last f0 on unvoiced itself.
+    // whole stabilizer; the tracker holds the last f0 on unvoiced itself.
     if (this.p.useBacf && this.qpd) {
       this.qpd.process(x);
       this.liveF0 = this.qpd.f0();
@@ -937,7 +937,7 @@ class FofProcessor extends AudioWorkletProcessor {
 
   quantizeHz(hz) {
     if (!this.p.quantize) return hz;
-    // MonkSynth quantises pitch to 32 steps per semitone, which is what gives
+    // MonkSynth quantizes pitch to 32 steps per semitone, which is what gives
     // the voice its stepped character. Its grain_period() does
     //   internal = midi_note - 12;  idx = int(internal*32)
     // but `midi_note` there is an INTERNAL representation already offset by
@@ -964,7 +964,7 @@ class FofProcessor extends AudioWorkletProcessor {
 
     // PER-NOTE SNAP. Pulls every note toward the target f0 individually.
     // Keeps everything inside the scream register but flattens melodic
-    // contour, because neighbouring notes can pick different octaves.
+    // contour, because neighboring notes can pick different octaves.
     const lo = p.loF0 * 0.75, hi = p.hiF0 * 1.25, tgt = p.targetF0;
     let best = tgt, bf = 1e18;
     for (let o = -2; o <= 5; o++) {
@@ -1057,7 +1057,7 @@ class FofProcessor extends AudioWorkletProcessor {
         const spread = nUni === 1 ? 0 : (u / (nUni - 1)) * 2 - 1;
         // Taper side voices: 3 equal-amplitude combs can null completely at
         // beat minima (the surviving +9 dB spikes). With sides at 0.55 the
-        // centre voice always dominates and deep nulls become impossible.
+        // center voice always dominates and deep nulls become impossible.
         const vGain = 1 - 0.45 * Math.abs(spread);
 
         const semis = (spread * p.detuneCents) / 100 + vib;
@@ -1070,7 +1070,7 @@ class FofProcessor extends AudioWorkletProcessor {
         this.vphase[u] += f / this.sr;
         if (this.vphase[u] >= 1) {
           this.vphase[u] -= Math.floor(this.vphase[u]);
-          // Overlap normalisation PER GRAIN, at trigger time. Normalising at
+          // Overlap normalization PER GRAIN, at trigger time. Normalizing at
           // read time with the instantaneous pitch caused intermittent volume
           // spikes: on a fast pitch drop the divisor shrank immediately while
           // the buffer still held the denser grain sum from the old pitch
@@ -1080,7 +1080,7 @@ class FofProcessor extends AudioWorkletProcessor {
           // 1/sqrt(overlap): grain energies ADD as power, so per-grain
           // amplitude 1/overlap made RMS go as 1/sqrt(f0), i.e. low notes
           // ~3 dB louder per octave down (heard by the human on live guitar).
-          // Constant-power normalisation is 1/sqrt(overlap); the 0.55 keeps
+          // Constant-power normalization is 1/sqrt(overlap); the 0.55 keeps
           // overall level near the previously approved mid-note loudness.
           const overlapAtTrig = Math.max(1, (gl * f) / this.sr);
           let gain = (0.55 * vGain) / Math.sqrt(overlapAtTrig);
@@ -1105,14 +1105,14 @@ class FofProcessor extends AudioWorkletProcessor {
       this.oread++; if (this.oread >= this.obufLen) this.oread = 0;
       this.owrite++; if (this.owrite >= this.obufLen) this.owrite = 0;
 
-      // Overlap normalisation now happens per grain at write time (see the
+      // Overlap normalization now happens per grain at write time (see the
       // trigger branch above); divide by the summed voice gains so the
       // side-voice taper does not change the overall level.
       let raw = s / sumG;
 
       // TARGET LEVELER. The synth-internal signal is constant-level BY
       // DESIGN: every playing dynamic comes from the guitar-envelope
-      // multiply below. So normalise raw toward a fixed target. This kills
+      // multiply below. So normalize raw toward a fixed target. This kills
       // both failure modes at once, measured on real material:
       //   - unison beat wobble (+/-9 dB swells at 5-15 Hz)
       //   - formant-comb alignment (+/-7 dB between notes whose harmonics

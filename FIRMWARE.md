@@ -65,7 +65,7 @@ Single source of truth: **`dbscreamz_lab/static/fof-processor.js`** (deployed as
 v12). It contains, top to bottom:
 
 1. A JS port of the cycfi/q pitch stack - in firmware use the C++ headers
-   instead; the JS is the behavioural reference. Config:
+   instead; the JS is the behavioral reference. Config:
    `pitch_detector(70_Hz, 1300_Hz, sps, -45_dB)`, fed the FULL-RATE input
    sample (no decimation), `get_frequency()` per sample, hold last value
    when it returns 0. Since 2026-09-24 the firmware and the emulator both
@@ -122,7 +122,7 @@ section 11 explains the history.
 | ONE common vibrato LFO for the whole unison stack, computed once per sample outside the unison loop. The LFO was deleted 2026-09-01 and restored 2026-09-02 with knobs on menu 3; the shared-phase rule was re-examined then and kept. Jitter was NOT restored | staggered-phase frequency crossings -> intermittent spikes |
 | Per-voice grain sinusoid phases, deterministic golden-ratio scatter, voice 0 = zero phase | coherent unison beating |
 | Target leveler BEFORE envelope multiply: 8 ms rectified tracker, g = 0.09/(lvl+1e-3), clamp 0.25-4, slew 10 ms down / 60 ms up | formant-comb loudness (+/-7.8 dB between notes) and residual wobble |
-| Envelope: 6 ms attack / 80 ms release, peak-normalised with FLOOR 0.05, output amp scaled x0.5 | silence-AGC (constant Ahhh from noise floor); WaveShaper-era clipping |
+| Envelope: 6 ms attack / 80 ms release, peak-normalized with FLOOR 0.05, output amp scaled x0.5 | silence-AGC (constant Ahhh from noise floor); WaveShaper-era clipping |
 | Noise gate on raw env: hysteresis open at `gate`, close at `gate/2`, gain slew 5 ms open / 60 ms close | mixer hiss driving the voice; gate chatter |
 | Mix ALL input channels (average) | right-channel guitar silently dropped |
 | Pitch: BACF full-rate 70-1300 Hz, -45 dB hysteresis; hold last f on unvoiced. Since 2026-09-24 (`pitch_tracker.hpp`): the detector still reads the raw sample (a q `dynamic_smoother` in front was measured, -17..-33% burst but ~9% octave-class drift from v12, and lost the A/B listening test; the full `signal_conditioner` measured worse); an octave gate takes a reading only at periodicity >= 0.8, holds an octave jump (within 50 cents) until it repeats for 3 windows (~43 ms) and takes any other change at once; after 43 ms with no analysis window the detector is `reset()` and the next confident reading is taken at once | octave-down above F5 (old 700 Hz cap); tracking latency; octave blips; a note after silence folded onto the previous one by q's harmonic snap (A2, gap, A3 read A2) |
@@ -153,7 +153,7 @@ vibrato per character from presets.json; vibJitter 0.10 (v12 lab baseline
   restored 2026-09-02 has no jitter, so this baseline stays unreproduced
   on the pedal)
 characters: Wukong 858/1234/3112 Hz, Rice 1000/1438/3625,
-  Prince 742/1066/2688, Piccolo 698/1003/2529 (+ vib rate/depth each, v12
+  Prince 742/1066/2688, Flute 698/1003/2529 (+ vib rate/depth each, v12
   lab baseline only)
 ```
 
@@ -166,7 +166,7 @@ ui_controller / voice_params / param_map / post_chain / knob_pickup
 headers). firmware/MILESTONE5.md is the on-device runbook.
 
 Summary: 4 voices (2 stomp slots x 2 memory sets, factory Wukong/Prince and
-Rice/Piccolo), one volatile edit buffer, three knob layers (default layer:
+Rice/Flute), one volatile edit buffer, three knob layers (default layer:
 vocal vol / mix / master / tone / glide / vocal size; RIGHT-stomp hold-menu:
 F1/F2; LEFT-stomp hold-menu: F3, vibrato rate, vibrato depth and detune;
 the pedal had no vibrato from store v3 (menu 3's bottom row was the voices
@@ -182,9 +182,9 @@ press the other while still holding (menus never save; in a menu the
 other stomp's tap switches menus and the own stomp's tap exits; amended
 2026-08-27). Physical mapping: FOOTSWITCH_1/LED_1 = LEFT, FOOTSWITCH_2/LED_2
 = RIGHT (derived from the Hothouse PCB netlists; see the milestone 5 plan).
-LED colours are a build choice, not firmware: LED_1 (LEFT) is BLUE, LED_2
-(RIGHT) is ORANGE. Both are plain single-colour 3mm parts driven on/off,
-so no LED ever changes colour at runtime. The stock Hothouse kit BOM calls
+LED colors are a build choice, not firmware: LED_1 (LEFT) is BLUE, LED_2
+(RIGHT) is ORANGE. Both are plain single-color 3mm parts driven on/off,
+so no LED ever changes color at runtime. The stock Hothouse kit BOM calls
 for two red 3mm LEDs; we deviate. Any manual or booklet copy must say blue
 LEFT / orange RIGHT.
 Charge mode (2026-08-27): both stomps together while engaged ramps a
@@ -299,7 +299,7 @@ session, in C++ form.
   the 60-80 points the meter shows above the base. Why the 09-02 host
   check missed it: `autocorrelate()` returns early on a perfect match
   (`count == 0`), which a clean synthetic tone hits at once (last row,
-  30x less work than a real guitar); a total-time average amortises the
+  30x less work than a real guitar); a total-time average amortizes the
   burst over 688 samples; and x86 has hardware popcount. The same early
   exit is why the crackle is "semi-deterministic": a window that happens
   to correlate perfectly costs almost nothing, so the same note is fine
@@ -452,7 +452,7 @@ session, in C++ form.
 7. The BACF pitch tracker's analysis window is word-size-dependent:
    `bacf_period_detector` rounds its window up to a whole number of
    `cycfi::q::bitset<T>` words, and the word width `T` changes which
-   samples get analysed, changes `is_ready()` cadence, and changes which
+   samples get analyzed, changes `is_ready()` cadence, and changes which
    period gets picked. The v12 JS reference hardcodes 32-bit words
    (`const QVS = 32`); firmware MUST verify the BACF bitset instantiates
    over 32-bit words (`natural_uint` on the Cortex-M7 target, which is
@@ -511,7 +511,7 @@ make an octave error. Chord mode design spec, 2026-09-24.
 `firmware/engine/chord_engine.hpp`'s `ChordEngine::process_block()`:
 
 ```
-in -> LiveFrontEnd (gate, peak-normalised amp)
+in -> LiveFrontEnd (gate, peak-normalized amp)
 in -> soft clip -> 3 x TPT bandpass, summed -> leveler -> x amp x 0.5
 ```
 
@@ -616,7 +616,7 @@ Skipping the call outright rather than gating it also leaves Hothouse's
 the first release the escape behaves exactly as it always has, armed only
 while `chord_ui.bootloader_armed()` (bypassed), same as normal mode.
 
-This is the one behaviour here that no host test can cover, because it
+This is the one behavior here that no host test can cover, because it
 lives in `main.cpp` and `hothouse.cpp`. Check it by hand on the next
 hardware pass: hold both stomps through power-up for a good five seconds
 and confirm the pedal keeps playing chord mode rather than sitting in DFU,

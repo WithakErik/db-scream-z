@@ -11,7 +11,7 @@ presets.json (pre-bake), because the knobs must reproduce the baked values.
 House style for the booklet prose below (applies to any manual copy
 derived from it): spell every initialism out in SQUARE BRACKETS at its
 first use, e.g. "DFU [Device Firmware Upgrade]", "LED [light-emitting
-diode]". Later uses may go bare. Also state LED colours as blue LEFT /
+diode]". Later uses may go bare. Also state LED colors as blue LEFT /
 orange RIGHT; they are a build choice, not firmware.
 """
 import math
@@ -67,7 +67,7 @@ def menu1_frac(key, v):
         return x / 2.0 + 0.5
     raise KeyError(key)
 SLOTS = {"Wukong": "Set 1, RIGHT", "Prince": "Set 1, LEFT",
-         "Rice": "Set 2, RIGHT", "Piccolo": "Set 2, LEFT",
+         "Rice": "Set 2, RIGHT", "Flute": "Set 2, LEFT",
          "Master": "Set 3, RIGHT", "Ki-Ki": "Set 3, LEFT"}
 
 # Booklet-only characters: Boo and Fling, not factory slots, dial by hand
@@ -114,11 +114,11 @@ Plug in, power on. The pedal boots BYPASSED, both LEDs [light-emitting
 diodes] off. Flip the middle toggle up (Set 1) and tap the RIGHT stomp:
 Wukong engages, the right LED glows solid orange. Tap again to bypass.
 Tap LEFT for Prince (left LED, blue). Flip the middle toggle to the
-middle for Set 2 (Rice right, Piccolo left), or down for Set 3 (Master
+middle for Set 2 (Rice right, Flute left), or down for Set 3 (Master
 right, Ki-Ki left).
 
-The two LEDs are single-colour: the LEFT one is always blue, the RIGHT
-one always orange. Nothing on the pedal ever changes an LED's colour;
+The two LEDs are single-color: the LEFT one is always blue, the RIGHT
+one always orange. Nothing on the pedal ever changes an LED's color;
 only whether it is off, solid, or blinking.
 
 ### Knobs (three layers)
@@ -140,7 +140,7 @@ coming from a physically bigger body. All the way down (7:00) is the
 character exactly as written; all the way up (5:00) is the deepest it
 goes.
 
-Hold the RIGHT stomp: about 1 second in, MENU 2 latches under your foot
+Hold the RIGHT stomp: about 1 second in, MENU 2 latches
 (right LED blinks) and the knobs edit formants F1/F2. It does not wait
 for the release, and letting go changes nothing. Hold LEFT the same way
 for MENU 3 (F3 + vibrato). While a menu is latched ONLY the blinking
@@ -152,8 +152,9 @@ any menu change a knob is inert until you move it, so nothing ever
 jumps.
 
 Menu 3's bottom row is VIBRATO: how fast it cycles (knob 4, 0 to 50 Hz)
-and how far it swings (knob 5, 0 to 100 cents), plus detune (knob 6, up
-to 60 cents), which spreads the engine's three voices apart. Every
+and how far it swings (knob 5, 0 to 100 cents), plus detune (knob 6),
+which spreads the engine's three voices apart: the outer two move up to
+60 cents either side of the middle one. Every
 character ships with vibrato off; wider detune thickens and roughens
 the scream, while at 0 the three voices collapse to the bare, focused
 character.
@@ -193,11 +194,9 @@ update gesture instead, and it will take the pedal off-line mid-song.
 
 With a voice engaged, then, stomp BOTH switches together and hold: the
 sound charges up like a power-up scream: at a full charge every row you
-have switched on reaches the TOP of its range, so the gain is all the
-way up, the pitch has swept two octaves, and the voice has grown to its
-deepest. The LEDs alternate faster and faster. Release
-to let it wind down. Configure it with the toggles while a menu is
-latched:
+have switched on goes as far as its position takes it (see below). The
+LEDs alternate faster and faster. Release to let it wind down.
+Configure it with the toggles while a menu is latched:
 
 | Toggle | Menu 2 latched | Menu 3 latched |
 |---|---|---|
@@ -205,8 +204,8 @@ latched:
 | 2 | Charge time: **Birit Spomb ~6 s** / Hamekameka ~2.5 s / punch ~0.75 s | Tone: **brighter** / darker / off |
 | 3 | Decay: fast / **slow** / off (instant) | Size: **full** / half / off |
 
-Bold is the factory setting (the full power-up: a six-second, two-octave
-rise that brightens and grows as it builds).
+Bold is the factory setting (the full power-up: a six-second rise of
+nearly two octaves that brightens and grows as it builds).
 
 On the amount rows (gain and size) the middle position gets you
 HALFWAY from wherever the voice already sits to the top, and the up
@@ -214,8 +213,20 @@ position takes it all the way. Tone's two positions are directions
 rather than amounts, so both go the whole way: darker means fully dark,
 brighter means fully bright.
 
-The config is global, remembered across power cycles, and never touches
-your saved voices.
+Pitch glides toward two octaves away for as long as you hold: nearly
+there by the end of the slowest charge (Birit Spomb, ~6 s), about one
+octave in by the end of the quickest (punch, ~0.75 s).
+The two octaves count from wherever the octave toggle sits, so a voice
+whose toggle is already up rises three octaves above normal.
+
+A toggle sets charge when you MOVE it, so to pick the position it already
+sits in, flick it away and back. Your Set, octave and gate stay as they
+were; the switches stop showing them until you next move them with no
+menu latched.
+
+The config is global and never touches your saved voices. It is stored
+when you leave the menu by tapping the blinking side; power off with a
+menu still latched and the change is lost.
 
 ### LED language
 
@@ -227,29 +238,33 @@ your saved voices.
 | Menu 2 latched | off | blinking |
 | Menu 3 latched | blinking | off |
 | Save confirmed | 3 blinks | 3 blinks |
-| Charging | alternating, speeding up with the charge | |
+| Charging | alternating, speeding up as it builds, slowing as it winds down | |
 
 ### Firmware update mode
 
 While BYPASSED, meaning both LEDs are off, press both stomps together
 and hold about 2 seconds to enter USB [Universal Serial Bus]
 firmware-update mode, also called DFU [Device Firmware Upgrade] mode.
-The pedal makes no sound in this mode and waits for a computer. Power
-cycle it to go back to playing.
+The pedal makes no sound in this mode and waits for a computer. To
+update it, open withakerik.github.io/db-scream-z/flash.html in Chrome or
+Edge and follow the page. Power cycle it to go back to playing.
 
 Being bypassed is what arms this gesture. Engaged, the identical
 two-stomp hold is CHARGE MODE and can never reach DFU. Bypassed, any
-two seconds with both stomps down enters DFU, however they went down:
-a save from bypass (hold one, press the other) completes on the second
-press, so let go at once.
+two seconds with both stomps down enters DFU, even if one went down
+before the other. A save from bypass (hold one, press the other)
+happens the moment the second stomp goes down, so release both right
+away, or engage a voice before saving.
 """
 
 
 def clock(frac):
     """Knob travel fraction (0..1) to a 7 o'clock..5 o'clock position."""
-    total_min = frac * 600  # 10 clock-hours of travel
-    h = 7 + int(total_min // 60)
-    m = int(total_min % 60)
+    # Rounded to the nearest minute, not truncated: truncation printed
+    # 8:49 for an exact 8:50 (11 ct detune) through float error.
+    total_min = round(frac * 600)  # 10 clock-hours of travel
+    h = 7 + total_min // 60
+    m = total_min % 60
     if h > 12:
         h -= 12
     return f"{h}:{m:02d}"
@@ -264,7 +279,7 @@ def parse_presets():
         name, f1, f2, f3, dt = m.groups()
         out[name] = {"f1": float(f1), "f2": float(f2), "f3": float(f3),
                      "detune_cents": float(dt)}
-    assert list(out) == ["Wukong", "Rice", "Prince", "Piccolo", "Master",
+    assert list(out) == ["Wukong", "Rice", "Prince", "Flute", "Master",
                          "Ki-Ki"], f"unexpected presets parsed: {list(out)}"
     return out
 
@@ -292,7 +307,7 @@ def vib_rate_frac(v):
 # Most chord knobs are the plain map_lin() row() already inverts
 # correctly (vocal vol, mix, master vol, both vowels) or are the knob
 # position itself (resonance) or near enough to identity that the
-# 32-step quantiser in map_vocal_size() rounds away (vocal size). Three
+# 32-step quantizer in map_vocal_size() rounds away (vocal size). Three
 # are map_cube()'s cube taper (sensitivity, attack, release) and one is
 # map_drive()'s log taper (drive); tone reuses map_tone(), which
 # menu1_frac() above already inverts for the normal-mode tone knob.
@@ -364,26 +379,26 @@ CHORD_MENU = [("Closed vowel (0 oo .. 4 ee)", "closed_vowel", 0, 4),
               ("Release ms", "release_ms", 20, 500)]
 
 # Chord mode's one factory setting (firmware/hothouse/voice_params.hpp
-# factory_chord()). Four fields (vocal_vol, mix, master_vol, tone) plus
-# vocal_size and gate are copied there from factory_voice(0), which is
+# factory_chord()). Mix, tone, vocal_size and gate are copied there from
+# factory_voice(0), which is
 # already mirrored above as V12_MENU1, so they are pulled from there
 # instead of duplicated. check_factory_chord() below asserts the rest
 # (chord mode's own literal values) against a regex pull of
 # factory_chord()'s body, the same drift guard parse_presets() gives the
 # character presets.
 FACTORY_CHORD = {
-    "vocal_vol": V12_MENU1["vocal_vol"],
+    "vocal_vol": 2.0,
     "mix": V12_MENU1["mix"],
-    "master_vol": V12_MENU1["master_vol"],
+    "master_vol": 1.2,
     "tone": V12_MENU1["tone"],
-    "sensitivity": 3.0,
-    "drive": 10.0,
+    "sensitivity": 1.6,
+    "drive": 40.0,
     "closed_vowel": 0.0,
-    "open_vowel": 2.0,
+    "open_vowel": 4.0,
     "vocal_size": V12_MENU1["vocal_size"],
-    "resonance": 0.5,
-    "attack_ms": 10.0,
-    "release_ms": 150.0,
+    "resonance": 0.53,
+    "attack_ms": 17.0,
+    "release_ms": 20.0,
     "gate": V12_MENU1["gate"],
 }
 
@@ -392,8 +407,8 @@ def check_factory_chord():
     """Parses factory_chord()'s own literal `c.field = N.Nf;` assignments
     out of voice_params.hpp and asserts they match FACTORY_CHORD, so a
     tuning change there cannot silently drift from this booklet. The
-    fields factory_chord() copies from `v` (vocal_vol, mix, master_vol,
-    tone, vocal_size, gate) have no literal here to check against; they
+    fields factory_chord() copies from `v` (mix, tone, vocal_size,
+    gate) have no literal here to check against; they
     are kept in step by hand via V12_MENU1 above instead."""
     text = VOICE_PARAMS.read_text()
     m = re.search(r'inline ChordParams factory_chord\(\)\s*\{(.*?)\n\}',
@@ -418,20 +433,23 @@ def chord_section():
         "one vowel filter, chords included, driven straight off your",
         "guitar with no pitch tracker anywhere in the path. Both LEDs",
         "flash three times to say it is live. Power off and back on",
-        "WITHOUT the grip and the six characters are exactly as you",
-        "left them.", "",
+        "WITHOUT holding the footswitches and the six characters are",
+        "exactly as you left them.", "",
         "| Stomp | Does |", "|---|---|",
         "| LEFT tap | Engage or bypass. In the chord menu, leaves it "
         "instead. |",
         "| LEFT hold ~1 s | Latch the chord menu (left LED blinks). Tap "
         "LEFT again to leave. |",
         "| RIGHT, held | Open the mouth: right LED lit for as long as "
-        "you hold it. Momentary, never a menu, never a save. |",
+        "you hold it (dark in the chord menu). Momentary, never a menu, "
+        "never a save. |",
         "| Both together | Charge, engaged and outside the menu only: "
         "the same gain, tone and size overlay as the characters. |", "",
-        "Pressing LEFT while holding RIGHT starts a charge, and the mouth",
-        "opens again when you let go of LEFT. In the chord menu, lift",
-        "RIGHT before tapping LEFT to leave.", "",
+        "While holding RIGHT (mouth open), press LEFT as well to start a",
+        "charge. The mouth closes while both are down. Let go of LEFT and",
+        "the charge winds down, and the mouth opens again if RIGHT is",
+        "still held. In the chord menu, a LEFT tap with RIGHT held does",
+        "not count, so let go of RIGHT before tapping LEFT to leave.", "",
         "Toggle 3 is the gate (high/medium/low), same as the characters;",
         "toggles 1 and 2 do nothing. Chord mode has one setting, not",
         "six slots, and it saves itself: a few seconds after you stop",
@@ -453,9 +471,11 @@ def chord_section():
         lines.append(frow(label, v, chord_frac(key, v, lo, hi)))
     lines += [
         "",
-        "Vowel knobs sweep oo, oh, ah, eh, ee (0 to 4): closed vowel is",
-        "where quiet picking sits, open vowel is where the mouth goes as",
-        "you dig in, or all the way with RIGHT held.", "",
+        "Vowel knobs each pick one of oo, oh, ah, eh, ee (0 to 4). Play",
+        "softly and you hear the closed vowel; the harder you pick, the",
+        "further it moves toward the open vowel. Sensitivity (K5) sets how",
+        "hard you must pick to reach it. Hold RIGHT and it goes straight",
+        "to the open vowel.", "",
         f"Toggles: 3 Gate = {GATE_POS[FACTORY_CHORD['gate']]} "
         f"({FACTORY_CHORD['gate']}).", "",
     ]
@@ -468,7 +488,7 @@ CHORD = chord_section()
 def main():
     check_factory_chord()
     presets = parse_presets()
-    order = ["Wukong", "Prince", "Rice", "Piccolo", "Master", "Ki-Ki"]
+    order = ["Wukong", "Prince", "Rice", "Flute", "Master", "Ki-Ki"]
     parts = ["# DBscreamZ: Instruction Booklet",
              "",
              "GENERATED by tools/gen_booklet.py from firmware/engine/",

@@ -6,7 +6,7 @@
 // whose vowel moves with pick dynamics. No pitch tracking anywhere, so it
 // plays chords, adds no latency and cannot make an octave error.
 //
-//   in -> LiveFrontEnd (gate, peak-normalised amp)
+//   in -> LiveFrontEnd (gate, peak-normalized amp)
 //   in -> soft clip -> 3 x TPT bandpass, summed -> leveler -> x amp x 0.5
 //   mouth follower (amp x sensitivity, or forced open) sweeps the formants
 //   from the closed vowel to the open vowel, in log frequency.
@@ -48,7 +48,7 @@ function prewarpG(fc, sr) {
 }
 
 // Vowel knob position (0..4, clamped) to a formant triple in Hz,
-// interpolated between neighbouring rows in log frequency. Writes into
+// interpolated between neighboring rows in log frequency. Writes into
 // `out` (length 3), matching the C++ out-param signature.
 function vowelFormants(v, out) {
   v = Math.min(Math.max(v, 0.0), kVowelCount - 1);
@@ -58,7 +58,7 @@ function vowelFormants(v, out) {
     out[k] = kVowelHz[i][k] * Math.pow(kVowelHz[i + 1][k] / kVowelHz[i][k], t);
 }
 
-// Zavalishin/Simper topology-preserving SVF, bandpass output normalised to
+// Zavalishin/Simper topology-preserving SVF, bandpass output normalized to
 // unity peak gain (k * v1).
 class TptBandpass {
   constructor() {
@@ -113,7 +113,7 @@ class LiveFrontEnd {
 }
 
 // ChordEngineParams defaults, camelCase mirror of the C++ struct's
-// in-class initialisers.
+// in-class initializers.
 function defaultChordEngineParams() {
   return {
     inputGain: 1.0, gate: 0.02, drive: 10.0, sensitivity: 3.0,

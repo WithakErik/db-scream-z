@@ -1,6 +1,6 @@
 // ui-controller.js - port of firmware/hothouse/ui_controller.hpp.
 //
-// The control-surface state machine, unchanged in behaviour from the pedal:
+// The control-surface state machine, unchanged in behavior from the pedal:
 // gesture timing, menu latching, knob pickup, the save chord, charge mode
 // and the LED language all follow the C++ line for line. ../tests asserts
 // the same cases firmware/host/tests/test_ui_controller.cpp does.
@@ -17,7 +17,7 @@
 // why the save handshake is a pair of flags rather than a call. Nothing in
 // the browser needs that, but the flags are kept: they are what produces
 // the save guard window and the confirm blink, both of which are visible
-// behaviour.
+// behavior.
 
 import {
   Side, Page, TogglePos, EngagedSource, MenuLayer,

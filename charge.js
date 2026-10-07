@@ -12,7 +12,7 @@ export function applyCharge(base, c, level, charging) {
   // Every row here ramps its parameter toward the TOP of its own range,
   // measured from wherever the voice already sits: charge is a power-up, so
   // a full charge means full value, not a fixed increment on top of whatever
-  // you dialled. `reach` is how far up that gap the row travels at full
+  // you dialed. `reach` is how far up that gap the row travels at full
   // charge: up goes the whole way, middle stops halfway.
   //
   // Gain: the ramp drives vocal volume toward its 2.0 ceiling. It used to
@@ -24,16 +24,13 @@ export function applyCharge(base, c, level, charging) {
   }
 
   // Pitch: a TWO octave sweep, run continuously by the engine's portamento
-  // smoother via a long glide override. The result is capped at +/-2 rather
-  // than the sweep being cancelled, so pitch always does something: a voice
-  // whose own octave toggle is already at +1 simply has one octave of travel
-  // left instead of two.
+  // smoother via a long glide override. The sweep is RELATIVE: always two
+  // octaves from wherever the octave toggle sits, so a voice already at +1
+  // rises to +3. No cap is needed here: the engine clamps every voice to
+  // 16..2000 Hz, so the extreme notes simply saturate.
   if (c.pitch !== 0) {
-    let target = base.octave + (c.pitch === 2 ? 2 : -2);
-    if (target > 2) target = 2;
-    if (target < -2) target = -2;
     if (charging) {
-      v.octave = target;
+      v.octave = base.octave + (c.pitch === 2 ? 2 : -2);
       v.glide_ms = 2000.0;   // the sweep: rise/fall, never a jump
     } else {
       v.octave = base.octave;   // decay: glide back home
@@ -53,8 +50,8 @@ export function applyCharge(base, c, level, charging) {
   //
   // UNLIKE every other row, this one IS grain-affecting: audio.js turns
   // vocal_size into formantScale, which fof-processor.js bakes into the
-  // formants and dirty-checks. An unquantised ramp would therefore rebuild
-  // the grain tables far more often than needed. Quantising the LEVEL to 32
+  // formants and dirty-checks. An unquantized ramp would therefore rebuild
+  // the grain tables far more often than needed. Quantizing the LEVEL to 32
   // steps holds that down, exactly as the aspiration row used to.
   if (c.size !== 0) {
     const reach = c.size === 2 ? 1.0 : 0.5;

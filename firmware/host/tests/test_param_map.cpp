@@ -11,13 +11,13 @@ static bool near(float a, float b, float eps = 1e-4f) {
 }
 
 int main() {
-  // ---- factory store (spec sec 6): Set1 = Wukong R / Prince L, Set2 = Rice R / Piccolo L
+  // ---- factory store (spec sec 6): Set1 = Wukong R / Prince L, Set2 = Rice R / Flute L
   VoiceStore s = factory_store();
   assert(s.version == kVoiceStoreVersion);
   assert(near(s.slots[0].f1, 858.4f));    // Wukong
   assert(near(s.slots[1].f1, 741.6f));    // Prince
   assert(near(s.slots[2].f1, 1000.0f));   // Rice
-  assert(near(s.slots[3].f1, 697.6f));    // Piccolo
+  assert(near(s.slots[3].f1, 697.6f));    // Flute
   assert(near(s.slots[4].f1, 640.0f));    // Master
   assert(near(s.slots[5].f1, 950.0f));    // Ki-Ki
   assert(near(s.slots[0].bw1, 32.5f) && near(s.slots[0].bw2, 47.5f) &&
@@ -26,7 +26,7 @@ int main() {
   // Per-character voice stack (gen_presets.py STACK). Voice COUNT left the
   // data model on 2026-09-01 and grain length followed on 2026-09-02, so
   // detune is the only part of the stack that still varies per character:
-  // Wukong keeps the v12 reference 11, Piccolo is the wide end. Grain is
+  // Wukong keeps the v12 reference 11, Flute is the wide end. Grain is
   // pinned to the engine's 20 ms in to_fof_params(), which moved no voice
   // because every character already stored exactly 20.
   assert(near(s.slots[0].detune_cents, 11.f));
@@ -81,7 +81,7 @@ int main() {
     apply_knob(MenuLayer::Menu1, 2, 1.0f, v);
     assert(near(v.master_vol, 2.0f));
     apply_knob(MenuLayer::Menu1, 3, 0.5f, v);
-    assert(v.tone == 0.0f);              // centre detent, exact
+    assert(v.tone == 0.0f);              // center detent, exact
     apply_knob(MenuLayer::Menu1, 4, 1.0f, v);
     assert(near(v.glide_ms, 300.0f));
     apply_knob(MenuLayer::Menu1, 5, 1.0f, v);
@@ -97,7 +97,7 @@ int main() {
     assert(v.vocal_size == 1.0f);
   }
 
-  // ---- vocal size is quantised to 32 steps, so a knob sweep cannot
+  // ---- vocal size is quantized to 32 steps, so a knob sweep cannot
   // trigger a grain rebuild per audio block (design spec section 8)
   {
     float seen[64];

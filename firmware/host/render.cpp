@@ -35,7 +35,7 @@ double preset_f0_hz(const std::string& name) {
   if (name == "Wukong")  return 451.9;
   if (name == "Rice")    return 534.8;
   if (name == "Prince")  return 379.8;
-  if (name == "Piccolo") return 354.1;
+  if (name == "Flute") return 354.1;
   return 452.0;
 }
 
@@ -81,7 +81,7 @@ bool apply_set(FofParams& p, const std::string& k, double v) {
 
 // JS params the live firmware path does not model. ref_render.js accepts
 // them; we accept and warn rather than silently changing nothing.
-bool is_unmodelled_key(const std::string& k) {
+bool is_unmodeled_key(const std::string& k) {
   return k == "loF0" || k == "hiF0" || k == "registerMode" ||
          k == "fastTrack" || k == "useBacf" || k == "breathiness";
 }
@@ -282,9 +282,9 @@ int main(int argc, char** argv) {
       const std::string k = kv.substr(0, eq);
       const double v = std::atof(kv.substr(eq + 1).c_str());
       if (!apply_set(p, k, v)) {
-        if (is_unmodelled_key(k)) {
+        if (is_unmodeled_key(k)) {
           std::fprintf(stderr,
-                       "warning: --set %s is not modelled by the live firmware "
+                       "warning: --set %s is not modeled by the live firmware "
                        "path; ignored\n", k.c_str());
         } else {
           std::fprintf(stderr, "unknown --set key '%s'\n", k.c_str());

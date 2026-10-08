@@ -161,15 +161,59 @@ int main() {
     assert(std::fabs(s.ui.chord().drive - 1.0f) < 1e-3f);  // untouched
   }
 
-  // ---- toggles: gate moves are stored, octave and page do nothing
+  // ---- toggles: octave and gate moves are stored, page does nothing
   {
     Sim s;
     const ChordParams before = s.ui.chord();
-    s.in.t_octave = TogglePos::Up; s.step();
     s.in.t_page = TogglePos::Down; s.step();
     assert(std::memcmp(&before, &s.ui.chord(), sizeof before) == 0);
+    s.in.t_octave = TogglePos::Up; s.step();
+    assert(s.ui.chord().octave == 1);
+    s.in.t_octave = TogglePos::Down; s.step();
+    assert(s.ui.chord().octave == -1);
+    s.in.t_octave = TogglePos::Middle; s.step();
+    assert(s.ui.chord().octave == 0);
     s.in.t_gate = TogglePos::Up; s.step();
     assert(s.ui.chord().gate_level == 2);
+  }
+
+  // ---- the saved octave wins at power-up until toggle 1 actually moves,
+  // exactly as the gate does (and as regular mode's octave does)
+  {
+    ChordParams saved = factory_chord();
+    saved.octave = -1;
+    UiInputs in = base_in();
+    in.now_ms = 1000;
+    in.t_octave = TogglePos::Up;  // disagrees with the saved -1
+    ChordUiController ui;
+    ui.init(saved, factory_charge_config(), in);
+    for (int i = 0; i < 100; i++) { in.now_ms++; ui.tick(in); }
+    assert(ui.chord().octave == -1);
+    in.t_octave = TogglePos::Middle;
+    in.now_ms++;
+    ui.tick(in);
+    assert(ui.chord().octave == 0);
+  }
+
+  // ---- a toggle 1 move auto-saves like a knob turn
+  {
+    Sim s;
+    s.in.t_octave = TogglePos::Up; s.step();
+    s.step(ChordUiController::kAutoSaveMs - 10);
+    assert(s.saves == 0);
+    s.step(20);
+    assert(s.saves == 1 && s.last_saved.octave == 1);
+  }
+
+  // ---- toggle 1 works inside the chord menu too, like the gate toggle
+  {
+    Sim s;
+    s.press(Side::Left);
+    s.step(ChordUiController::kHoldMs);
+    s.release(Side::Left);
+    assert(s.ui.in_menu());
+    s.in.t_octave = TogglePos::Down; s.step();
+    assert(s.ui.chord().octave == -1 && s.ui.in_menu());
   }
 
   // ---- auto-save: 3 s after the last change, not before; one write

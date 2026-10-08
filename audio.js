@@ -146,10 +146,10 @@ export class AudioEngine {
   // applyChargeChord by the caller; mouthOpen is UI state (the right stomp)
   // that lives outside the saved setting, so it is threaded through here
   // rather than folded into c.
-  setChord(c, mouthOpen, engaged) {
+  setChord(c, mouthOpen, engaged, glideMs = 0.0) {
     if (!this.ctx) return;
     this.chord.port.postMessage({
-      type: 'params', values: toChordEngineParams(c, mouthOpen, INPUT_GAIN),
+      type: 'params', values: toChordEngineParams(c, mouthOpen, INPUT_GAIN, glideMs),
     });
     this.post.port.postMessage({
       type: 'params', tone: c.tone, vocal: c.vocal_vol,

@@ -4,10 +4,14 @@
 //
 // The guitar itself, driven, through three parallel formant bandpasses
 // whose vowel moves with pick dynamics. No pitch tracking anywhere, so it
-// plays chords, adds no latency and cannot make an octave error.
+// plays chords and cannot make an octave error. Toggle 1 and charge's
+// pitch row shift it through ShiftStage (a mirror of
+// firmware/engine/pitch_shifter.hpp), which adds about 20 ms only while a
+// shift is active; at octave 0 it is a bit-exact wire.
 //
-//   in -> LiveFrontEnd (gate, peak-normalized amp)
-//   in -> soft clip -> 3 x TPT bandpass, summed -> leveler -> x amp x 0.5
+//   in -> LiveFrontEnd (gate, peak-normalized amp), always unshifted
+//   in -> ShiftStage -> soft clip -> 3 x TPT bandpass, summed -> leveler
+//      -> x amp x 0.5
 //   mouth follower (amp x sensitivity, or forced open) sweeps the formants
 //   from the closed vowel to the open vowel, in log frequency.
 //
@@ -39,6 +43,98 @@ function softClip(x) {
   if (x <= -3.0) return -1.0;
   const x2 = x * x;
   return x * (27.0 + x2) / (27.0 + 9.0 * x2);
+}
+
+// ---- pitch shift: mirror of firmware/engine/pitch_shifter.hpp ----------
+const kShiftWindowMs = 40.0;   // head sweep window
+const kShiftBypassMs = 10.0;   // dry <-> shifted fade
+const kShiftMaxOctaves = 3.0;  // toggle +/-1, charge +/-2
+const kShiftRatioEvery = 16;   // samples per ratio update
+const kShiftDryEps = 1e-3;     // octaves: glide has landed
+
+// sin(pi p) for p in [0, 1], Bhaskara I's approximation.
+function shiftFade(p) {
+  const q = p * (1.0 - p);
+  return 16.0 * q / (5.0 - 4.0 * q);
+}
+
+// Two read heads half a window apart on a float32 delay line (Float32Array
+// so every stored sample rounds exactly as the C++ float buffer does).
+class PitchShifter {
+  static kBufSize = 4096;  // power of two
+  constructor() {
+    this.buf = new Float32Array(PitchShifter.kBufSize);
+    this.w = 0;
+    this.win = 1920.0;
+    this.phase = 0.0;
+    this.ratio = 1.0;
+  }
+  init(sr) {
+    this.win = Math.min(kShiftWindowMs * 0.001 * sr, PitchShifter.kBufSize - 4);
+    this.reset();
+  }
+  reset() {
+    this.buf.fill(0);
+    this.w = 0;
+    this.phase = 0.0;
+  }
+  read(d) {
+    const mask = PitchShifter.kBufSize - 1;
+    const i = Math.trunc(d);
+    const f = d - i;
+    const a = this.buf[(this.w - i) & mask];
+    const b = this.buf[(this.w - i - 1) & mask];
+    return a + (b - a) * f;
+  }
+  process(x) {
+    this.buf[this.w] = x;
+    const pa = this.phase;
+    let pb = this.phase + 0.5;
+    if (pb >= 1.0) pb -= 1.0;
+    const y = this.read(pa * this.win) * shiftFade(pa) +
+              this.read(pb * this.win) * shiftFade(pb);
+    this.phase += (1.0 - this.ratio) / this.win;
+    if (this.phase >= 1.0) this.phase -= 1.0;
+    else if (this.phase < 0.0) this.phase += 1.0;
+    this.w = (this.w + 1) & (PitchShifter.kBufSize - 1);
+    return y;
+  }
+}
+
+class ShiftStage {
+  constructor(sr) {
+    this.sr = sr;
+    this.cWet = 1.0 / (kShiftBypassMs * 0.001 * sr);
+    this.ps = new PitchShifter();
+    this.ps.init(sr);
+    this.target = 0.0; this.oct = 0.0; this.cGlide = 0.0; this.wet_ = 0.0;
+    this.count = 0;
+    this.setTarget(0.0, 0.0);
+  }
+  setTarget(octaves, glideMs) {
+    this.target = Math.min(kShiftMaxOctaves, Math.max(-kShiftMaxOctaves, octaves));
+    this.cGlide = Math.exp(-1 / (Math.max(1.0, glideMs) * 0.001 * this.sr));
+  }
+  reset() {
+    this.ps.reset();
+    this.oct = this.target;
+    this.wet_ = this.target === 0.0 ? 0.0 : 1.0;
+    this.count = 0;
+  }
+  process(x) {
+    this.oct = this.target + (this.oct - this.target) * this.cGlide;
+    if (Math.abs(this.oct - this.target) < 1e-9) this.oct = this.target;
+    if (this.count === 0) this.ps.ratio = Math.pow(2.0, this.oct);
+    if (++this.count === kShiftRatioEvery) this.count = 0;
+    const s = this.ps.process(x);
+    const dry = this.target === 0.0 && Math.abs(this.oct) < kShiftDryEps;
+    this.wet_ = dry ? Math.max(0.0, this.wet_ - this.cWet) : Math.min(1.0, this.wet_ + this.cWet);
+    if (this.wet_ === 0.0) return x;
+    if (this.wet_ === 1.0) return s;
+    return x + (s - x) * this.wet_;
+  }
+  octaves() { return this.oct; }
+  wet() { return this.wet_; }
 }
 
 // tan(pi fc / sr) for the TPT prewarp, from sin/cos.
@@ -119,6 +215,7 @@ function defaultChordEngineParams() {
     inputGain: 1.0, gate: 0.02, drive: 10.0, sensitivity: 3.0,
     closedVowel: 0.0, openVowel: 2.0, formantScale: 1.0, bwScale: 1.0,
     attackMs: 10.0, releaseMs: 150.0, mouthOpen: false, gain: 1.0,
+    octave: 0.0, glideMs: 0.0,
   };
 }
 
@@ -138,6 +235,7 @@ class ChordEngine {
     this.coefCount = 0;
     this.bp = [new TptBandpass(), new TptBandpass(), new TptBandpass()];
     this.lvFast = 0.0; this.lvG = 1.0;
+    this.shift = new ShiftStage(sr);
     this.setParams(defaultChordEngineParams());
   }
 
@@ -149,11 +247,15 @@ class ChordEngine {
     vowelFormants(p.openVowel, this.open);
     this.cAtt = 1 - Math.exp(-1 / (Math.max(0.1, p.attackMs) * 0.001 * this.sr));
     this.cRel = 1 - Math.exp(-1 / (Math.max(0.1, p.releaseMs) * 0.001 * this.sr));
+    // `?? 0` keeps a params object built without the shift keys (older
+    // callers) from turning the target into NaN and silencing the engine.
+    this.shift.setTarget(p.octave ?? 0.0, p.glideMs ?? 0.0);
   }
 
   // Engage path: same contract as FofProcessor's grain state reset.
   clearOutputState() {
     this.fe.reset();
+    this.shift.reset();
     for (const b of this.bp) b.reset();
     this.mouth_ = 0.0;
     this.coefCount = 0;
@@ -171,7 +273,9 @@ class ChordEngine {
       if (this.coefCount === 0) this.updateCoefs();
       if (++this.coefCount === kChordCoefEvery) this.coefCount = 0;
 
-      const d = softClip(this.p.drive * x);
+      // The front end above reads the UNSHIFTED x, so the mouth follows
+      // the pick with no lag; only the voiced path is shifted.
+      const d = softClip(this.p.drive * this.shift.process(x));
       let s = 0;
       for (let k = 0; k < 3; k++) s += kChordAmp[k] * this.bp[k].process(d);
 
@@ -188,6 +292,8 @@ class ChordEngine {
 
   mouth() { return this.mouth_; }
   liveAmp() { return this.fe.liveAmp; }
+  shiftWet() { return this.shift.wet(); }
+  shiftOctaves() { return this.shift.octaves(); }
 
   updateCoefs() {
     for (let k = 0; k < 3; k++) {
@@ -205,6 +311,11 @@ ChordEngine.kChordBaseBw = kChordBaseBw;
 ChordEngine.kChordAmp = kChordAmp;
 ChordEngine.kChordCoefEvery = kChordCoefEvery;
 ChordEngine.kChordLevelTarget = kChordLevelTarget;
+ChordEngine.kShiftWindowMs = kShiftWindowMs;
+ChordEngine.kShiftBypassMs = kShiftBypassMs;
+ChordEngine.kShiftMaxOctaves = kShiftMaxOctaves;
+ChordEngine.kShiftRatioEvery = kShiftRatioEvery;
+ChordEngine.kShiftDryEps = kShiftDryEps;
 
 class ChordProcessor extends AudioWorkletProcessor {
   constructor() {
@@ -265,5 +376,8 @@ ChordProcessor.softClip = softClip;
 ChordProcessor.prewarpG = prewarpG;
 ChordProcessor.vowelFormants = vowelFormants;
 ChordProcessor.kVowelHz = kVowelHz;
+ChordProcessor.PitchShifter = PitchShifter;
+ChordProcessor.ShiftStage = ShiftStage;
+ChordProcessor.shiftFade = shiftFade;
 
 registerProcessor('chord-processor', ChordProcessor);

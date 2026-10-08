@@ -8,7 +8,8 @@
 //   left hold ~1 s    latch the chord menu, under the foot
 //   right, held       open mouth (momentary); never a menu, never a save
 //   both together     charge, engaged and outside the menu only
-//   toggle 3          gate level; toggles 1 and 2 do nothing
+//   toggle 1          octave -1 / 0 / +1 (chord octave spec, 2026-10-06)
+//   toggle 3          gate level; toggle 2 does nothing
 //
 // Storage is automatic: the one ChordParams is saved kAutoSaveMs after the
 // last change, or at once on leaving the menu, and only when it differs
@@ -60,6 +61,7 @@ class ChordUiController {
     hold_latched_ = false;
     mouth_open_ = false;
     last_gate_ = in.t_gate;
+    last_octave_ = in.t_octave;
     boot_ms_ = in.now_ms;
     last_change_ms_ = in.now_ms;
     exit_save_ = false;
@@ -130,8 +132,12 @@ class ChordUiController {
     left_down_ = in.left_down;
     right_down_ = in.right_down;
 
-    // ---- toggle 3 and knobs; note whether anything actually changed ----
+    // ---- toggles 1 and 3 and knobs; note whether anything changed ----
+    // Both toggles are move-driven: the saved value wins at power-up until
+    // the toggle actually moves, in or out of the chord menu.
     const ChordParams before = chord_;
+    if (in.t_octave != last_octave_) chord_.octave = octave_from(in.t_octave);
+    last_octave_ = in.t_octave;
     if (in.t_gate != last_gate_) chord_.gate_level = gate_from(in.t_gate);
     last_gate_ = in.t_gate;
     const ChordLayer lay = menu_ ? ChordLayer::Menu : ChordLayer::Main;
@@ -225,6 +231,13 @@ class ChordUiController {
     return 1;                            // medium
   }
 
+  // Same mapping as UiController::octave_from.
+  static int8_t octave_from(TogglePos t) {
+    if (t == TogglePos::Up) return 1;
+    if (t == TogglePos::Down) return -1;
+    return 0;
+  }
+
   void on_left_tap(const UiInputs& in) {
     if (menu_) {
       menu_ = false;
@@ -255,6 +268,7 @@ class ChordUiController {
   bool both_cancel_ = false;
   bool hold_latched_ = false;
   TogglePos last_gate_ = TogglePos::Middle;
+  TogglePos last_octave_ = TogglePos::Middle;
   uint32_t boot_ms_ = 0;
   uint32_t last_change_ms_ = 0;
   bool exit_save_ = false;

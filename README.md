@@ -191,8 +191,10 @@ the position a switch already sits in, flick it away and back.
 Hold both stomps while powering the pedal on and it spends that session as a
 single talking vowel filter driven straight off your own guitar, chords
 included, instead of the six characters. It opens as you pick harder. There
-is no pitch tracker in this path, so there is no delay and it can never make
-an octave error; there is no octave shift either.
+is no pitch tracker in this path, so it can never make an octave error. Toggle
+1 shifts everything you play down or up an octave, and charge can sweep it two
+more. At octave 0 there is no delay at all; while shifted, there is a slight
+one (about 20 ms) and a little grain, more the further you go.
 
 Both LEDs flash three times to say it is live. Power off and back on without
 holding both stomps and the six characters are exactly as you left them.
@@ -202,7 +204,7 @@ holding both stomps and the six characters are exactly as you left them.
 | Left tap | Engage/bypass; a tap in the chord menu leaves it |
 | Left hold ~1 s | Latch the chord menu (left LED blinks); tap left again to leave |
 | Right, held | Open the mouth (right LED lit) |
-| Both together | Charge, whose gain, tone and size settings apply |
+| Both together | Charge, whose gain, pitch, tone and size settings apply |
 
 While holding right (mouth open), press left as well to start a charge. The
 mouth closes while both are down. Let go of left and the charge winds down, and
@@ -226,7 +228,10 @@ and you hear the closed vowel; the harder you pick, the further it moves toward
 the open vowel. Sensitivity (knob 5) sets how hard you must pick to reach it.
 Hold the right stomp and it goes straight to the open vowel.
 
-Toggle 3 is the gate, same as the characters; toggles 1 and 2 do nothing.
+Toggle 1 is the octave (up +1, middle 0, down -1), toggle 3 is the gate, same
+as the characters; toggle 2 does nothing. Charge's pitch setting sweeps two
+octaves up or down from wherever toggle 1 sits, the same way it does for the
+characters.
 
 Saving is automatic: a few seconds after you stop adjusting, or the moment you
 leave the chord menu. There is nothing to press, and your saved characters are

@@ -107,6 +107,7 @@ bool apply_chord_set(ChordParams& c, ChordEngineParams& p, const std::string& k,
   if (k == "vocalSize") { c.vocal_size = v; return true; }
   if (k == "attackMs") { c.attack_ms = v; return true; }
   if (k == "releaseMs") { c.release_ms = v; return true; }
+  if (k == "octave") { c.octave = static_cast<int8_t>(v); return true; }
   if (k == "mouthOpen") { p.mouth_open = (v != 0); return true; }
   if (k == "gate") { p.gate = v; return true; }
   if (k == "inputGain") { p.input_gain = v; return true; }

@@ -22,6 +22,17 @@ static double tone_mag(const std::vector<float>& x, size_t from, double f) {
   return 2 * std::sqrt(re * re + im * im) / (x.size() - from);
 }
 
+// Energy in a band of +/- 25% around fc (see test_pitch_shifter.cpp: a
+// shifted sine spreads into lines a few Hz apart, so one bin can null).
+static double band(const std::vector<float>& y, size_t from, double fc) {
+  double e = 0;
+  for (double f = fc / 1.25; f <= fc * 1.25; f += fc / 200) {
+    const double m = tone_mag(y, from, f);
+    e += m * m;
+  }
+  return e;
+}
+
 static std::vector<float> run(ChordEngine& e, const std::vector<float>& in) {
   std::vector<float> out(in.size());
   for (size_t i = 0; i < in.size(); i += 128) {
@@ -181,25 +192,79 @@ int main() {
     for (size_t i = y.size() - 4800; i < y.size(); i++) assert(std::fabs(y[i]) < 1e-4);
   }
 
-  // ---- extreme settings stay finite and bounded (Review Focus 1)
+  // ---- extreme settings stay finite and bounded (Review Focus 1), now
+  // including the full shift reach: toggle +/-1 plus charge +/-2
   {
     for (double fs : {0.5, 1.0}) {
+      for (double oct : {0.0, 3.0, -3.0}) {
+        ChordEngine e(kSr);
+        ChordEngineParams p;
+        p.input_gain = 4.0;
+        p.drive = 40.0;
+        p.bw_scale = 0.35;
+        p.formant_scale = fs;
+        p.sensitivity = 8.0;
+        p.closed_vowel = 4;
+        p.open_vowel = 0;
+        p.octave = oct;
+        e.set_params(p);
+        std::vector<float> x(96000);
+        uint32_t r = 1;
+        for (auto& s : x) { r = r * 1664525u + 1013904223u; s = (r >> 8) / 8388608.0f - 1.0f; }
+        auto y = run(e, x);
+        for (float s : y) assert(std::isfinite(s) && std::fabs(s) < 10.0f);
+      }
+    }
+  }
+
+  // ---- octave 0 never leaves the dry wire: the shifter is bypassed for
+  // every sample, so chord mode at octave 0 is exactly the old engine
+  {
+    ChordEngine e(kSr);
+    ChordEngineParams p;
+    e.set_params(p);
+    auto x = sines({196, 247, 294}, 0.2, 1.0);
+    std::vector<float> y(128);
+    for (size_t i = 0; i + 128 <= x.size(); i += 128) {
+      e.process_block(x.data() + i, y.data(), 128);
+      assert(e.shift_wet() == 0.0 && e.shift_octaves() == 0.0);
+    }
+  }
+
+  // ---- octave +1 moves a 220 Hz note to 440 Hz through the formants
+  // (vowel ah held, near-linear drive, so the test sees the shift)
+  {
+    auto x = sines({220}, 0.3, 1.5);
+    double ratio[2];
+    for (int k = 0; k < 2; k++) {
       ChordEngine e(kSr);
       ChordEngineParams p;
-      p.input_gain = 4.0;
-      p.drive = 40.0;
-      p.bw_scale = 0.35;
-      p.formant_scale = fs;
-      p.sensitivity = 8.0;
-      p.closed_vowel = 4;
-      p.open_vowel = 0;
+      p.drive = 1.0;
+      p.sensitivity = 0.0;
+      p.closed_vowel = p.open_vowel = 2;
+      p.octave = k;
       e.set_params(p);
-      std::vector<float> x(96000);
-      uint32_t r = 1;
-      for (auto& s : x) { r = r * 1664525u + 1013904223u; s = (r >> 8) / 8388608.0f - 1.0f; }
+      e.clear_output_state();
       auto y = run(e, x);
-      for (float s : y) assert(std::isfinite(s) && std::fabs(s) < 10.0f);
+      ratio[k] = band(y, y.size() / 3, 440) / band(y, y.size() / 3, 220);
     }
+    assert(ratio[0] < 0.01);
+    assert(ratio[1] > 100.0);
+  }
+
+  // ---- engage after shifted playing (Review Focus 2): clear_output_state
+  // drops the shifter's history too, so silence in is silence out at once
+  {
+    ChordEngine e(kSr);
+    ChordEngineParams p;
+    p.octave = -1;
+    p.drive = 40.0;
+    e.set_params(p);
+    run(e, sines({196, 247, 294}, 0.3, 0.5));
+    e.clear_output_state();
+    assert(e.shift_octaves() == -1.0 && e.shift_wet() == 1.0);
+    auto y = run(e, std::vector<float>(4800, 0.0f));
+    for (float s : y) assert(s == 0.0f);
   }
 
   std::printf("test_chord_engine OK\n");

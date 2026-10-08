@@ -257,7 +257,7 @@ renderBtn.addEventListener('click', async () => {
     // whatever the charge level is right now.
     const [payload, filename] = chordMode
       ? [applyChargeChord(chordUi.chord(), chordUi.chargeConfig(),
-                          chordUi.chargeLevel),
+                          chordUi.chargeLevel, chordUi.charging).params,
          'dbscreamz-chord.wav']
       : [applyCharge(ui.editBuffer(), ui.chargeConfig(),
                     ui.chargeLevel, ui.charging),
@@ -462,8 +462,6 @@ function tickChord(t) {
     chordUi.saveDone();
   }
 
-  if (chordUi.takeEngageEdge()) audio.engageEdge();
-
   // A menu latch or exit: swing the knobs to match whatever the active
   // layer now holds, same affordance as syncKnobsToLayer() in normal mode.
   if (chordUi.layer() !== lastChordLayer) {
@@ -473,9 +471,13 @@ function tickChord(t) {
 
   // The charge overlay is a pure copy; the chord setting is never written.
   const charging = chordUi.chargeLevel > 0;
-  const chord = applyChargeChord(chordUi.chord(), chordUi.chargeConfig(),
-                                 chordUi.chargeLevel);
-  audio.setChord(chord, chordUi.mouthOpen(), chordUi.engaged());
+  const charged = applyChargeChord(chordUi.chord(), chordUi.chargeConfig(),
+                                   chordUi.chargeLevel, chordUi.charging);
+  const chord = charged.params;
+  audio.setChord(chord, chordUi.mouthOpen(), chordUi.engaged(), charged.glideMs);
+  // After setChord, as main.cpp does: the engage reset snaps the shifter
+  // to the new octave instead of gliding from the old one.
+  if (chordUi.takeEngageEdge()) audio.engageEdge();
 
   const layer = chordUi.layer();
   // Same graying rule as normal mode: only when the knob genuinely is not
@@ -489,10 +491,14 @@ function tickChord(t) {
     knobValues: [0, 1, 2, 3, 4, 5].map((i) => chordKnobValueText(layer, i, chord)),
     knobPos: shownPos,
     knobLive: [0, 1, 2, 3, 4, 5].map((i) => charging || chordUi.pickup.live(i) || agrees(i)),
-    // Toggles 1-2 do nothing in chord mode; toggle 3 is gate level, in or
-    // out of the chord menu (chord mode has no charge-row toggle bank).
-    toggleLabels: ['-', '-', 'Gate'],
-    toggleValues: ['-', '-', GATE[face.toggles[2]]],
+    // Toggle 1 is the octave (the SAVED value, which wins until the toggle
+    // moves), toggle 2 does nothing, toggle 3 is gate level, in or out of
+    // the chord menu (chord mode has no charge-row toggle bank).
+    toggleLabels: ['Octave', '-', 'Gate'],
+    toggleValues: [
+      chordUi.chord().octave > 0 ? `+${chordUi.chord().octave}` : `${chordUi.chord().octave}`,
+      '-', GATE[face.toggles[2]],
+    ],
     chargeMenu: null,
   });
 

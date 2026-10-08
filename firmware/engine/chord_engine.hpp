@@ -1,15 +1,24 @@
-// chord_engine.hpp - chord mode (chord mode design spec, 2026-09-24).
+// chord_engine.hpp - chord mode (chord mode design spec, 2026-09-24; chord
+// octave design spec, 2026-10-06).
 //
 // The guitar itself, driven, through three parallel formant bandpasses
 // whose vowel moves with pick dynamics. No pitch tracking anywhere, so it
-// plays chords, adds no latency and cannot make an octave error. The grain
-// engine (fof_engine.hpp) does not run in chord mode; main.cpp picks one
-// engine at boot.
+// plays chords and cannot make an octave error. Toggle 1 and charge's
+// pitch row shift it through ShiftStage (pitch_shifter.hpp), a delay line
+// that adds about 20 ms only while a shift is active; at octave 0 the
+// shifter is bypassed and there is no added latency. The grain engine
+// (fof_engine.hpp) does not run in chord mode; main.cpp picks one engine
+// at boot.
 //
-//   in -> LiveFrontEnd (gate, peak-normalized amp)
-//   in -> soft clip -> 3 x TPT bandpass, summed -> leveler -> x amp x 0.5
+//   in -> LiveFrontEnd (gate, peak-normalized amp), always unshifted
+//   in -> ShiftStage -> soft clip -> 3 x TPT bandpass, summed -> leveler
+//      -> x amp x 0.5
 //   mouth follower (amp x sensitivity, or forced open) sweeps the formants
 //   from the closed vowel to the open vowel, in log frequency.
+//
+// The shift sits BEFORE the soft clip so the clipper builds its harmonics
+// from the shifted chord (drive sounds the same at every octave) and clip
+// harmonics are never shifted up into aliasing.
 //
 // Every tuning number here is a first-pass ear target (spec section 2);
 // test_chord_engine.cpp asserts ranges and relationships, not values.
@@ -22,6 +31,7 @@
 #include <cmath>
 
 #include "front_end.hpp"
+#include "pitch_shifter.hpp"
 
 struct ChordEngineParams {
   double input_gain = 1.0;     // firmware 1.0; host render + emulator 4.0
@@ -36,6 +46,8 @@ struct ChordEngineParams {
   double release_ms = 150.0;
   bool mouth_open = false;     // right stomp held
   double gain = 1.0;           // output levels live in the post chain
+  double octave = 0.0;         // target shift, octaves; clamped to +/-3
+  double glide_ms = 0.0;       // shift portamento, as FofParams::glide_ms
 };
 
 // Peterson and Barney (1952), adult male averages (spec section 2).
@@ -111,6 +123,7 @@ class ChordEngine {
   explicit ChordEngine(double sr)
       : sr_(sr),
         fe_(sr),
+        shift_(sr),
         // the grain engine's leveler constants (fof_engine.hpp): 8 ms
         // tracker, 10 ms reduction slew, 60 ms increase slew
         c_fast_(1 - std::exp(-1 / (0.008 * sr))),
@@ -127,11 +140,13 @@ class ChordEngine {
     vowel_formants(p.open_vowel, open_);
     c_att_ = 1 - std::exp(-1 / (std::max(0.1, p.attack_ms) * 0.001 * sr_));
     c_rel_ = 1 - std::exp(-1 / (std::max(0.1, p.release_ms) * 0.001 * sr_));
+    shift_.set_target(p.octave, p.glide_ms);
   }
 
   // Engage path: same contract as FofEngine::clear_output_state().
   void clear_output_state() {
     fe_.reset();
+    shift_.reset();
     for (auto& b : bp_) b.reset();
     mouth_ = 0.0;
     coef_count_ = 0;
@@ -150,7 +165,9 @@ class ChordEngine {
       if (coef_count_ == 0) update_coefs();
       if (++coef_count_ == kChordCoefEvery) coef_count_ = 0;
 
-      const double d = soft_clip(p_.drive * x);
+      // The front end above reads the UNSHIFTED x, so the mouth follows
+      // the pick with no lag; only the voiced path is shifted.
+      const double d = soft_clip(p_.drive * shift_.process(x));
       double s = 0;
       for (int k = 0; k < 3; k++) s += kChordAmp[k] * bp_[k].process(d);
 
@@ -168,6 +185,8 @@ class ChordEngine {
 
   double mouth() const { return mouth_; }
   double live_amp() const { return fe_.live_amp(); }
+  double shift_wet() const { return shift_.wet(); }
+  double shift_octaves() const { return shift_.octaves(); }
 
  private:
   void update_coefs() {
@@ -182,6 +201,7 @@ class ChordEngine {
 
   double sr_;
   LiveFrontEnd fe_;
+  ShiftStage shift_;
   ChordEngineParams p_{};
   double closed_[3] = {}, open_[3] = {};
   double c_att_ = 0, c_rel_ = 0;

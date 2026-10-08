@@ -502,7 +502,7 @@ exactly as you left them.
 | LEFT tap | Engage or bypass. In the chord menu, leaves it instead. |
 | LEFT hold ~1 s | Latch the chord menu (left LED blinks). Tap LEFT again to leave. |
 | RIGHT, held | Open the mouth: right LED lit for as long as you hold it (dark in the chord menu). Momentary, never a menu, never a save. |
-| Both together | Charge, engaged and outside the menu only: the same gain, tone and size overlay as the characters. |
+| Both together | Charge, engaged and outside the menu only: the same gain, pitch, tone and size overlay as the characters. |
 
 While holding RIGHT (mouth open), press LEFT as well to start a
 charge. The mouth closes while both are down. Let go of LEFT and
@@ -510,12 +510,16 @@ the charge winds down, and the mouth opens again if RIGHT is
 still held. In the chord menu, a LEFT tap with RIGHT held does
 not count, so let go of RIGHT before tapping LEFT to leave.
 
-Toggle 3 is the gate (high/medium/low), same as the characters;
-toggles 1 and 2 do nothing. Chord mode has one setting, not
-six slots, and it saves itself: a few seconds after you stop
-turning a knob, or at once when you leave the chord menu, and
-only when something actually changed. There is nothing to
-press, and your saved characters are never touched by it.
+Toggle 1 is the octave (up +1, middle 0, down -1) and toggle 3
+is the gate (high/medium/low), same as the characters; toggle 2
+does nothing. Charge's pitch sweeps two octaves from wherever
+toggle 1 sits. At octave 0 there is no delay; while shifted
+there is a slight one and a little grain. Chord mode has one
+setting, not six slots, and it saves itself: a few seconds
+after you stop turning a knob, or at once when you leave the
+chord menu, and only when something actually changed. There is
+nothing to press, and your saved characters are never touched
+by it.
 
 ### Main layer (default): knobs 1-6
 
@@ -545,4 +549,4 @@ further it moves toward the open vowel. Sensitivity (K5) sets how
 hard you must pick to reach it. Hold RIGHT and it goes straight
 to the open vowel.
 
-Toggles: 3 Gate = Middle (medium).
+Toggles: 1 Octave = Middle (0), 3 Gate = Middle (medium).

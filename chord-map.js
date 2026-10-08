@@ -94,8 +94,9 @@ export function chordKnobValueText(layer, k, c) {
 
 // inputGain: 1.0 on the pedal (hardware analog gain), 4.0 in the host
 // render and the emulator (the lab's digital stand-in the gate thresholds
-// were tuned against).
-export function toChordEngineParams(c, mouthOpen, inputGain) {
+// were tuned against). glideMs is the shift glide applyChargeChord()
+// returns; 0 (the default) lands toggle moves at once.
+export function toChordEngineParams(c, mouthOpen, inputGain, glideMs = 0.0) {
   return {
     inputGain,
     gate: kGateLevels[c.gate_level],
@@ -109,18 +110,31 @@ export function toChordEngineParams(c, mouthOpen, inputGain) {
     releaseMs: c.release_ms,
     mouthOpen,
     gain: 1.0,
+    octave: c.octave,
+    glideMs,
   };
 }
 
-// Charge in chord mode (spec section 3): the gain, tone and size rows use
-// applyCharge()'s formulas exactly, by running them on a voice-shaped
-// object carrying the three fields, so the two modes can never drift. The
-// pitch row has nothing to act on and is ignored. A pure copy: the chord
+// Charge in chord mode (chord mode spec section 3; chord octave spec,
+// 2026-10-06): the gain, tone, size AND pitch rows use applyCharge()'s
+// formulas exactly, by running them on a voice-shaped object carrying
+// those fields, so the two modes can never drift. Pitch is regular mode's
+// two-octave sweep from the toggle octave. Chord mode has no glide knob, so
+// its base glide is 0. Returns { params, glideMs }: the glide is never
+// stored, so it rides alongside the chord setting. A pure copy: the chord
 // setting itself is never written, so a charge can never be auto-saved.
-export function applyChargeChord(base, c, level) {
-  if (level <= 0.0) return base;
-  const v = { vocal_vol: base.vocal_vol, tone: base.tone, vocal_size: base.vocal_size };
-  const rows = { ...c, pitch: 0 };
-  const r = applyCharge(v, rows, level, true);
-  return { ...base, vocal_vol: r.vocal_vol, tone: r.tone, vocal_size: r.vocal_size };
+export function applyChargeChord(base, c, level, charging) {
+  if (level <= 0.0) return { params: base, glideMs: 0.0 };
+  const v = {
+    vocal_vol: base.vocal_vol, tone: base.tone, vocal_size: base.vocal_size,
+    octave: base.octave, glide_ms: 0.0,
+  };
+  const r = applyCharge(v, c, level, charging);
+  return {
+    params: {
+      ...base, vocal_vol: r.vocal_vol, tone: r.tone, vocal_size: r.vocal_size,
+      octave: r.octave,
+    },
+    glideMs: r.glide_ms,
+  };
 }

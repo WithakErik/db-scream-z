@@ -56,10 +56,12 @@ inline void apply_chord_knob(ChordLayer layer, int k, float t, ChordParams& c) {
 
 // input_gain: 1.0 on the pedal (hardware analog gain), 4.0 in the host
 // render and the emulator (the lab's digital stand-in the gate thresholds
-// were tuned against).
+// were tuned against). glide_ms is the shift glide apply_charge_chord()
+// returns; 0 (the default) lands toggle moves at once.
 inline ChordEngineParams to_chord_engine_params(const ChordParams& c,
                                                 bool mouth_open,
-                                                double input_gain) {
+                                                double input_gain,
+                                                double glide_ms = 0.0) {
   ChordEngineParams p;
   p.input_gain = input_gain;
   p.gate = kGateLevels[c.gate_level];
@@ -73,27 +75,47 @@ inline ChordEngineParams to_chord_engine_params(const ChordParams& c,
   p.release_ms = c.release_ms;
   p.mouth_open = mouth_open;
   p.gain = 1.0;
+  p.octave = c.octave;
+  p.glide_ms = glide_ms;
   return p;
 }
 
-// Charge in chord mode (spec section 3): the gain, tone and size rows use
-// apply_charge()'s formulas exactly, by running them on a VoiceParams
-// carrying the three fields, so the two modes can never drift. The pitch
-// row has nothing to act on and is ignored. A pure copy: the chord
-// setting itself is never written, so a charge can never be auto-saved.
-inline ChordParams apply_charge_chord(const ChordParams& base,
-                                      const ChargeConfig& c, float level) {
-  if (level <= 0.0f) return base;
+// The charged chord setting plus the shift glide the pitch row asks for.
+// The glide is never stored, so it has no home in ChordParams and rides
+// alongside.
+struct ChargedChord {
+  ChordParams params;
+  float glide_ms;
+};
+
+// Charge in chord mode (chord mode spec section 3; chord octave spec,
+// 2026-10-06): the gain, tone, size AND pitch rows use apply_charge()'s
+// formulas exactly, by running them on a VoiceParams carrying those
+// fields, so the two modes can never drift. Pitch is therefore regular
+// mode's two-octave sweep from the toggle octave: a 2000 ms glide while
+// charging, the decay time on the way home. Chord mode has no glide knob,
+// so its base glide is 0. A pure copy: the chord setting itself is never
+// written, so a charge can never be auto-saved.
+//
+// Inherited, not fixed here: once the level reaches 0, apply_charge() stops
+// overriding the glide, so any return glide still in flight finishes at the
+// base glide (0, at once). Regular mode does the same. If it is audible,
+// fix it once in apply_charge() for both modes.
+inline ChargedChord apply_charge_chord(const ChordParams& base,
+                                       const ChargeConfig& c, float level,
+                                       bool charging) {
+  if (level <= 0.0f) return {base, 0.0f};
   VoiceParams v{};
   v.vocal_vol = base.vocal_vol;
   v.tone = base.tone;
   v.vocal_size = base.vocal_size;
-  ChargeConfig rows = c;
-  rows.pitch = 0;
-  const VoiceParams r = apply_charge(v, rows, level, true);
+  v.octave = base.octave;
+  v.glide_ms = 0.0f;
+  const VoiceParams r = apply_charge(v, c, level, charging);
   ChordParams out = base;
   out.vocal_vol = r.vocal_vol;
   out.tone = r.tone;
   out.vocal_size = r.vocal_size;
-  return out;
+  out.octave = r.octave;
+  return {out, r.glide_ms};
 }

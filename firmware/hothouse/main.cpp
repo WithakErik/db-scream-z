@@ -310,12 +310,14 @@ void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out,
     chord_ui.tick(read_inputs());
     // Charge overlay: a pure copy, chord_ui's setting is never charged,
     // so an auto-save can never persist a charge (spec section 4).
-    const ChordParams cp = apply_charge_chord(
-        chord_ui.chord(), chord_ui.charge_config(), chord_ui.charge_level());
+    const ChargedChord charged = apply_charge_chord(
+        chord_ui.chord(), chord_ui.charge_config(), chord_ui.charge_level(),
+        chord_ui.charging());
+    const ChordParams& cp = charged.params;
     // input_gain 1.0: hardware analog gain replaces the lab's x4, as in
     // to_fof_params().
-    chord_eng->set_params(
-        to_chord_engine_params(cp, chord_ui.mouth_open(), 1.0));
+    chord_eng->set_params(to_chord_engine_params(
+        cp, chord_ui.mouth_open(), 1.0, charged.glide_ms));
     post->set(cp.tone, cp.vocal_vol, cp.mix, cp.master_vol);
     if (chord_ui.take_engage_edge()) {
       // Burp fix, as in normal mode (spec sec 7): clear the filters, front

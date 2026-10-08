@@ -16,6 +16,10 @@ int main() {
   // ---- layout: six slots, then charge, then chord
   {
     static_assert(sizeof(ChordParams) == 12 * 4 + 4, "no hidden padding");
+    // The octave took pad_[0]'s byte (chord octave spec, 2026-10-06). Every
+    // v9 image saved before then holds 0 there, so it loads as octave 0
+    // with no store version bump (plan Review Focus 3).
+    static_assert(offsetof(ChordParams, octave) == 12 * 4 + 1);
     assert(offsetof(VoiceStore, chord) ==
            sizeof(uint32_t) + 6 * sizeof(VoiceParams) + sizeof(ChargeConfig));
     assert(kVoiceStoreVersion == 9);
@@ -36,7 +40,8 @@ int main() {
     assert(c.closed_vowel == 0.0f && c.open_vowel == 4.0f);  // oo -> ee
     assert(c.resonance == 0.53f);
     assert(c.attack_ms == 17.0f && c.release_ms == 20.0f);
-    assert(c.pad_[0] == 0 && c.pad_[1] == 0 && c.pad_[2] == 0);
+    assert(c.octave == 0);
+    assert(c.pad_[0] == 0 && c.pad_[1] == 0);
     const VoiceStore s = factory_store();
     assert(s.version == 9);
     assert(std::memcmp(&s.chord, &c, sizeof c) == 0);

@@ -8,7 +8,8 @@
 //   left hold ~1 s    latch the chord menu, under the foot
 //   right, held       open mouth (momentary); never a menu, never a save
 //   both together     charge, engaged and outside the menu only
-//   toggle 3          gate level; toggles 1 and 2 do nothing
+//   toggle 1          octave -1 / 0 / +1 (chord octave spec, 2026-10-06)
+//   toggle 3          gate level; toggle 2 does nothing
 //
 // Storage is automatic: the one chord setting is saved kAutoSaveMs after the
 // last change, or at once on leaving the menu, and only when it differs
@@ -60,6 +61,7 @@ export class ChordUiController {
     this.holdLatched = false;
     this._mouthOpen = false;
     this.lastGate = inputs.t_gate;
+    this.lastOctave = inputs.t_octave;
     this.bootMs = inputs.now_ms;
     this.lastChangeMs = inputs.now_ms;
     this.exitSave = false;
@@ -134,8 +136,13 @@ export class ChordUiController {
     this.leftDown = inputs.left_down;
     this.rightDown = inputs.right_down;
 
-    // ---- toggle 3 and knobs; note whether anything actually changed ----
+    // ---- toggles 1 and 3 and knobs; note whether anything changed ----
+    // Both toggles are move-driven: the saved value wins at power-up until
+    // the toggle actually moves, in or out of the chord menu.
     const before = { ...this._chord };
+    if (inputs.t_octave !== this.lastOctave)
+      this._chord.octave = ChordUiController.octaveFrom(inputs.t_octave);
+    this.lastOctave = inputs.t_octave;
     if (inputs.t_gate !== this.lastGate)
       this._chord.gate_level = ChordUiController.gateFrom(inputs.t_gate);
     this.lastGate = inputs.t_gate;
@@ -228,6 +235,13 @@ export class ChordUiController {
     if (t === TogglePos.Up) return 2;    // high
     if (t === TogglePos.Down) return 0;  // low
     return 1;                            // medium
+  }
+
+  // Same mapping as UiController's octave toggle.
+  static octaveFrom(t) {
+    if (t === TogglePos.Up) return 1;
+    if (t === TogglePos.Down) return -1;
+    return 0;
   }
 
   onLeftTap(inputs) {

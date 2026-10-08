@@ -137,6 +137,7 @@ export function factoryChord() {
     attack_ms: 17.0,
     release_ms: 20.0,
     gate_level: v.gate_level,
+    octave: 0,          // toggle 1 (chord octave spec, 2026-10-06)
   };
 }
 
@@ -162,6 +163,10 @@ export function factoryStore() {
 // before use. Mutates `s` in place and returns which of the three happened,
 // so the caller knows whether to persist the result.
 export function migrateStore(s) {
+  // A chord saved before toggle 1 had an octave (chord octave spec,
+  // 2026-10-06) has no `octave` key. The pedal reads the same byte as 0, so
+  // fill 0 here; no version bump on either side.
+  if (s.chord && s.chord.octave === undefined) s.chord.octave = 0;
   if (s.version === kVoiceStoreVersion) return 'current';
   if (s.version === 8 || s.version === 7) {
     // Four slots before v9: keep them and append the factory Set 3. A v7

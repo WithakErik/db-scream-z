@@ -174,7 +174,11 @@ struct ChordParams {
   float attack_ms;     // 1..50 mouth attack (chord menu knob 5)
   float release_ms;    // 20..500 mouth release (chord menu knob 6)
   uint8_t gate_level;  // index into kGateLevels (toggle 3)
-  uint8_t pad_[3];     // always 0 (memcmp comparability)
+  // -1 / 0 / +1 (toggle 1). Took pad_[0]'s byte (chord octave spec,
+  // 2026-10-06): a v9 image saved before then holds 0 here, so it loads as
+  // octave 0 and the store version did not change.
+  int8_t octave;
+  uint8_t pad_[2];     // always 0 (memcmp comparability)
 };
 static_assert(sizeof(ChordParams) == 12 * 4 + 4, "no hidden padding");
 
@@ -201,7 +205,8 @@ inline ChordParams factory_chord() {
   c.attack_ms = 17.0f;
   c.release_ms = 20.0f;   // knob full down
   c.gate_level = v.gate_level;
-  c.pad_[0] = c.pad_[1] = c.pad_[2] = 0;
+  c.octave = 0;
+  c.pad_[0] = c.pad_[1] = 0;
   return c;
 }
 

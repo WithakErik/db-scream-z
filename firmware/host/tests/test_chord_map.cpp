@@ -82,24 +82,60 @@ int main() {
     assert(near(p.drive, c.drive) && near(p.sensitivity, c.sensitivity));
     assert(near(p.bw_scale, map_bw_scale(c.resonance)));
     assert(p.gain == 1.0);  // levels live in the post chain
+    assert(p.octave == 0.0 && p.glide_ms == 0.0);  // glide defaults to 0
+    c.octave = -1;
+    p = to_chord_engine_params(c, false, 1.0, 1200.0);
+    assert(p.octave == -1.0 && p.glide_ms == 1200.0);
   }
 
-  // ---- charge overlay: gain/tone/size rows as apply_charge, pitch ignored
+  // ---- charge overlay: every row, pitch included, is apply_charge()'s own
+  // result on the same fields, charging or decaying, so the two modes can
+  // never drift
   {
     const ChordParams base = factory_chord();
     ChargeConfig cfg = factory_charge_config();
-    ChordParams z = apply_charge_chord(base, cfg, 0.0f);
-    assert(std::memcmp(&z, &base, sizeof z) == 0);  // level 0 = identity
+    const ChargedChord z = apply_charge_chord(base, cfg, 0.0f, true);
+    assert(std::memcmp(&z.params, &base, sizeof base) == 0);  // level 0 = identity
+    assert(z.glide_ms == 0.0f);
 
     VoiceParams vb = factory_voice(0);
     vb.vocal_vol = base.vocal_vol; vb.tone = base.tone; vb.vocal_size = base.vocal_size;
+    vb.octave = base.octave; vb.glide_ms = 0.0f;
     for (float lv : {0.25f, 1.0f}) {
-      ChordParams c = apply_charge_chord(base, cfg, lv);
-      VoiceParams v = apply_charge(vb, cfg, lv, true);
-      assert(c.vocal_vol == v.vocal_vol);
-      assert(c.tone == v.tone);
-      assert(c.vocal_size == v.vocal_size);
-      assert(c.drive == base.drive && c.open_vowel == base.open_vowel);
+      for (bool charging : {true, false}) {
+        const ChargedChord c = apply_charge_chord(base, cfg, lv, charging);
+        const VoiceParams v = apply_charge(vb, cfg, lv, charging);
+        assert(c.params.vocal_vol == v.vocal_vol);
+        assert(c.params.tone == v.tone);
+        assert(c.params.vocal_size == v.vocal_size);
+        assert(c.params.octave == v.octave);
+        assert(c.glide_ms == v.glide_ms);
+        assert(c.params.drive == base.drive && c.params.open_vowel == base.open_vowel);
+      }
+    }
+  }
+
+  // ---- pitch row in chord mode: two octaves from the toggle octave, a
+  // 2000 ms sweep while charging, the decay time on the way home, nothing
+  // when the row is off; the stored setting is never touched
+  {
+    ChordParams base = factory_chord();
+    ChargeConfig cfg = factory_charge_config();
+    for (int8_t oct : {int8_t(-1), int8_t(0), int8_t(1)}) {
+      base.octave = oct;
+      cfg.pitch = 2;  // rise
+      ChargedChord r = apply_charge_chord(base, cfg, 0.5f, true);
+      assert(r.params.octave == oct + 2 && r.glide_ms == 2000.0f);
+      cfg.pitch = 1;  // fall
+      r = apply_charge_chord(base, cfg, 0.5f, true);
+      assert(r.params.octave == oct - 2 && r.glide_ms == 2000.0f);
+      cfg.decay = 1;  // slow: 1200 ms
+      r = apply_charge_chord(base, cfg, 0.5f, false);
+      assert(r.params.octave == oct && r.glide_ms == 1200.0f);
+      cfg.pitch = 0;  // off
+      r = apply_charge_chord(base, cfg, 0.5f, true);
+      assert(r.params.octave == oct && r.glide_ms == 0.0f);
+      assert(base.octave == oct);
     }
   }
 
